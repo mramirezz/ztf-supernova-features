@@ -30,11 +30,13 @@ ENV/
 .conda/
 
 # Outputs (datos generados)
-outputs/
-*.csv
+# Subir CSVs de features, pero NO imágenes ni logs
+outputs/plots/
+outputs/logs/
+outputs/checkpoints/
 *.png
 *.log
-*.json
+# Mantener *.csv para que se suban los features
 
 # Datos fuente (subir los datos originales para Streamlit Cloud)
 # Photometry_ZTF_ST_Alerce/  # Comentado para subir a GitHub
