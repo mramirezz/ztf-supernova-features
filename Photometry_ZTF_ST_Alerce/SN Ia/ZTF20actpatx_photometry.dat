@@ -1,0 +1,37 @@
+###################### HEADER ######################
+# SNNAME:	ZTF20actpatx
+###################### HEADER ######################
+
+# FILTER g
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59178.155	19.308	0.183	F	nan	nan	nan
+	59180.161	18.423	0.173	F	nan	nan	nan
+	59182.145	18.489	0.097	F	nan	nan	nan
+	59184.163	18.279	0.077	F	nan	nan	nan
+	59189.146	18.008	0.054	F	nan	nan	nan
+	59192.185	18.133	0.091	F	nan	nan	nan
+	59194.180	18.105	0.069	F	nan	nan	nan
+	59197.108	18.071	0.166	F	nan	nan	nan
+	59199.186	18.271	0.083	F	nan	nan	nan
+	59202.150	18.404	0.072	F	nan	nan	nan
+	59205.097	18.716	0.081	F	nan	nan	nan
+	59205.097	18.716	0.081	F	nan	nan	nan
+	59211.115	19.034	0.206	F	nan	nan	nan
+	59220.145	19.721	0.191	F	nan	nan	nan
+
+# FILTER r
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59178.197	19.302	0.175	F	nan	nan	nan
+	59180.118	19.016	0.193	F	nan	nan	nan
+	59182.108	18.573	0.105	F	nan	nan	nan
+	59184.121	18.436	0.095	F	nan	nan	nan
+	59186.108	18.288	0.086	F	nan	nan	nan
+	59189.198	18.128	0.055	F	nan	nan	nan
+	59192.131	18.055	0.090	F	nan	nan	nan
+	59194.125	18.154	0.056	F	nan	nan	nan
+	59199.109	18.210	0.064	F	nan	nan	nan
+	59205.131	18.558	0.083	F	nan	nan	nan
+	59211.140	18.800	0.110	F	nan	nan	nan
+	59216.102	19.055	0.230	F	nan	nan	nan
+	59218.132	18.989	0.086	F	nan	nan	nan
+	59227.134	19.273	0.198	F	nan	nan	nan

@@ -1,0 +1,76 @@
+###################### HEADER ######################
+# SNNAME:	ZTF25abghevu
+###################### HEADER ######################
+
+# FILTER g
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60900.199	18.734	0.081	F	nan	nan	nan
+	60902.220	18.741	0.077	F	nan	nan	nan
+	60904.205	18.922	0.074	F	nan	nan	nan
+	60908.177	19.049	0.099	F	nan	nan	nan
+	60910.217	19.138	0.115	F	nan	nan	nan
+	60910.217	19.159	0.099	F	nan	nan	nan
+	60914.185	19.311	0.106	F	nan	nan	nan
+	60915.188	19.367	0.154	F	nan	nan	nan
+	60917.176	19.608	0.153	F	nan	nan	nan
+	60917.268	19.444	0.124	F	nan	nan	nan
+	60919.164	19.619	0.135	F	nan	nan	nan
+	60919.164	19.561	0.143	F	nan	nan	nan
+	60921.175	19.725	0.163	F	nan	nan	nan
+	60921.175	19.840	0.176	F	nan	nan	nan
+	60923.153	19.870	0.260	F	nan	nan	nan
+	60923.177	19.804	0.204	F	nan	nan	nan
+	60923.177	19.804	0.204	F	nan	nan	nan
+	60925.242	19.775	0.290	F	nan	nan	nan
+	60925.242	19.985	0.361	F	nan	nan	nan
+	60927.160	20.021	0.249	F	nan	nan	nan
+	60929.145	20.213	0.222	F	nan	nan	nan
+	60929.145	20.213	0.222	F	nan	nan	nan
+	60929.146	20.248	0.208	F	nan	nan	nan
+	60932.157	20.235	0.205	F	nan	nan	nan
+	60932.158	20.228	0.163	F	nan	nan	nan
+	60932.158	20.228	0.163	F	nan	nan	nan
+	60938.141	20.327	0.199	F	nan	nan	nan
+	60941.137	20.695	0.289	F	nan	nan	nan
+	60941.137	20.695	0.289	F	nan	nan	nan
+	60943.140	20.492	0.291	F	nan	nan	nan
+	60948.133	20.711	0.309	F	nan	nan	nan
+
+# FILTER r
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60900.220	18.688	0.074	F	nan	nan	nan
+	60900.220	18.688	0.074	F	nan	nan	nan
+	60902.196	18.694	0.076	F	nan	nan	nan
+	60904.223	18.731	0.082	F	nan	nan	nan
+	60904.243	18.762	0.075	F	nan	nan	nan
+	60904.243	18.762	0.075	F	nan	nan	nan
+	60908.223	18.894	0.075	F	nan	nan	nan
+	60910.185	18.888	0.099	F	nan	nan	nan
+	60910.186	18.860	0.079	F	nan	nan	nan
+	60914.203	18.965	0.097	F	nan	nan	nan
+	60917.198	19.164	0.109	F	nan	nan	nan
+	60917.215	19.101	0.095	F	nan	nan	nan
+	60919.201	19.282	0.101	F	nan	nan	nan
+	60919.211	19.128	0.115	F	nan	nan	nan
+	60921.157	19.241	0.147	F	nan	nan	nan
+	60921.157	19.376	0.104	F	nan	nan	nan
+	60923.242	19.468	0.222	F	nan	nan	nan
+	60923.243	19.622	0.270	F	nan	nan	nan
+	60923.243	19.622	0.270	F	nan	nan	nan
+	60925.217	19.346	0.152	F	nan	nan	nan
+	60927.202	19.488	0.154	F	nan	nan	nan
+	60927.202	19.488	0.154	F	nan	nan	nan
+	60927.202	19.448	0.137	F	nan	nan	nan
+	60929.222	19.481	0.168	F	nan	nan	nan
+	60929.222	19.481	0.168	F	nan	nan	nan
+	60929.222	19.555	0.150	F	nan	nan	nan
+	60932.202	19.552	0.094	F	nan	nan	nan
+	60932.202	19.552	0.094	F	nan	nan	nan
+	60932.268	19.600	0.163	F	nan	nan	nan
+	60934.178	19.490	0.167	F	nan	nan	nan
+	60934.184	19.609	0.124	F	nan	nan	nan
+	60938.177	19.739	0.158	F	nan	nan	nan
+	60943.200	19.808	0.176	F	nan	nan	nan
+	60948.161	19.802	0.189	F	nan	nan	nan
+	60948.174	19.788	0.181	F	nan	nan	nan
+	60950.174	19.965	0.203	F	nan	nan	nan

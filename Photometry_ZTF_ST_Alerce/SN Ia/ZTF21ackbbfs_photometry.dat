@@ -1,0 +1,37 @@
+###################### HEADER ######################
+# SNNAME:	ZTF21ackbbfs
+###################### HEADER ######################
+
+# FILTER g
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59520.176	19.558	0.149	F	nan	nan	nan
+	59521.190	19.051	0.109	F	nan	nan	nan
+	59523.207	18.380	0.069	F	nan	nan	nan
+	59523.208	18.474	0.067	F	nan	nan	nan
+	59524.127	18.170	0.069	F	nan	nan	nan
+	59532.171	17.428	0.052	F	nan	nan	nan
+	59532.173	17.432	0.064	F	nan	nan	nan
+	59538.180	17.446	0.049	F	nan	nan	nan
+	59538.182	17.465	0.056	F	nan	nan	nan
+	59540.102	17.528	0.073	F	nan	nan	nan
+	59540.124	17.495	0.100	F	nan	nan	nan
+	59550.171	18.254	0.115	F	nan	nan	nan
+
+# FILTER r
+#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59522.171	18.783	0.092	F	nan	nan	nan
+	59523.129	18.595	0.067	F	nan	nan	nan
+	59523.130	18.572	0.062	F	nan	nan	nan
+	59524.169	18.338	0.059	F	nan	nan	nan
+	59524.170	18.319	0.066	F	nan	nan	nan
+	59526.126	18.023	0.058	F	nan	nan	nan
+	59526.127	18.062	0.052	F	nan	nan	nan
+	59532.106	17.544	0.064	F	nan	nan	nan
+	59532.122	17.631	0.058	F	nan	nan	nan
+	59537.149	17.388	0.157	F	nan	nan	nan
+	59538.153	17.529	0.063	F	nan	nan	nan
+	59538.154	17.476	0.049	F	nan	nan	nan
+	59540.178	17.611	0.078	F	nan	nan	nan
+	59540.178	17.509	0.065	F	nan	nan	nan
+	59543.106	17.601	0.064	F	nan	nan	nan
+	59550.102	18.095	0.065	F	nan	nan	nan
