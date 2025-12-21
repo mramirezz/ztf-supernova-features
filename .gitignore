@@ -36,8 +36,8 @@ outputs/
 *.log
 *.json
 
-# Datos fuente (no subir los datos originales)
-Photometry_ZTF_ST_Alerce/
+# Datos fuente (subir los datos originales para Streamlit Cloud)
+# Photometry_ZTF_ST_Alerce/  # Comentado para subir a GitHub
 
 # IDE
 .vscode/
@@ -55,6 +55,7 @@ desktop.ini
 .ipynb_checkpoints/
 *.ipynb
 
-# Streamlit
-.streamlit/
+# Streamlit (mantener config.toml)
+.streamlit/secrets.toml
+.streamlit/credentials.toml
 
