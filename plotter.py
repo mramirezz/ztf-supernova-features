@@ -165,59 +165,75 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                 valid_samples = valid_model_samples  # Usar todos si el filtro es muy estricto
             
             # Seleccionar samples que representen el intervalo de confianza
+            # ESTRATEGIA MEJORADA: Priorizar samples cercanos a mediana y promedio
+            # para que las curvas rojas sean consistentes con las líneas verde y azul
             n_samples = min(n_samples_to_show, len(valid_samples))
             
             if n_samples < len(valid_samples):
-                # Estrategia: seleccionar samples que cubran el rango de incertidumbre
-                # 1. Incluir la mediana (1 sample)
-                # 2. Incluir percentiles 16 y 84 (2 samples) 
-                # 3. Distribuir el resto uniformemente en el espacio de parámetros
-                
                 selected_indices = []
                 
-                # 1. Mediana (siempre incluida)
-                distances_to_median = np.sum((valid_samples - param_medians)**2, axis=1)
-                median_idx = np.argmin(distances_to_median)
-                selected_indices.append(median_idx)
+                # Calcular distancias normalizadas a mediana y promedio
+                # Normalizar por la desviación estándar de cada parámetro para que todos tengan el mismo peso
+                param_stds = np.std(valid_samples, axis=0)
+                param_stds = np.where(param_stds < 1e-10, 1.0, param_stds)  # Evitar división por cero
                 
-                # 2. Percentiles 16 y 84 para cada parámetro (muestran límites del intervalo)
-                # Buscar samples cercanos a los percentiles
-                for percentile_val, target_percentile in [(16, param_percentiles_16), (84, param_percentiles_84)]:
-                    distances_to_percentile = np.sum((valid_samples - target_percentile)**2, axis=1)
-                    percentile_idx = np.argmin(distances_to_percentile)
-                    if percentile_idx not in selected_indices:
-                        selected_indices.append(percentile_idx)
+                # Distancias normalizadas a la mediana
+                distances_to_median = np.sqrt(np.sum(((valid_samples - param_medians) / param_stds)**2, axis=1))
                 
-                # 3. Distribuir el resto uniformemente en el espacio de parámetros
-                # Usar cuantiles para seleccionar samples que cubran el rango
-                remaining_slots = n_samples - len(selected_indices)
-                if remaining_slots > 0:
-                    # Crear índices de cuantiles para seleccionar samples distribuidos
-                    quantile_indices = np.linspace(0, len(valid_samples) - 1, remaining_slots + 2, dtype=int)[1:-1]
-                    
-                    # Para cada cuantil, seleccionar el sample más cercano a ese percentil en el espacio de parámetros
-                    for q_idx in quantile_indices:
-                        # Calcular distancia de cada sample a la mediana (para ordenar)
-                        distances = np.sum((valid_samples - param_medians)**2, axis=1)
-                        sorted_by_distance = np.argsort(distances)
-                        
-                        # Seleccionar sample en la posición del cuantil
-                        if q_idx < len(sorted_by_distance):
-                            candidate_idx = sorted_by_distance[q_idx]
-                            if candidate_idx not in selected_indices:
-                                selected_indices.append(candidate_idx)
-                    
-                    # Si aún faltan, completar aleatoriamente del resto
+                # Calcular promedio también
+                param_means = np.mean(valid_samples, axis=0)
+                distances_to_mean = np.sqrt(np.sum(((valid_samples - param_means) / param_stds)**2, axis=1))
+                
+                # Ordenar samples por cercanía a mediana (más cercanos primero)
+                sorted_by_median = np.argsort(distances_to_median)
+                
+                # Estrategia de selección:
+                # 1. Los primeros 20% más cercanos a la mediana (representan el centro de la distribución)
+                # 2. Algunos cercanos al promedio (para cubrir esa región también)
+                # 3. El resto distribuidos en anillos alrededor de la mediana
+                
+                n_center = max(1, int(n_samples * 0.2))  # 20% del centro
+                n_mean = max(1, int(n_samples * 0.1))    # 10% cercanos al promedio
+                n_rest = n_samples - n_center - n_mean    # Resto distribuido
+                
+                # 1. Seleccionar los más cercanos a la mediana
+                for idx in sorted_by_median[:n_center]:
+                    if idx not in selected_indices:
+                        selected_indices.append(idx)
+                
+                # 2. Seleccionar algunos cercanos al promedio
+                sorted_by_mean = np.argsort(distances_to_mean)
+                mean_count = 0
+                for idx in sorted_by_mean:
+                    if idx not in selected_indices and mean_count < n_mean:
+                        selected_indices.append(idx)
+                        mean_count += 1
+                
+                # 3. Distribuir el resto en anillos alrededor de la mediana
+                # Dividir el rango de distancias en cuantiles y seleccionar uno de cada
+                if n_rest > 0 and len(selected_indices) < n_samples:
                     remaining_indices = [i for i in range(len(valid_samples)) if i not in selected_indices]
-                    if len(selected_indices) < n_samples and len(remaining_indices) > 0:
-                        needed = n_samples - len(selected_indices)
-                        # Usar semilla basada en hash para reproducibilidad
-                        samples_hash = hash(tuple(valid_samples.flatten()[:100]))
-                        np.random.seed(abs(samples_hash) % (2**31))
-                        additional = np.random.choice(remaining_indices, min(needed, len(remaining_indices)), replace=False)
-                        selected_indices.extend(additional)
+                    if len(remaining_indices) > 0:
+                        # Ordenar los restantes por distancia a mediana
+                        remaining_distances = distances_to_median[remaining_indices]
+                        remaining_sorted = np.argsort(remaining_distances)
+                        
+                        # Seleccionar distribuidos en el rango de distancias
+                        if n_rest <= len(remaining_sorted):
+                            # Dividir en n_rest grupos y tomar uno de cada grupo
+                            step = max(1, len(remaining_sorted) // n_rest)
+                            for i in range(0, len(remaining_sorted), step):
+                                if len(selected_indices) < n_samples:
+                                    idx = remaining_indices[remaining_sorted[i]]
+                                    selected_indices.append(idx)
+                        else:
+                            # Si necesitamos más, tomar todos los restantes ordenados
+                            for i in remaining_sorted:
+                                if len(selected_indices) < n_samples:
+                                    idx = remaining_indices[i]
+                                    selected_indices.append(idx)
                 
-                # Limitar al número deseado
+                # Asegurar que tenemos exactamente n_samples
                 selected_indices = selected_indices[:n_samples]
             else:
                 selected_indices = np.arange(len(valid_samples))

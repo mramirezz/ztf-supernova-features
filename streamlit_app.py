@@ -622,7 +622,7 @@ Esto significa que tenemos:
 **Diferencia**: La mediana es más robusta a outliers, mientras que el promedio puede verse afectado por valores extremos. Si ambas líneas son similares, la distribución es simétrica.
 """)
 
-st.sidebar.markdown("**Líneas Rojas (Realizaciones MCMC)**")
+st.sidebar.markdown("**Red Lines (MCMC Realizations)**")
 st.sidebar.caption(f"""
 Las líneas rojas semitransparentes son **curvas de luz** generadas evaluando el modelo con diferentes conjuntos de parámetros del MCMC.
 
@@ -631,9 +631,12 @@ Las líneas rojas semitransparentes son **curvas de luz** generadas evaluando el
 2. Se evalúa el modelo con cada uno de esos {n_samples_to_show} conjuntos
 3. Resultado: **{n_samples_to_show} curvas de luz** (las líneas rojas)
 
-**Selección**: Se eligen samples que representan el intervalo de confianza (incluyendo la mediana, percentiles 16 y 84, y otras distribuidas uniformemente).
+**Selección mejorada**: 
+- **20%** de los samples son los más cercanos a la mediana (centro de la distribución)
+- **10%** son cercanos al promedio
+- El resto se distribuyen en anillos alrededor de la mediana, priorizando cercanía al centro
 
-Estas curvas muestran la incertidumbre del ajuste: cuanto más dispersas estén, mayor es la incertidumbre en los parámetros.
+Esta estrategia asegura que las curvas rojas sean consistentes con las líneas verde (promedio) y azul (mediana), mostrando la incertidumbre de manera representativa.
 """)
 
 st.sidebar.markdown("**Corner Plot**")
