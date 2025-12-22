@@ -2,9 +2,6 @@
 # SNNAME:	ZTF18abwlopg
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
 	58376.524	18.700	0.156	F	nan	nan	nan
@@ -14,5 +11,8 @@
 	58387.483	18.319	0.141	F	nan	nan	nan
 	58389.530	18.712	0.128	F	nan	nan	nan
 	58390.502	18.658	0.091	F	nan	nan	nan
+	58424.542	20.016	nan	T	nan	nan	nan
+	58425.499	19.421	nan	T	nan	nan	nan
+	58427.463	19.895	nan	T	nan	nan	nan
 	58428.520	20.035	0.226	F	nan	nan	nan
 	58430.498	20.115	0.199	F	nan	nan	nan

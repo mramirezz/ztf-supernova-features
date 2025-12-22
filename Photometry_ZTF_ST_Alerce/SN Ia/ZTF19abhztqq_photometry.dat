@@ -4,6 +4,18 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58660.345	20.936	nan	T	nan	nan	nan
+	58662.225	20.745	nan	T	nan	nan	nan
+	58665.223	20.722	nan	T	nan	nan	nan
+	58674.328	20.539	nan	T	nan	nan	nan
+	58677.344	19.988	nan	T	nan	nan	nan
+	58678.276	19.920	nan	T	nan	nan	nan
+	58679.289	19.797	nan	T	nan	nan	nan
+	58680.185	19.450	nan	T	nan	nan	nan
+	58681.180	19.644	nan	T	nan	nan	nan
+	58682.181	20.093	nan	T	nan	nan	nan
+	58683.275	19.992	nan	T	nan	nan	nan
+	58684.265	19.763	nan	T	nan	nan	nan
 	58685.364	20.143	0.308	F	nan	nan	nan
 	58688.332	19.489	0.137	F	nan	nan	nan
 	58691.212	19.072	0.117	F	nan	nan	nan
@@ -24,17 +36,36 @@
 	58707.223	19.262	0.188	F	nan	nan	nan
 	58708.225	19.252	0.186	F	nan	nan	nan
 	58709.224	19.396	0.171	F	nan	nan	nan
+	58710.205	19.420	nan	T	nan	nan	nan
 	58711.205	19.527	0.198	F	nan	nan	nan
+	58715.291	20.055	nan	T	nan	nan	nan
 	58716.311	19.762	0.200	F	nan	nan	nan
 	58717.291	20.013	0.271	F	nan	nan	nan
 	58718.311	19.952	0.240	F	nan	nan	nan
 	58719.292	20.022	0.250	F	nan	nan	nan
+	58720.310	20.247	nan	T	nan	nan	nan
+	58721.291	17.320	nan	T	nan	nan	nan
 	58722.290	20.250	0.246	F	nan	nan	nan
+	58723.312	20.281	nan	T	nan	nan	nan
+	58724.313	20.265	nan	T	nan	nan	nan
 	58725.289	20.526	0.284	F	nan	nan	nan
 	58726.290	20.744	0.365	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58662.247	20.676	nan	T	nan	nan	nan
+	58663.327	20.640	nan	T	nan	nan	nan
+	58668.328	20.682	nan	T	nan	nan	nan
+	58671.194	20.594	nan	T	nan	nan	nan
+	58677.216	20.012	nan	T	nan	nan	nan
+	58678.225	20.255	nan	T	nan	nan	nan
+	58679.222	20.147	nan	T	nan	nan	nan
+	58680.256	19.918	nan	T	nan	nan	nan
+	58681.262	19.807	nan	T	nan	nan	nan
+	58682.261	20.172	nan	T	nan	nan	nan
+	58683.219	20.195	nan	T	nan	nan	nan
+	58683.247	20.200	nan	T	nan	nan	nan
+	58684.237	20.084	nan	T	nan	nan	nan
 	58685.339	20.290	0.295	F	nan	nan	nan
 	58689.181	19.464	0.101	F	nan	nan	nan
 	58690.182	19.426	0.121	F	nan	nan	nan
@@ -44,6 +75,7 @@
 	58695.277	19.042	0.175	F	nan	nan	nan
 	58696.278	19.042	0.125	F	nan	nan	nan
 	58697.300	18.997	0.111	F	nan	nan	nan
+	58698.281	18.556	nan	T	nan	nan	nan
 	58699.281	19.056	0.083	F	nan	nan	nan
 	58700.278	19.003	0.107	F	nan	nan	nan
 	58701.282	19.055	0.137	F	nan	nan	nan
@@ -66,6 +98,7 @@
 	58720.285	19.701	0.177	F	nan	nan	nan
 	58721.265	19.842	0.217	F	nan	nan	nan
 	58722.265	19.739	0.135	F	nan	nan	nan
+	58723.289	20.505	nan	T	nan	nan	nan
 	58724.289	19.705	0.146	F	nan	nan	nan
 	58725.263	19.800	0.175	F	nan	nan	nan
 	58726.264	19.912	0.160	F	nan	nan	nan

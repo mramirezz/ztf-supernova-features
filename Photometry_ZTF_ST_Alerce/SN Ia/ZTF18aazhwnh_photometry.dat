@@ -5,100 +5,601 @@
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
 	58288.340	19.401	0.094	F	nan	nan	nan
+	58300.191	20.917	nan	T	nan	nan	nan
+	58502.485	19.041	nan	T	nan	nan	nan
+	58505.469	18.791	nan	T	nan	nan	nan
+	58507.527	19.624	nan	T	nan	nan	nan
+	58511.516	19.446	nan	T	nan	nan	nan
 	58522.517	20.569	0.255	F	nan	nan	nan
 	58526.546	20.243	0.208	F	nan	nan	nan
+	58583.377	20.412	nan	T	nan	nan	nan
+	58600.387	21.195	nan	T	nan	nan	nan
+	58608.295	20.755	nan	T	nan	nan	nan
 	58612.295	20.293	0.156	F	nan	nan	nan
+	58632.345	20.808	nan	T	nan	nan	nan
+	58635.214	21.131	nan	T	nan	nan	nan
+	58638.318	20.789	nan	T	nan	nan	nan
 	58641.192	20.544	0.229	F	nan	nan	nan
+	58644.211	20.472	nan	T	nan	nan	nan
+	58647.215	20.026	nan	T	nan	nan	nan
+	58650.194	19.514	nan	T	nan	nan	nan
+	58653.276	19.850	nan	T	nan	nan	nan
 	58657.212	20.254	0.149	F	nan	nan	nan
+	58660.208	21.102	nan	T	nan	nan	nan
+	58663.213	20.922	nan	T	nan	nan	nan
+	58672.183	20.672	nan	T	nan	nan	nan
+	58675.304	19.830	nan	T	nan	nan	nan
+	58678.273	19.728	nan	T	nan	nan	nan
+	58681.168	19.586	nan	T	nan	nan	nan
 	58684.205	20.224	0.157	F	nan	nan	nan
+	58724.174	20.582	nan	T	nan	nan	nan
 	58749.132	20.217	0.192	F	nan	nan	nan
+	58831.568	19.093	nan	T	nan	nan	nan
+	58837.550	19.200	nan	T	nan	nan	nan
 	58850.558	20.406	0.262	F	nan	nan	nan
 	58853.537	20.350	0.196	F	nan	nan	nan
 	58856.548	20.403	0.243	F	nan	nan	nan
+	58861.506	19.265	nan	T	nan	nan	nan
+	58864.464	19.320	nan	T	nan	nan	nan
+	58872.449	20.337	nan	T	nan	nan	nan
+	58875.484	20.346	nan	T	nan	nan	nan
+	58878.540	20.366	nan	T	nan	nan	nan
 	58881.520	20.428	0.179	F	nan	nan	nan
+	58906.523	20.054	nan	T	nan	nan	nan
 	58911.524	20.504	0.257	F	nan	nan	nan
+	58914.483	19.915	nan	T	nan	nan	nan
 	58936.480	20.303	0.182	F	nan	nan	nan
+	58939.442	19.948	nan	T	nan	nan	nan
 	58954.398	20.595	0.260	F	nan	nan	nan
 	58963.373	20.361	0.160	F	nan	nan	nan
 	58963.425	20.406	0.147	F	nan	nan	nan
+	58964.359	20.978	nan	T	nan	nan	nan
 	58965.401	20.278	0.170	F	nan	nan	nan
+	58966.435	20.846	nan	T	nan	nan	nan
+	58966.436	20.825	nan	T	nan	nan	nan
+	58967.423	20.720	nan	T	nan	nan	nan
+	58968.440	20.830	nan	T	nan	nan	nan
+	58970.296	20.376	nan	T	nan	nan	nan
 	58971.420	20.201	0.203	F	nan	nan	nan
+	58974.461	19.636	nan	T	nan	nan	nan
+	58975.271	19.282	nan	T	nan	nan	nan
+	58975.310	19.050	nan	T	nan	nan	nan
+	58977.356	18.227	nan	T	nan	nan	nan
+	58978.382	19.034	nan	T	nan	nan	nan
+	58979.267	19.989	nan	T	nan	nan	nan
+	58980.402	19.944	nan	T	nan	nan	nan
 	58981.296	20.476	0.232	F	nan	nan	nan
+	58985.311	20.804	nan	T	nan	nan	nan
+	58994.268	21.002	nan	T	nan	nan	nan
 	58997.228	20.462	0.177	F	nan	nan	nan
+	58999.247	20.123	nan	T	nan	nan	nan
+	59000.401	19.795	nan	T	nan	nan	nan
+	59009.252	20.483	nan	T	nan	nan	nan
 	59012.297	20.453	0.176	F	nan	nan	nan
 	59016.202	20.393	0.219	F	nan	nan	nan
+	59019.292	21.036	nan	T	nan	nan	nan
+	59022.204	20.988	nan	T	nan	nan	nan
 	59025.232	20.202	0.172	F	nan	nan	nan
+	59028.200	20.330	nan	T	nan	nan	nan
+	59031.190	19.830	nan	T	nan	nan	nan
+	59034.196	19.744	nan	T	nan	nan	nan
+	59035.224	19.523	nan	T	nan	nan	nan
+	59040.232	20.864	nan	T	nan	nan	nan
+	59043.212	20.917	nan	T	nan	nan	nan
+	59046.229	20.819	nan	T	nan	nan	nan
 	59049.192	20.475	0.221	F	nan	nan	nan
 	59052.292	20.460	0.214	F	nan	nan	nan
+	59224.556	20.228	nan	T	nan	nan	nan
+	59227.497	20.181	nan	T	nan	nan	nan
 	59232.540	20.599	0.252	F	nan	nan	nan
+	59251.540	20.439	nan	T	nan	nan	nan
 	59253.528	20.335	0.209	F	nan	nan	nan
 	59258.521	20.402	0.196	F	nan	nan	nan
 	59290.425	20.500	0.221	F	nan	nan	nan
+	59295.309	19.528	nan	T	nan	nan	nan
+	59297.341	19.672	nan	T	nan	nan	nan
+	59300.390	19.290	nan	T	nan	nan	nan
+	59302.393	19.324	nan	T	nan	nan	nan
+	59305.404	19.815	nan	T	nan	nan	nan
+	59307.384	20.432	nan	T	nan	nan	nan
 	59309.369	20.339	0.253	F	nan	nan	nan
+	59311.373	20.829	nan	T	nan	nan	nan
+	59313.466	20.498	nan	T	nan	nan	nan
+	59315.306	19.760	nan	T	nan	nan	nan
 	59317.477	20.046	0.152	F	nan	nan	nan
+	59322.330	20.614	nan	T	nan	nan	nan
+	59324.379	20.638	nan	T	nan	nan	nan
+	59328.329	19.665	nan	T	nan	nan	nan
+	59334.241	20.689	nan	T	nan	nan	nan
 	59336.288	20.620	0.272	F	nan	nan	nan
+	59339.396	20.869	nan	T	nan	nan	nan
+	59341.320	21.001	nan	T	nan	nan	nan
+	59343.282	20.779	nan	T	nan	nan	nan
 	59345.380	20.310	0.164	F	nan	nan	nan
 	59349.366	20.473	0.169	F	nan	nan	nan
+	59354.362	20.078	nan	T	nan	nan	nan
+	59358.415	19.452	nan	T	nan	nan	nan
+	59361.316	19.554	nan	T	nan	nan	nan
 	59363.275	20.147	0.202	F	nan	nan	nan
+	59393.271	20.358	nan	T	nan	nan	nan
+	59395.270	20.004	nan	T	nan	nan	nan
+	59397.255	20.733	nan	T	nan	nan	nan
 	59402.277	20.461	0.223	F	nan	nan	nan
+	59404.333	20.116	nan	T	nan	nan	nan
+	59406.217	20.550	nan	T	nan	nan	nan
+	59408.190	20.625	nan	T	nan	nan	nan
+	59410.195	20.331	nan	T	nan	nan	nan
+	59412.248	20.092	nan	T	nan	nan	nan
+	59415.270	19.674	nan	T	nan	nan	nan
+	59419.224	19.133	nan	T	nan	nan	nan
 	59423.205	20.322	0.190	F	nan	nan	nan
+	59623.524	20.357	nan	T	nan	nan	nan
+	59625.387	19.070	nan	T	nan	nan	nan
+	59628.495	19.590	nan	T	nan	nan	nan
+	59630.453	19.821	nan	T	nan	nan	nan
+	59637.494	20.124	nan	T	nan	nan	nan
 	59639.414	20.319	0.303	F	nan	nan	nan
 	59641.430	20.541	0.207	F	nan	nan	nan
 	59673.350	20.519	0.227	F	nan	nan	nan
+	59673.350	20.603	nan	T	nan	nan	nan
 	59675.372	20.175	0.188	F	nan	nan	nan
+	59677.336	20.399	nan	T	nan	nan	nan
+	59679.297	20.128	nan	T	nan	nan	nan
+	59683.302	19.452	nan	T	nan	nan	nan
+	59685.394	19.081	nan	T	nan	nan	nan
+	59693.434	20.355	nan	T	nan	nan	nan
+	59695.358	19.327	nan	T	nan	nan	nan
 	59697.434	20.522	0.176	F	nan	nan	nan
+	59700.353	20.667	nan	T	nan	nan	nan
 	59702.303	20.392	0.181	F	nan	nan	nan
+	59710.302	19.863	nan	T	nan	nan	nan
+	59712.274	19.566	nan	T	nan	nan	nan
+	59714.307	19.340	nan	T	nan	nan	nan
+	59717.333	19.660	nan	T	nan	nan	nan
 	59722.316	20.404	0.182	F	nan	nan	nan
 	59722.316	20.404	0.182	F	nan	nan	nan
+	59722.402	20.442	nan	T	nan	nan	nan
 	59724.375	20.298	0.165	F	nan	nan	nan
 	59726.317	20.364	0.227	F	nan	nan	nan
 	59730.362	20.295	0.170	F	nan	nan	nan
+	59732.275	20.794	nan	T	nan	nan	nan
 	59734.329	20.530	0.218	F	nan	nan	nan
+	59736.307	20.708	nan	T	nan	nan	nan
+	59740.365	19.961	nan	T	nan	nan	nan
+	59742.318	19.470	nan	T	nan	nan	nan
+	59747.290	20.443	nan	T	nan	nan	nan
 	59749.301	20.441	0.253	F	nan	nan	nan
 	59751.330	20.314	0.172	F	nan	nan	nan
+	59753.281	20.657	nan	T	nan	nan	nan
+	59756.276	20.711	nan	T	nan	nan	nan
+	59760.237	20.887	nan	T	nan	nan	nan
+	59762.227	20.707	nan	T	nan	nan	nan
 	59764.238	20.048	0.173	F	nan	nan	nan
+	59766.309	20.687	nan	T	nan	nan	nan
+	59769.271	19.978	nan	T	nan	nan	nan
+	59769.346	19.908	nan	T	nan	nan	nan
+	59771.317	19.686	nan	T	nan	nan	nan
 	59782.204	20.370	0.220	F	nan	nan	nan
 	59784.215	20.370	0.178	F	nan	nan	nan
+	59967.487	19.788	nan	T	nan	nan	nan
 	59969.519	20.252	0.248	F	nan	nan	nan
 	59972.537	20.490	0.289	F	nan	nan	nan
+	59984.536	19.536	nan	T	nan	nan	nan
+	59987.506	19.840	nan	T	nan	nan	nan
 	59993.474	20.040	0.177	F	nan	nan	nan
+	60021.348	20.154	nan	T	nan	nan	nan
+	60032.326	20.056	nan	T	nan	nan	nan
+	60042.394	19.519	nan	T	nan	nan	nan
+	60044.346	19.960	nan	T	nan	nan	nan
+	60046.310	20.898	nan	T	nan	nan	nan
 	60050.465	20.408	0.207	F	nan	nan	nan
+	60055.443	20.609	nan	T	nan	nan	nan
 	60057.340	20.399	0.166	F	nan	nan	nan
 	60059.370	20.292	0.171	F	nan	nan	nan
 	60061.366	20.606	0.254	F	nan	nan	nan
+	60063.433	20.807	nan	T	nan	nan	nan
+	60072.451	19.713	nan	T	nan	nan	nan
+	60075.361	20.521	nan	T	nan	nan	nan
 	60078.372	20.405	0.164	F	nan	nan	nan
+	60080.290	18.387	nan	T	nan	nan	nan
 	60082.384	20.330	0.248	F	nan	nan	nan
+	60084.370	20.818	nan	T	nan	nan	nan
 	60086.296	20.704	0.244	F	nan	nan	nan
 	60088.310	20.467	0.139	F	nan	nan	nan
+	60093.434	20.681	nan	T	nan	nan	nan
+	60099.217	19.135	nan	T	nan	nan	nan
+	60101.277	19.769	nan	T	nan	nan	nan
+	60103.250	20.658	nan	T	nan	nan	nan
+	60105.308	18.720	nan	T	nan	nan	nan
 	60110.285	20.586	0.180	F	nan	nan	nan
+	60112.372	20.178	nan	T	nan	nan	nan
+	60115.255	20.751	nan	T	nan	nan	nan
+	60117.395	20.131	nan	T	nan	nan	nan
 	60119.285	20.446	0.282	F	nan	nan	nan
+	60121.389	19.918	nan	T	nan	nan	nan
+	60123.248	20.107	nan	T	nan	nan	nan
+	60125.296	19.639	nan	T	nan	nan	nan
+	60127.208	19.661	nan	T	nan	nan	nan
+	60134.246	20.765	nan	T	nan	nan	nan
 	60136.195	20.314	0.211	F	nan	nan	nan
+	60363.539	18.102	nan	T	nan	nan	nan
+	60368.466	19.563	nan	T	nan	nan	nan
 	60389.428	20.096	0.211	F	nan	nan	nan
+	60391.413	19.821	nan	T	nan	nan	nan
+	60396.384	19.279	nan	T	nan	nan	nan
+	60398.348	19.656	nan	T	nan	nan	nan
 	60404.382	20.383	0.205	F	nan	nan	nan
 	60408.467	20.286	0.220	F	nan	nan	nan
+	60416.342	19.547	nan	T	nan	nan	nan
+	60419.338	20.028	nan	T	nan	nan	nan
+	60424.422	19.041	nan	T	nan	nan	nan
 	60430.339	20.309	0.231	F	nan	nan	nan
+	60433.359	20.780	nan	T	nan	nan	nan
 	60436.403	20.072	0.145	F	nan	nan	nan
 	60437.425	20.574	0.282	F	nan	nan	nan
+	60438.423	20.576	nan	T	nan	nan	nan
+	60439.315	20.612	nan	T	nan	nan	nan
+	60441.352	19.845	nan	T	nan	nan	nan
+	60443.417	19.689	nan	T	nan	nan	nan
+	60445.410	20.709	nan	T	nan	nan	nan
+	60447.435	20.008	nan	T	nan	nan	nan
+	60449.406	19.362	nan	T	nan	nan	nan
+	60451.401	19.225	nan	T	nan	nan	nan
+	60456.405	19.540	nan	T	nan	nan	nan
 	60458.275	20.316	0.195	F	nan	nan	nan
+	60460.322	20.560	nan	T	nan	nan	nan
+	60462.310	20.965	nan	T	nan	nan	nan
+	60464.370	20.575	nan	T	nan	nan	nan
 	60469.342	20.422	0.226	F	nan	nan	nan
 	60471.247	20.451	0.199	F	nan	nan	nan
+	60473.331	20.846	nan	T	nan	nan	nan
 	60475.350	20.264	0.196	F	nan	nan	nan
+	60705.541	19.184	nan	T	nan	nan	nan
+	60723.485	17.945	nan	T	nan	nan	nan
 	60725.454	20.136	0.244	F	nan	nan	nan
+	60727.451	20.150	nan	T	nan	nan	nan
+	60729.432	20.434	nan	T	nan	nan	nan
+	60731.468	20.612	nan	T	nan	nan	nan
+	60733.403	19.929	nan	T	nan	nan	nan
 	60735.403	20.213	0.205	F	nan	nan	nan
 	60743.450	20.148	0.281	F	nan	nan	nan
+	60750.399	19.239	nan	T	nan	nan	nan
+	60753.504	19.299	nan	T	nan	nan	nan
+	60756.381	19.992	nan	T	nan	nan	nan
 	60758.437	20.306	0.168	F	nan	nan	nan
+	60760.458	16.459	nan	T	nan	nan	nan
 	60764.489	20.507	0.196	F	nan	nan	nan
+	60771.372	17.380	nan	T	nan	nan	nan
+	60773.351	19.665	nan	T	nan	nan	nan
+	60775.342	19.640	nan	T	nan	nan	nan
+	60781.368	18.688	nan	T	nan	nan	nan
+	60786.351	20.421	nan	T	nan	nan	nan
+	60790.393	21.077	nan	T	nan	nan	nan
 	60796.359	20.433	0.179	F	nan	nan	nan
 	60798.361	20.421	0.229	F	nan	nan	nan
+	60804.428	19.770	nan	T	nan	nan	nan
+	60806.400	17.587	nan	T	nan	nan	nan
+	60810.384	19.689	nan	T	nan	nan	nan
+	60814.320	20.289	nan	T	nan	nan	nan
 	60817.337	20.235	0.136	F	nan	nan	nan
+	60821.354	20.793	nan	T	nan	nan	nan
 	60823.355	20.312	0.171	F	nan	nan	nan
 	60828.329	20.649	0.267	F	nan	nan	nan
+	60831.360	20.172	nan	T	nan	nan	nan
+	60833.404	20.109	nan	T	nan	nan	nan
+	60835.436	19.297	nan	T	nan	nan	nan
+	60839.245	19.965	nan	T	nan	nan	nan
+	60843.276	20.627	nan	T	nan	nan	nan
+	60845.232	20.703	nan	T	nan	nan	nan
+	60847.249	20.574	nan	T	nan	nan	nan
+	60849.403	20.209	nan	T	nan	nan	nan
+	60852.287	20.511	nan	T	nan	nan	nan
+	60854.289	20.584	nan	T	nan	nan	nan
 	60858.328	20.253	0.196	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58261.316	19.673	nan	T	nan	nan	nan
+	58270.318	19.927	nan	T	nan	nan	nan
+	58273.318	20.527	nan	T	nan	nan	nan
+	58276.297	20.712	nan	T	nan	nan	nan
+	58279.255	20.747	nan	T	nan	nan	nan
 	58288.274	19.033	0.087	F	nan	nan	nan
 	58291.255	18.902	0.101	F	nan	nan	nan
 	58294.271	19.282	0.161	F	nan	nan	nan
 	58297.290	19.471	0.190	F	nan	nan	nan
 	58303.172	19.444	0.141	F	nan	nan	nan
+	58505.550	19.403	nan	T	nan	nan	nan
+	58508.516	19.833	nan	T	nan	nan	nan
+	58511.544	19.689	nan	T	nan	nan	nan
+	58522.548	20.718	nan	T	nan	nan	nan
+	58526.509	20.087	nan	T	nan	nan	nan
+	58583.350	20.218	nan	T	nan	nan	nan
+	58586.357	20.371	nan	T	nan	nan	nan
+	58589.331	17.665	nan	T	nan	nan	nan
+	58596.296	20.065	nan	T	nan	nan	nan
+	58605.396	20.767	nan	T	nan	nan	nan
+	58608.338	20.397	nan	T	nan	nan	nan
+	58632.273	20.729	nan	T	nan	nan	nan
+	58635.291	20.952	nan	T	nan	nan	nan
+	58638.270	20.877	nan	T	nan	nan	nan
+	58644.254	20.552	nan	T	nan	nan	nan
+	58647.252	19.987	nan	T	nan	nan	nan
+	58650.255	19.907	nan	T	nan	nan	nan
+	58657.256	20.693	nan	T	nan	nan	nan
+	58660.211	20.839	nan	T	nan	nan	nan
+	58663.190	20.498	nan	T	nan	nan	nan
+	58666.258	20.761	nan	T	nan	nan	nan
+	58669.183	20.579	nan	T	nan	nan	nan
+	58672.214	20.618	nan	T	nan	nan	nan
+	58675.243	20.165	nan	T	nan	nan	nan
+	58678.194	20.201	nan	T	nan	nan	nan
+	58681.248	19.866	nan	T	nan	nan	nan
+	58684.186	20.725	nan	T	nan	nan	nan
+	58724.158	20.565	nan	T	nan	nan	nan
+	58733.213	19.275	nan	T	nan	nan	nan
+	58737.175	19.518	nan	T	nan	nan	nan
+	58749.115	19.620	nan	T	nan	nan	nan
+	58850.509	19.778	nan	T	nan	nan	nan
+	58856.567	20.395	nan	T	nan	nan	nan
+	58861.545	19.712	nan	T	nan	nan	nan
+	58864.519	20.096	nan	T	nan	nan	nan
+	58872.560	20.209	nan	T	nan	nan	nan
+	58875.554	20.180	nan	T	nan	nan	nan
+	58878.560	20.044	nan	T	nan	nan	nan
+	58906.519	19.858	nan	T	nan	nan	nan
+	58911.520	20.118	nan	T	nan	nan	nan
+	58914.519	20.842	nan	T	nan	nan	nan
+	58936.441	20.720	nan	T	nan	nan	nan
+	58939.402	18.710	nan	T	nan	nan	nan
+	58943.498	20.499	nan	T	nan	nan	nan
+	58954.461	20.293	nan	T	nan	nan	nan
+	58955.421	20.599	nan	T	nan	nan	nan
+	58956.350	20.321	nan	T	nan	nan	nan
+	58961.402	20.027	nan	T	nan	nan	nan
+	58962.315	20.542	nan	T	nan	nan	nan
+	58964.405	20.800	nan	T	nan	nan	nan
+	58965.349	20.829	nan	T	nan	nan	nan
+	58966.358	20.044	nan	T	nan	nan	nan
+	58967.361	20.739	nan	T	nan	nan	nan
+	58968.380	20.897	nan	T	nan	nan	nan
+	58969.375	19.111	nan	T	nan	nan	nan
+	58970.398	20.722	nan	T	nan	nan	nan
+	58971.359	20.416	nan	T	nan	nan	nan
+	58972.403	19.736	nan	T	nan	nan	nan
+	58973.311	20.145	nan	T	nan	nan	nan
+	58973.335	20.124	nan	T	nan	nan	nan
+	58974.281	19.923	nan	T	nan	nan	nan
+	58974.318	19.901	nan	T	nan	nan	nan
+	58975.382	19.602	nan	T	nan	nan	nan
+	58976.316	19.395	nan	T	nan	nan	nan
+	58977.431	18.387	nan	T	nan	nan	nan
+	58978.272	19.918	nan	T	nan	nan	nan
+	58979.317	20.049	nan	T	nan	nan	nan
+	58981.289	20.396	nan	T	nan	nan	nan
+	58985.275	20.763	nan	T	nan	nan	nan
+	58991.251	20.786	nan	T	nan	nan	nan
+	58992.270	20.838	nan	T	nan	nan	nan
+	58997.292	20.756	nan	T	nan	nan	nan
+	58998.260	20.749	nan	T	nan	nan	nan
+	59000.361	17.517	nan	T	nan	nan	nan
+	59012.254	20.899	nan	T	nan	nan	nan
+	59016.234	20.637	nan	T	nan	nan	nan
+	59017.188	20.585	nan	T	nan	nan	nan
+	59019.233	20.791	nan	T	nan	nan	nan
+	59022.233	20.946	nan	T	nan	nan	nan
+	59025.192	20.090	nan	T	nan	nan	nan
+	59028.214	20.411	nan	T	nan	nan	nan
+	59031.232	19.967	nan	T	nan	nan	nan
+	59034.333	19.683	nan	T	nan	nan	nan
+	59037.190	20.375	nan	T	nan	nan	nan
+	59040.198	20.809	nan	T	nan	nan	nan
+	59046.192	20.487	nan	T	nan	nan	nan
+	59049.184	20.784	nan	T	nan	nan	nan
+	59224.518	20.116	nan	T	nan	nan	nan
+	59227.555	20.410	nan	T	nan	nan	nan
+	59230.537	20.524	nan	T	nan	nan	nan
+	59232.520	20.634	nan	T	nan	nan	nan
+	59249.499	20.080	nan	T	nan	nan	nan
+	59253.509	20.742	nan	T	nan	nan	nan
+	59255.429	20.615	nan	T	nan	nan	nan
+	59258.486	19.893	nan	T	nan	nan	nan
+	59290.390	20.716	nan	T	nan	nan	nan
+	59295.406	20.482	nan	T	nan	nan	nan
+	59297.408	20.040	nan	T	nan	nan	nan
+	59300.424	19.312	nan	T	nan	nan	nan
+	59302.412	19.296	nan	T	nan	nan	nan
+	59305.351	19.800	nan	T	nan	nan	nan
+	59307.362	20.539	nan	T	nan	nan	nan
+	59309.385	20.448	nan	T	nan	nan	nan
+	59311.466	20.830	nan	T	nan	nan	nan
+	59313.437	20.053	nan	T	nan	nan	nan
+	59315.371	19.886	nan	T	nan	nan	nan
+	59317.399	20.868	nan	T	nan	nan	nan
+	59320.478	20.581	nan	T	nan	nan	nan
+	59322.279	20.556	nan	T	nan	nan	nan
+	59324.290	20.300	nan	T	nan	nan	nan
+	59328.298	20.010	nan	T	nan	nan	nan
+	59334.357	20.310	nan	T	nan	nan	nan
+	59336.338	20.646	nan	T	nan	nan	nan
+	59339.299	20.768	nan	T	nan	nan	nan
+	59341.285	20.838	nan	T	nan	nan	nan
+	59343.329	20.737	nan	T	nan	nan	nan
+	59349.318	20.858	nan	T	nan	nan	nan
+	59352.301	20.767	nan	T	nan	nan	nan
+	59354.285	20.429	nan	T	nan	nan	nan
+	59358.320	19.537	nan	T	nan	nan	nan
+	59361.372	19.796	nan	T	nan	nan	nan
+	59393.235	20.691	nan	T	nan	nan	nan
+	59395.298	18.601	nan	T	nan	nan	nan
+	59397.354	20.411	nan	T	nan	nan	nan
+	59400.212	20.720	nan	T	nan	nan	nan
+	59402.258	20.702	nan	T	nan	nan	nan
+	59404.227	20.598	nan	T	nan	nan	nan
+	59406.238	20.459	nan	T	nan	nan	nan
+	59408.226	20.392	nan	T	nan	nan	nan
+	59410.246	20.300	nan	T	nan	nan	nan
+	59412.215	20.161	nan	T	nan	nan	nan
+	59415.194	20.066	nan	T	nan	nan	nan
+	59417.229	17.360	nan	T	nan	nan	nan
+	59419.237	18.364	nan	T	nan	nan	nan
+	59623.456	20.099	nan	T	nan	nan	nan
+	59625.489	19.771	nan	T	nan	nan	nan
+	59628.467	19.428	nan	T	nan	nan	nan
+	59630.495	20.180	nan	T	nan	nan	nan
+	59637.428	20.373	nan	T	nan	nan	nan
+	59639.487	20.162	nan	T	nan	nan	nan
+	59673.372	20.517	nan	T	nan	nan	nan
+	59675.416	20.733	nan	T	nan	nan	nan
+	59677.403	20.595	nan	T	nan	nan	nan
+	59679.371	20.427	nan	T	nan	nan	nan
+	59683.392	19.974	nan	T	nan	nan	nan
+	59685.355	19.405	nan	T	nan	nan	nan
+	59688.396	20.049	nan	T	nan	nan	nan
+	59693.309	20.291	nan	T	nan	nan	nan
+	59695.422	17.651	nan	T	nan	nan	nan
+	59697.373	17.758	nan	T	nan	nan	nan
+	59700.300	20.589	nan	T	nan	nan	nan
+	59702.359	20.619	nan	T	nan	nan	nan
+	59708.318	20.094	nan	T	nan	nan	nan
+	59708.339	20.061	nan	T	nan	nan	nan
+	59710.369	20.009	nan	T	nan	nan	nan
+	59712.351	19.772	nan	T	nan	nan	nan
+	59714.338	19.639	nan	T	nan	nan	nan
+	59717.262	19.968	nan	T	nan	nan	nan
+	59719.279	20.511	nan	T	nan	nan	nan
+	59719.320	20.351	nan	T	nan	nan	nan
+	59724.403	20.640	nan	T	nan	nan	nan
+	59726.357	20.782	nan	T	nan	nan	nan
+	59730.278	20.759	nan	T	nan	nan	nan
+	59732.226	20.555	nan	T	nan	nan	nan
+	59736.347	20.786	nan	T	nan	nan	nan
+	59738.277	20.336	nan	T	nan	nan	nan
+	59740.322	20.173	nan	T	nan	nan	nan
+	59742.279	19.698	nan	T	nan	nan	nan
+	59747.234	20.835	nan	T	nan	nan	nan
+	59749.332	20.032	nan	T	nan	nan	nan
+	59751.276	20.599	nan	T	nan	nan	nan
+	59753.319	20.468	nan	T	nan	nan	nan
+	59756.344	20.653	nan	T	nan	nan	nan
+	59758.275	20.660	nan	T	nan	nan	nan
+	59760.287	20.707	nan	T	nan	nan	nan
+	59762.260	20.743	nan	T	nan	nan	nan
+	59764.258	20.597	nan	T	nan	nan	nan
+	59766.263	20.511	nan	T	nan	nan	nan
+	59773.236	19.895	nan	T	nan	nan	nan
+	59773.329	19.413	nan	T	nan	nan	nan
+	59775.216	19.843	nan	T	nan	nan	nan
+	59775.322	19.731	nan	T	nan	nan	nan
+	59777.215	20.571	nan	T	nan	nan	nan
+	59779.195	20.616	nan	T	nan	nan	nan
+	59779.226	20.611	nan	T	nan	nan	nan
+	59782.268	20.343	nan	T	nan	nan	nan
+	59969.543	20.620	nan	T	nan	nan	nan
+	59972.512	19.820	nan	T	nan	nan	nan
+	59979.536	19.868	nan	T	nan	nan	nan
+	59984.511	19.708	nan	T	nan	nan	nan
+	60021.457	20.258	nan	T	nan	nan	nan
+	60032.408	20.679	nan	T	nan	nan	nan
+	60044.399	20.321	nan	T	nan	nan	nan
+	60046.352	20.805	nan	T	nan	nan	nan
+	60050.442	20.766	nan	T	nan	nan	nan
+	60052.451	20.611	nan	T	nan	nan	nan
+	60055.391	20.760	nan	T	nan	nan	nan
+	60057.422	19.156	nan	T	nan	nan	nan
+	60059.425	20.344	nan	T	nan	nan	nan
+	60061.444	20.692	nan	T	nan	nan	nan
+	60063.402	20.652	nan	T	nan	nan	nan
+	60065.415	20.120	nan	T	nan	nan	nan
+	60078.302	20.662	nan	T	nan	nan	nan
+	60082.342	20.544	nan	T	nan	nan	nan
+	60084.289	20.761	nan	T	nan	nan	nan
+	60086.330	20.861	nan	T	nan	nan	nan
+	60088.360	20.706	nan	T	nan	nan	nan
+	60090.347	20.417	nan	T	nan	nan	nan
+	60093.413	20.737	nan	T	nan	nan	nan
+	60099.368	19.380	nan	T	nan	nan	nan
+	60101.361	19.575	nan	T	nan	nan	nan
+	60103.301	20.532	nan	T	nan	nan	nan
+	60105.269	20.578	nan	T	nan	nan	nan
+	60110.235	20.811	nan	T	nan	nan	nan
+	60112.280	20.588	nan	T	nan	nan	nan
+	60115.311	20.635	nan	T	nan	nan	nan
+	60117.353	20.528	nan	T	nan	nan	nan
+	60119.324	20.575	nan	T	nan	nan	nan
+	60121.279	20.293	nan	T	nan	nan	nan
+	60125.286	19.893	nan	T	nan	nan	nan
+	60127.256	19.656	nan	T	nan	nan	nan
+	60132.193	20.696	nan	T	nan	nan	nan
+	60134.227	20.783	nan	T	nan	nan	nan
+	60363.499	17.913	nan	T	nan	nan	nan
+	60368.518	20.044	nan	T	nan	nan	nan
+	60383.431	19.649	nan	T	nan	nan	nan
+	60391.437	19.892	nan	T	nan	nan	nan
+	60396.458	19.569	nan	T	nan	nan	nan
+	60398.426	19.855	nan	T	nan	nan	nan
+	60408.406	20.556	nan	T	nan	nan	nan
+	60416.455	20.332	nan	T	nan	nan	nan
+	60419.404	20.345	nan	T	nan	nan	nan
+	60422.301	19.884	nan	T	nan	nan	nan
+	60424.270	19.218	nan	T	nan	nan	nan
+	60430.388	20.436	nan	T	nan	nan	nan
+	60433.458	20.767	nan	T	nan	nan	nan
+	60437.385	20.456	nan	T	nan	nan	nan
+	60438.416	20.618	nan	T	nan	nan	nan
+	60439.402	20.612	nan	T	nan	nan	nan
+	60441.381	19.777	nan	T	nan	nan	nan
+	60443.342	19.941	nan	T	nan	nan	nan
+	60445.322	20.467	nan	T	nan	nan	nan
+	60447.393	20.007	nan	T	nan	nan	nan
+	60449.299	20.123	nan	T	nan	nan	nan
+	60451.316	19.438	nan	T	nan	nan	nan
+	60456.326	20.071	nan	T	nan	nan	nan
+	60458.362	20.540	nan	T	nan	nan	nan
+	60460.290	20.657	nan	T	nan	nan	nan
+	60462.386	20.744	nan	T	nan	nan	nan
+	60464.351	20.800	nan	T	nan	nan	nan
+	60469.332	20.720	nan	T	nan	nan	nan
+	60471.312	20.768	nan	T	nan	nan	nan
+	60473.393	20.335	nan	T	nan	nan	nan
+	60705.409	20.002	nan	T	nan	nan	nan
+	60714.541	19.257	nan	T	nan	nan	nan
+	60723.412	19.490	nan	T	nan	nan	nan
+	60725.485	20.363	nan	T	nan	nan	nan
+	60727.471	20.225	nan	T	nan	nan	nan
+	60729.494	20.625	nan	T	nan	nan	nan
+	60731.516	20.646	nan	T	nan	nan	nan
+	60733.381	19.972	nan	T	nan	nan	nan
+	60743.405	19.714	nan	T	nan	nan	nan
+	60750.436	20.018	nan	T	nan	nan	nan
+	60753.430	19.652	nan	T	nan	nan	nan
+	60756.504	20.360	nan	T	nan	nan	nan
+	60758.383	20.558	nan	T	nan	nan	nan
+	60771.419	20.514	nan	T	nan	nan	nan
+	60773.368	19.805	nan	T	nan	nan	nan
+	60775.420	20.045	nan	T	nan	nan	nan
+	60781.483	19.803	nan	T	nan	nan	nan
+	60786.387	20.488	nan	T	nan	nan	nan
+	60788.379	20.880	nan	T	nan	nan	nan
+	60796.402	20.858	nan	T	nan	nan	nan
+	60798.424	20.796	nan	T	nan	nan	nan
+	60804.338	20.148	nan	T	nan	nan	nan
+	60806.323	17.770	nan	T	nan	nan	nan
+	60810.341	20.006	nan	T	nan	nan	nan
+	60814.379	19.944	nan	T	nan	nan	nan
+	60817.380	20.740	nan	T	nan	nan	nan
+	60821.243	20.611	nan	T	nan	nan	nan
+	60823.245	20.771	nan	T	nan	nan	nan
+	60831.286	20.179	nan	T	nan	nan	nan
+	60833.260	20.112	nan	T	nan	nan	nan
+	60835.257	19.881	nan	T	nan	nan	nan
+	60837.258	19.843	nan	T	nan	nan	nan
+	60839.297	20.208	nan	T	nan	nan	nan
+	60841.318	20.159	nan	T	nan	nan	nan
+	60843.235	20.685	nan	T	nan	nan	nan
+	60845.263	20.736	nan	T	nan	nan	nan
+	60847.266	20.634	nan	T	nan	nan	nan
+	60849.240	20.457	nan	T	nan	nan	nan
+	60852.318	20.410	nan	T	nan	nan	nan
+	60854.349	20.465	nan	T	nan	nan	nan
+	60858.259	20.481	nan	T	nan	nan	nan

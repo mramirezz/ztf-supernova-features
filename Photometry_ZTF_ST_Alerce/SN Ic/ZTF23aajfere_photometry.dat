@@ -4,6 +4,14 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60050.463	20.728	nan	T	nan	nan	nan
+	60053.396	20.288	nan	T	nan	nan	nan
+	60055.441	20.450	nan	T	nan	nan	nan
+	60057.468	20.578	nan	T	nan	nan	nan
+	60059.372	20.419	nan	T	nan	nan	nan
+	60061.413	20.437	nan	T	nan	nan	nan
+	60063.442	20.610	nan	T	nan	nan	nan
+	60067.446	19.228	nan	T	nan	nan	nan
 	60076.380	20.054	0.255	F	nan	nan	nan
 	60078.337	19.742	0.135	F	nan	nan	nan
 	60082.380	19.196	0.114	F	nan	nan	nan
@@ -11,21 +19,38 @@
 	60086.290	19.168	0.103	F	nan	nan	nan
 	60088.333	19.106	0.090	F	nan	nan	nan
 	60094.417	19.162	0.112	F	nan	nan	nan
+	60099.430	18.516	nan	T	nan	nan	nan
 	60101.396	19.362	0.237	F	nan	nan	nan
 	60103.269	19.465	0.146	F	nan	nan	nan
 	60110.280	19.783	0.146	F	nan	nan	nan
 	60114.278	19.863	0.183	F	nan	nan	nan
 	60116.333	20.106	0.364	F	nan	nan	nan
 	60119.291	20.112	0.221	F	nan	nan	nan
+	60121.198	20.286	nan	T	nan	nan	nan
 	60123.280	20.125	0.240	F	nan	nan	nan
+	60125.294	19.416	nan	T	nan	nan	nan
+	60134.362	19.772	nan	T	nan	nan	nan
 	60136.190	20.505	0.232	F	nan	nan	nan
 	60138.237	20.511	0.323	F	nan	nan	nan
 	60140.278	20.552	0.326	F	nan	nan	nan
 	60143.202	20.794	0.283	F	nan	nan	nan
+	60145.235	20.519	nan	T	nan	nan	nan
 	60147.197	20.727	0.373	F	nan	nan	nan
+	60149.275	20.224	nan	T	nan	nan	nan
+	60151.291	19.930	nan	T	nan	nan	nan
+	60155.234	19.351	nan	T	nan	nan	nan
+	60161.195	20.453	nan	T	nan	nan	nan
+	60163.235	20.358	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60046.375	20.154	nan	T	nan	nan	nan
+	60050.440	20.365	nan	T	nan	nan	nan
+	60055.399	20.425	nan	T	nan	nan	nan
+	60057.397	19.802	nan	T	nan	nan	nan
+	60059.443	20.261	nan	T	nan	nan	nan
+	60063.400	20.419	nan	T	nan	nan	nan
+	60067.371	19.335	nan	T	nan	nan	nan
 	60076.375	19.833	0.164	F	nan	nan	nan
 	60078.300	19.589	0.139	F	nan	nan	nan
 	60082.340	19.113	0.119	F	nan	nan	nan
@@ -56,5 +81,7 @@
 	60149.250	19.554	0.202	F	nan	nan	nan
 	60151.181	19.674	0.199	F	nan	nan	nan
 	60153.233	19.327	0.181	F	nan	nan	nan
+	60155.275	19.407	nan	T	nan	nan	nan
+	60158.233	19.286	nan	T	nan	nan	nan
 	60163.277	19.773	0.208	F	nan	nan	nan
 	60165.191	19.724	0.186	F	nan	nan	nan

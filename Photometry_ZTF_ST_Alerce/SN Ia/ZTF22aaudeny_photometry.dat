@@ -4,6 +4,16 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59750.414	19.799	nan	T	nan	nan	nan
+	59752.439	20.181	nan	T	nan	nan	nan
+	59755.418	20.430	nan	T	nan	nan	nan
+	59757.376	20.431	nan	T	nan	nan	nan
+	59757.418	20.416	nan	T	nan	nan	nan
+	59759.434	20.540	nan	T	nan	nan	nan
+	59764.418	20.781	nan	T	nan	nan	nan
+	59766.415	20.613	nan	T	nan	nan	nan
+	59769.439	20.583	nan	T	nan	nan	nan
+	59771.377	19.927	nan	T	nan	nan	nan
 	59780.385	18.649	0.085	F	nan	nan	nan
 	59782.315	18.205	0.070	F	nan	nan	nan
 	59784.358	17.947	0.049	F	nan	nan	nan
@@ -18,14 +28,24 @@
 	59817.294	19.513	0.144	F	nan	nan	nan
 	59824.263	19.921	0.155	F	nan	nan	nan
 	59826.317	20.154	0.225	F	nan	nan	nan
+	59829.323	18.924	nan	T	nan	nan	nan
+	59838.150	19.815	nan	T	nan	nan	nan
 	59841.211	20.573	0.260	F	nan	nan	nan
 	59841.262	20.525	0.258	F	nan	nan	nan
 	59846.243	20.677	0.296	F	nan	nan	nan
 	59848.163	20.639	0.270	F	nan	nan	nan
+	59850.171	20.480	nan	T	nan	nan	nan
 	59852.149	20.711	0.307	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59752.415	19.839	nan	T	nan	nan	nan
+	59755.440	20.053	nan	T	nan	nan	nan
+	59759.399	20.417	nan	T	nan	nan	nan
+	59764.377	20.316	nan	T	nan	nan	nan
+	59766.359	20.355	nan	T	nan	nan	nan
+	59773.335	19.048	nan	T	nan	nan	nan
+	59773.381	19.141	nan	T	nan	nan	nan
 	59778.410	19.216	0.137	F	nan	nan	nan
 	59782.377	18.235	0.074	F	nan	nan	nan
 	59786.374	17.838	0.047	F	nan	nan	nan
@@ -33,6 +53,7 @@
 	59790.380	17.644	0.047	F	nan	nan	nan
 	59794.338	17.579	0.049	F	nan	nan	nan
 	59797.358	17.609	0.053	F	nan	nan	nan
+	59805.333	19.144	nan	T	nan	nan	nan
 	59807.316	18.255	0.056	F	nan	nan	nan
 	59809.305	18.310	0.067	F	nan	nan	nan
 	59811.315	18.338	0.070	F	nan	nan	nan
@@ -42,6 +63,7 @@
 	59821.264	18.466	0.064	F	nan	nan	nan
 	59824.275	18.555	0.082	F	nan	nan	nan
 	59826.275	18.803	0.076	F	nan	nan	nan
+	59829.168	18.932	nan	T	nan	nan	nan
 	59843.253	19.429	0.111	F	nan	nan	nan
 	59846.165	19.649	0.140	F	nan	nan	nan
 	59848.195	19.608	0.150	F	nan	nan	nan

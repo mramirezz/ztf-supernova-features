@@ -4,6 +4,15 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60803.470	20.488	nan	T	nan	nan	nan
+	60805.305	19.617	nan	T	nan	nan	nan
+	60807.465	19.566	nan	T	nan	nan	nan
+	60814.443	20.128	nan	T	nan	nan	nan
+	60817.363	20.632	nan	T	nan	nan	nan
+	60819.457	20.713	nan	T	nan	nan	nan
+	60821.330	20.581	nan	T	nan	nan	nan
+	60823.331	20.694	nan	T	nan	nan	nan
+	60826.327	19.149	nan	T	nan	nan	nan
 	60829.344	18.676	0.068	F	nan	nan	nan
 	60832.391	18.014	0.065	F	nan	nan	nan
 	60834.385	17.782	0.056	F	nan	nan	nan
@@ -24,14 +33,26 @@
 	60867.200	19.564	0.210	F	nan	nan	nan
 	60869.200	19.490	0.146	F	nan	nan	nan
 	60871.266	19.912	0.280	F	nan	nan	nan
+	60873.192	19.870	nan	T	nan	nan	nan
 	60876.302	20.039	0.190	F	nan	nan	nan
+	60878.225	20.583	nan	T	nan	nan	nan
+	60880.213	20.494	nan	T	nan	nan	nan
 	60882.215	20.256	0.214	F	nan	nan	nan
 	60884.196	20.030	0.207	F	nan	nan	nan
 	60884.196	20.030	0.207	F	nan	nan	nan
 	60886.260	20.305	0.267	F	nan	nan	nan
+	60896.174	19.528	nan	T	nan	nan	nan
+	60898.198	19.774	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60805.402	19.925	nan	T	nan	nan	nan
+	60807.399	19.685	nan	T	nan	nan	nan
+	60814.359	19.836	nan	T	nan	nan	nan
+	60817.385	20.524	nan	T	nan	nan	nan
+	60821.345	20.389	nan	T	nan	nan	nan
+	60823.348	20.564	nan	T	nan	nan	nan
+	60826.377	18.886	nan	T	nan	nan	nan
 	60829.320	18.969	0.073	F	nan	nan	nan
 	60832.426	18.255	0.051	F	nan	nan	nan
 	60834.346	17.940	0.061	F	nan	nan	nan
@@ -47,6 +68,7 @@
 	60853.344	17.664	0.042	F	nan	nan	nan
 	60855.352	17.755	0.052	F	nan	nan	nan
 	60857.340	17.834	0.048	F	nan	nan	nan
+	60857.340	20.593	nan	T	nan	nan	nan
 	60859.304	17.907	0.044	F	nan	nan	nan
 	60861.342	18.001	0.053	F	nan	nan	nan
 	60863.302	18.053	0.060	F	nan	nan	nan
@@ -59,4 +81,6 @@
 	60878.278	18.879	0.078	F	nan	nan	nan
 	60880.260	18.892	0.084	F	nan	nan	nan
 	60882.260	18.983	0.103	F	nan	nan	nan
+	60886.308	20.444	nan	T	nan	nan	nan
+	60896.222	19.639	nan	T	nan	nan	nan
 	60898.225	19.556	0.165	F	nan	nan	nan

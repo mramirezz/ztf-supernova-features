@@ -4,41 +4,172 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60834.380	19.849	nan	T	nan	nan	nan
+	60834.380	20.076	nan	T	nan	nan	nan
+	60836.420	19.375	nan	T	nan	nan	nan
+	60836.421	19.358	nan	T	nan	nan	nan
+	60838.286	19.397	nan	T	nan	nan	nan
+	60838.430	19.003	nan	T	nan	nan	nan
+	60840.243	19.919	nan	T	nan	nan	nan
+	60840.244	19.981	nan	T	nan	nan	nan
+	60842.264	20.377	nan	T	nan	nan	nan
+	60843.295	20.547	nan	T	nan	nan	nan
+	60844.433	20.030	nan	T	nan	nan	nan
+	60845.266	20.558	nan	T	nan	nan	nan
+	60846.442	20.105	nan	T	nan	nan	nan
+	60847.235	20.043	nan	T	nan	nan	nan
+	60848.399	19.961	nan	T	nan	nan	nan
+	60849.216	20.581	nan	T	nan	nan	nan
+	60852.380	20.492	nan	T	nan	nan	nan
+	60853.296	20.426	nan	T	nan	nan	nan
+	60854.296	20.549	nan	T	nan	nan	nan
+	60855.256	20.226	nan	T	nan	nan	nan
+	60856.403	20.324	nan	T	nan	nan	nan
+	60857.312	20.715	nan	T	nan	nan	nan
+	60858.371	20.681	nan	T	nan	nan	nan
+	60859.338	20.874	nan	T	nan	nan	nan
+	60860.267	20.171	nan	T	nan	nan	nan
+	60861.406	20.687	nan	T	nan	nan	nan
+	60862.412	20.559	nan	T	nan	nan	nan
+	60863.231	19.990	nan	T	nan	nan	nan
 	60864.430	19.296	0.148	F	nan	nan	nan
+	60865.230	19.752	nan	T	nan	nan	nan
 	60866.217	18.669	0.106	F	nan	nan	nan
+	60867.218	19.477	nan	T	nan	nan	nan
 	60868.222	18.396	0.074	F	nan	nan	nan
+	60869.192	20.571	nan	T	nan	nan	nan
 	60870.215	18.466	0.066	F	nan	nan	nan
+	60871.236	20.463	nan	T	nan	nan	nan
 	60872.253	18.610	0.074	F	nan	nan	nan
+	60873.223	20.422	nan	T	nan	nan	nan
 	60875.283	18.707	0.071	F	nan	nan	nan
+	60876.220	20.537	nan	T	nan	nan	nan
 	60877.268	18.856	0.071	F	nan	nan	nan
+	60878.220	20.594	nan	T	nan	nan	nan
 	60879.301	18.937	0.078	F	nan	nan	nan
+	60880.189	20.525	nan	T	nan	nan	nan
 	60881.216	19.376	0.148	F	nan	nan	nan
+	60882.213	20.425	nan	T	nan	nan	nan
 	60883.191	18.986	0.107	F	nan	nan	nan
 	60883.191	18.986	0.107	F	nan	nan	nan
 	60883.191	18.986	0.107	F	nan	nan	nan
+	60884.191	20.779	nan	T	nan	nan	nan
 	60885.194	19.296	0.118	F	nan	nan	nan
+	60886.255	20.373	nan	T	nan	nan	nan
 	60887.284	19.383	0.104	F	nan	nan	nan
+	60898.190	20.023	nan	T	nan	nan	nan
+	60901.213	20.811	nan	T	nan	nan	nan
+	60903.192	20.957	nan	T	nan	nan	nan
 	60903.217	20.028	0.156	F	nan	nan	nan
+	60905.171	20.468	nan	T	nan	nan	nan
+	60910.209	18.530	nan	T	nan	nan	nan
+	60910.247	20.369	nan	T	nan	nan	nan
+	60912.160	17.309	nan	T	nan	nan	nan
+	60915.181	20.084	nan	T	nan	nan	nan
+	60915.181	20.059	nan	T	nan	nan	nan
+	60917.265	20.352	nan	T	nan	nan	nan
+	60917.266	20.299	nan	T	nan	nan	nan
+	60919.174	20.220	nan	T	nan	nan	nan
+	60919.175	20.127	nan	T	nan	nan	nan
+	60921.183	19.825	nan	T	nan	nan	nan
+	60921.189	19.748	nan	T	nan	nan	nan
+	60923.164	19.563	nan	T	nan	nan	nan
+	60923.165	19.656	nan	T	nan	nan	nan
+	60925.249	19.331	nan	T	nan	nan	nan
+	60925.249	19.392	nan	T	nan	nan	nan
+	60927.178	19.776	nan	T	nan	nan	nan
+	60927.178	19.949	nan	T	nan	nan	nan
+	60929.268	19.221	nan	T	nan	nan	nan
+	60929.268	19.179	nan	T	nan	nan	nan
+	60933.144	20.655	nan	T	nan	nan	nan
+	60934.162	20.657	nan	T	nan	nan	nan
+	60935.140	20.519	nan	T	nan	nan	nan
+	60939.203	20.359	nan	T	nan	nan	nan
+	60942.146	20.403	nan	T	nan	nan	nan
+	60944.163	20.095	nan	T	nan	nan	nan
+	60948.127	20.226	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60834.338	19.934	nan	T	nan	nan	nan
+	60834.339	20.159	nan	T	nan	nan	nan
+	60836.356	19.477	nan	T	nan	nan	nan
+	60838.360	19.364	nan	T	nan	nan	nan
+	60838.377	19.190	nan	T	nan	nan	nan
+	60840.301	20.064	nan	T	nan	nan	nan
+	60840.335	20.047	nan	T	nan	nan	nan
+	60842.315	20.183	nan	T	nan	nan	nan
+	60843.255	20.245	nan	T	nan	nan	nan
+	60844.361	20.451	nan	T	nan	nan	nan
+	60845.295	20.639	nan	T	nan	nan	nan
+	60846.354	20.619	nan	T	nan	nan	nan
+	60847.319	20.625	nan	T	nan	nan	nan
+	60848.295	20.562	nan	T	nan	nan	nan
+	60849.275	20.550	nan	T	nan	nan	nan
+	60850.347	20.786	nan	T	nan	nan	nan
+	60850.379	20.733	nan	T	nan	nan	nan
+	60851.280	20.253	nan	T	nan	nan	nan
+	60851.327	20.726	nan	T	nan	nan	nan
+	60852.337	20.601	nan	T	nan	nan	nan
+	60853.340	20.524	nan	T	nan	nan	nan
+	60854.336	20.722	nan	T	nan	nan	nan
+	60855.318	20.210	nan	T	nan	nan	nan
+	60856.359	20.295	nan	T	nan	nan	nan
+	60857.337	20.652	nan	T	nan	nan	nan
+	60858.298	20.475	nan	T	nan	nan	nan
+	60859.296	20.327	nan	T	nan	nan	nan
+	60860.338	20.736	nan	T	nan	nan	nan
+	60861.319	20.317	nan	T	nan	nan	nan
+	60862.344	20.402	nan	T	nan	nan	nan
 	60864.272	19.289	0.158	F	nan	nan	nan
+	60865.295	19.882	nan	T	nan	nan	nan
 	60866.294	18.594	0.091	F	nan	nan	nan
+	60867.280	19.797	nan	T	nan	nan	nan
 	60868.287	18.391	0.086	F	nan	nan	nan
+	60869.286	20.142	nan	T	nan	nan	nan
 	60870.290	18.375	0.095	F	nan	nan	nan
+	60871.279	19.660	nan	T	nan	nan	nan
 	60872.290	18.365	0.066	F	nan	nan	nan
+	60873.278	20.272	nan	T	nan	nan	nan
 	60875.267	18.430	0.084	F	nan	nan	nan
+	60876.258	20.432	nan	T	nan	nan	nan
 	60877.299	18.513	0.072	F	nan	nan	nan
+	60878.255	20.635	nan	T	nan	nan	nan
 	60879.235	18.501	0.066	F	nan	nan	nan
+	60880.234	20.429	nan	T	nan	nan	nan
 	60881.256	18.674	0.063	F	nan	nan	nan
+	60882.266	20.373	nan	T	nan	nan	nan
+	60884.258	20.684	nan	T	nan	nan	nan
 	60885.220	18.780	0.091	F	nan	nan	nan
+	60886.216	20.247	nan	T	nan	nan	nan
 	60887.250	18.835	0.088	F	nan	nan	nan
+	60898.218	19.812	nan	T	nan	nan	nan
+	60901.307	20.256	nan	T	nan	nan	nan
+	60903.170	20.745	nan	T	nan	nan	nan
 	60903.172	19.172	0.098	F	nan	nan	nan
+	60910.171	20.535	nan	T	nan	nan	nan
 	60910.172	19.376	0.130	F	nan	nan	nan
+	60915.197	16.950	nan	T	nan	nan	nan
 	60917.200	19.581	0.133	F	nan	nan	nan
+	60917.201	20.166	nan	T	nan	nan	nan
+	60919.205	20.386	nan	T	nan	nan	nan
+	60919.206	20.038	nan	T	nan	nan	nan
+	60921.164	20.082	nan	T	nan	nan	nan
 	60921.165	19.693	0.176	F	nan	nan	nan
+	60923.250	17.200	nan	T	nan	nan	nan
+	60923.250	17.238	nan	T	nan	nan	nan
+	60925.148	19.826	nan	T	nan	nan	nan
 	60925.215	19.675	0.185	F	nan	nan	nan
 	60927.208	19.594	0.176	F	nan	nan	nan
+	60927.225	19.970	nan	T	nan	nan	nan
+	60929.225	19.921	nan	T	nan	nan	nan
+	60929.226	19.660	nan	T	nan	nan	nan
+	60931.144	20.153	nan	T	nan	nan	nan
 	60931.145	19.660	0.168	F	nan	nan	nan
+	60933.193	20.319	nan	T	nan	nan	nan
 	60934.206	19.785	0.205	F	nan	nan	nan
+	60935.197	20.303	nan	T	nan	nan	nan
+	60939.224	20.152	nan	T	nan	nan	nan
+	60942.191	20.010	nan	T	nan	nan	nan
+	60944.131	20.017	nan	T	nan	nan	nan
 	60948.221	19.488	0.175	F	nan	nan	nan

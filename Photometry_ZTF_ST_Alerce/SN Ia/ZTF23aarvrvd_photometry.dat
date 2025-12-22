@@ -4,6 +4,27 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60109.398	20.443	nan	T	nan	nan	nan
+	60110.357	20.467	nan	T	nan	nan	nan
+	60111.410	19.194	nan	T	nan	nan	nan
+	60111.410	19.198	nan	T	nan	nan	nan
+	60112.434	20.117	nan	T	nan	nan	nan
+	60114.419	20.402	nan	T	nan	nan	nan
+	60115.427	20.192	nan	T	nan	nan	nan
+	60117.436	20.067	nan	T	nan	nan	nan
+	60120.336	20.308	nan	T	nan	nan	nan
+	60120.418	20.426	nan	T	nan	nan	nan
+	60122.399	20.331	nan	T	nan	nan	nan
+	60122.399	20.410	nan	T	nan	nan	nan
+	60124.377	19.989	nan	T	nan	nan	nan
+	60124.397	20.213	nan	T	nan	nan	nan
+	60126.378	19.253	nan	T	nan	nan	nan
+	60126.399	19.242	nan	T	nan	nan	nan
+	60133.354	19.829	nan	T	nan	nan	nan
+	60134.376	20.058	nan	T	nan	nan	nan
+	60135.271	20.309	nan	T	nan	nan	nan
+	60136.392	20.064	nan	T	nan	nan	nan
+	60137.356	20.265	nan	T	nan	nan	nan
 	60138.378	20.083	0.264	F	nan	nan	nan
 	60139.420	19.612	0.270	F	nan	nan	nan
 	60140.335	19.321	0.106	F	nan	nan	nan
@@ -14,6 +35,8 @@
 	60151.335	18.468	0.074	F	nan	nan	nan
 	60153.310	18.470	0.089	F	nan	nan	nan
 	60154.344	18.304	0.210	F	nan	nan	nan
+	60158.364	17.590	nan	T	nan	nan	nan
+	60158.364	18.241	nan	T	nan	nan	nan
 	60161.379	18.781	0.123	F	nan	nan	nan
 	60161.380	18.861	0.163	F	nan	nan	nan
 	60163.315	19.012	0.127	F	nan	nan	nan
@@ -22,10 +45,38 @@
 	60170.316	19.504	0.191	F	nan	nan	nan
 	60170.317	19.571	0.148	F	nan	nan	nan
 	60172.232	19.616	0.166	F	nan	nan	nan
+	60172.233	20.280	nan	T	nan	nan	nan
+	60174.302	19.855	nan	T	nan	nan	nan
+	60174.304	19.838	nan	T	nan	nan	nan
 	60179.190	20.144	0.246	F	nan	nan	nan
+	60179.210	19.983	nan	T	nan	nan	nan
+	60183.210	19.346	nan	T	nan	nan	nan
+	60185.279	19.109	nan	T	nan	nan	nan
+	60186.189	18.845	nan	T	nan	nan	nan
+	60187.155	19.174	nan	T	nan	nan	nan
+	60193.233	20.365	nan	T	nan	nan	nan
+	60194.150	20.163	nan	T	nan	nan	nan
+	60198.210	20.193	nan	T	nan	nan	nan
+	60202.169	20.094	nan	T	nan	nan	nan
+	60202.170	20.288	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60109.442	20.588	nan	T	nan	nan	nan
+	60114.378	20.355	nan	T	nan	nan	nan
+	60115.336	20.483	nan	T	nan	nan	nan
+	60117.378	20.068	nan	T	nan	nan	nan
+	60120.410	20.144	nan	T	nan	nan	nan
+	60120.411	20.154	nan	T	nan	nan	nan
+	60122.280	19.430	nan	T	nan	nan	nan
+	60122.440	20.405	nan	T	nan	nan	nan
+	60124.420	20.150	nan	T	nan	nan	nan
+	60124.420	20.258	nan	T	nan	nan	nan
+	60126.350	19.395	nan	T	nan	nan	nan
+	60126.356	19.241	nan	T	nan	nan	nan
+	60128.334	18.697	nan	T	nan	nan	nan
+	60133.362	20.201	nan	T	nan	nan	nan
+	60136.400	20.080	nan	T	nan	nan	nan
 	60138.356	20.025	0.266	F	nan	nan	nan
 	60139.273	19.926	0.179	F	nan	nan	nan
 	60143.376	19.021	0.134	F	nan	nan	nan
@@ -40,6 +91,7 @@
 	60151.357	18.590	0.091	F	nan	nan	nan
 	60152.250	18.510	0.098	F	nan	nan	nan
 	60153.253	18.513	0.090	F	nan	nan	nan
+	60154.251	16.195	nan	T	nan	nan	nan
 	60155.314	18.628	0.156	F	nan	nan	nan
 	60161.357	18.710	0.102	F	nan	nan	nan
 	60163.292	18.931	0.097	F	nan	nan	nan
@@ -55,7 +107,13 @@
 	60179.233	19.380	0.133	F	nan	nan	nan
 	60181.253	19.274	0.169	F	nan	nan	nan
 	60181.255	19.468	0.181	F	nan	nan	nan
+	60183.189	19.655	nan	T	nan	nan	nan
+	60185.232	19.388	nan	T	nan	nan	nan
+	60186.251	19.016	nan	T	nan	nan	nan
+	60187.244	19.252	nan	T	nan	nan	nan
+	60193.296	19.931	nan	T	nan	nan	nan
 	60194.210	20.214	0.245	F	nan	nan	nan
+	60195.230	19.917	nan	T	nan	nan	nan
 	60196.228	20.123	0.261	F	nan	nan	nan
 	60200.189	20.234	0.253	F	nan	nan	nan
 	60200.190	20.354	0.291	F	nan	nan	nan

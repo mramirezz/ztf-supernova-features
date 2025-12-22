@@ -4,6 +4,10 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60391.393	19.780	nan	T	nan	nan	nan
+	60396.429	19.674	nan	T	nan	nan	nan
+	60398.499	19.938	nan	T	nan	nan	nan
+	60412.493	20.847	nan	T	nan	nan	nan
 	60416.469	20.363	0.250	F	nan	nan	nan
 	60419.342	18.588	0.080	F	nan	nan	nan
 	60421.358	18.364	0.077	F	nan	nan	nan
@@ -16,6 +20,7 @@
 	60438.427	18.712	0.072	F	nan	nan	nan
 	60440.323	18.752	0.053	F	nan	nan	nan
 	60442.348	18.783	0.061	F	nan	nan	nan
+	60442.348	20.508	nan	T	nan	nan	nan
 	60444.383	18.926	0.053	F	nan	nan	nan
 	60446.385	19.002	0.050	F	nan	nan	nan
 	60448.353	18.890	0.093	F	nan	nan	nan
@@ -38,9 +43,24 @@
 	60498.197	20.461	0.212	F	nan	nan	nan
 	60500.214	20.638	0.286	F	nan	nan	nan
 	60502.281	20.352	0.241	F	nan	nan	nan
+	60504.322	20.414	nan	T	nan	nan	nan
+	60507.323	20.231	nan	T	nan	nan	nan
+	60509.387	19.622	nan	T	nan	nan	nan
+	60511.203	19.794	nan	T	nan	nan	nan
+	60513.242	19.700	nan	T	nan	nan	nan
+	60515.304	19.629	nan	T	nan	nan	nan
+	60517.218	20.577	nan	T	nan	nan	nan
+	60519.257	20.497	nan	T	nan	nan	nan
+	60524.301	20.454	nan	T	nan	nan	nan
+	60526.308	20.413	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60389.493	20.616	nan	T	nan	nan	nan
+	60396.452	19.780	nan	T	nan	nan	nan
+	60398.443	19.966	nan	T	nan	nan	nan
+	60404.499	20.797	nan	T	nan	nan	nan
+	60412.448	20.756	nan	T	nan	nan	nan
 	60421.432	18.743	0.088	F	nan	nan	nan
 	60423.445	18.658	0.095	F	nan	nan	nan
 	60429.371	18.519	0.062	F	nan	nan	nan
@@ -49,10 +69,13 @@
 	60437.417	18.564	0.066	F	nan	nan	nan
 	60438.412	18.564	0.092	F	nan	nan	nan
 	60442.430	18.665	0.054	F	nan	nan	nan
+	60442.430	20.539	nan	T	nan	nan	nan
 	60444.427	18.707	0.058	F	nan	nan	nan
 	60446.331	18.778	0.068	F	nan	nan	nan
 	60448.413	18.755	0.082	F	nan	nan	nan
 	60450.393	18.756	0.083	F	nan	nan	nan
+	60452.394	19.771	nan	T	nan	nan	nan
+	60457.329	20.317	nan	T	nan	nan	nan
 	60459.367	18.960	0.089	F	nan	nan	nan
 	60461.305	19.025	0.084	F	nan	nan	nan
 	60463.262	19.003	0.076	F	nan	nan	nan
@@ -63,8 +86,10 @@
 	60477.320	19.326	0.134	F	nan	nan	nan
 	60480.324	19.299	0.107	F	nan	nan	nan
 	60482.327	19.199	0.146	F	nan	nan	nan
+	60484.323	20.174	nan	T	nan	nan	nan
 	60487.300	19.374	0.112	F	nan	nan	nan
 	60489.346	19.338	0.112	F	nan	nan	nan
+	60491.388	20.532	nan	T	nan	nan	nan
 	60500.259	19.400	0.132	F	nan	nan	nan
 	60502.321	19.669	0.130	F	nan	nan	nan
 	60504.269	19.426	0.134	F	nan	nan	nan
@@ -72,8 +97,10 @@
 	60509.286	19.396	0.158	F	nan	nan	nan
 	60511.300	19.538	0.177	F	nan	nan	nan
 	60513.283	19.432	0.142	F	nan	nan	nan
+	60515.279	20.093	nan	T	nan	nan	nan
 	60517.283	19.661	0.145	F	nan	nan	nan
 	60519.308	19.828	0.134	F	nan	nan	nan
+	60521.265	20.544	nan	T	nan	nan	nan
 	60524.260	20.001	0.174	F	nan	nan	nan
 	60526.256	20.115	0.176	F	nan	nan	nan
 	60528.260	20.035	0.169	F	nan	nan	nan

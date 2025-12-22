@@ -2,15 +2,30 @@
 # SNNAME:	ZTF21acojncf
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59525.542	17.713	nan	T	nan	nan	nan
+	59525.547	18.819	nan	T	nan	nan	nan
+	59525.550	18.416	nan	T	nan	nan	nan
+	59525.552	18.181	nan	T	nan	nan	nan
+	59526.542	19.304	nan	T	nan	nan	nan
+	59526.544	19.191	nan	T	nan	nan	nan
+	59526.547	19.117	nan	T	nan	nan	nan
+	59526.549	19.132	nan	T	nan	nan	nan
+	59526.552	18.984	nan	T	nan	nan	nan
 	59527.544	19.909	0.345	F	nan	nan	nan
+	59527.547	19.405	nan	T	nan	nan	nan
+	59527.549	19.359	nan	T	nan	nan	nan
+	59527.551	19.219	nan	T	nan	nan	nan
+	59527.554	19.012	nan	T	nan	nan	nan
+	59528.548	19.078	nan	T	nan	nan	nan
 	59528.550	19.095	0.210	F	nan	nan	nan
+	59528.552	18.836	nan	T	nan	nan	nan
 	59529.544	19.135	0.184	F	nan	nan	nan
+	59529.547	18.887	nan	T	nan	nan	nan
+	59529.549	18.850	nan	T	nan	nan	nan
 	59529.551	19.149	0.373	F	nan	nan	nan
+	59529.554	18.485	nan	T	nan	nan	nan
 	59530.546	18.852	0.179	F	nan	nan	nan
 	59530.548	19.131	0.275	F	nan	nan	nan
 	59536.536	18.200	0.092	F	nan	nan	nan
@@ -18,10 +33,13 @@
 	59536.540	18.122	0.082	F	nan	nan	nan
 	59536.543	18.065	0.084	F	nan	nan	nan
 	59536.545	18.121	0.080	F	nan	nan	nan
+	59537.536	16.709	nan	T	nan	nan	nan
+	59537.538	16.652	nan	T	nan	nan	nan
 	59537.541	17.933	0.322	F	nan	nan	nan
 	59537.543	17.861	0.226	F	nan	nan	nan
 	59537.546	18.132	0.216	F	nan	nan	nan
 	59539.539	17.923	0.123	F	nan	nan	nan
+	59539.542	17.605	nan	T	nan	nan	nan
 	59539.544	17.917	0.122	F	nan	nan	nan
 	59539.547	17.935	0.096	F	nan	nan	nan
 	59539.549	18.083	0.126	F	nan	nan	nan

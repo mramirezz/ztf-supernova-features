@@ -4,13 +4,29 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58833.516	18.900	nan	T	nan	nan	nan
+	58833.519	18.951	nan	T	nan	nan	nan
+	58836.413	20.424	nan	T	nan	nan	nan
+	58846.237	20.529	nan	T	nan	nan	nan
+	58846.246	20.522	nan	T	nan	nan	nan
+	58849.479	20.365	nan	T	nan	nan	nan
+	58850.426	19.925	nan	T	nan	nan	nan
+	58852.474	20.640	nan	T	nan	nan	nan
+	58852.475	20.663	nan	T	nan	nan	nan
 	58853.455	21.079	0.327	F	nan	nan	nan
+	58853.456	20.674	nan	T	nan	nan	nan
+	58854.486	19.666	nan	T	nan	nan	nan
 	58854.487	20.126	0.456	F	nan	nan	nan
+	58854.487	19.650	nan	T	nan	nan	nan
+	58855.183	19.210	nan	T	nan	nan	nan
+	58855.184	19.161	nan	T	nan	nan	nan
+	58856.102	18.636	nan	T	nan	nan	nan
 	58859.511	18.801	0.224	F	nan	nan	nan
 	58860.113	18.543	0.186	F	nan	nan	nan
 	58861.114	18.317	0.088	F	nan	nan	nan
 	58861.119	18.310	0.075	F	nan	nan	nan
 	58862.429	18.103	0.134	F	nan	nan	nan
+	58863.174	17.287	nan	T	nan	nan	nan
 	58863.185	17.947	0.262	F	nan	nan	nan
 	58864.161	18.076	0.069	F	nan	nan	nan
 	58864.194	18.052	0.054	F	nan	nan	nan
@@ -36,12 +52,35 @@
 	58903.242	20.186	0.175	F	nan	nan	nan
 	58903.243	20.221	0.202	F	nan	nan	nan
 	58904.159	20.195	0.198	F	nan	nan	nan
+	58904.159	20.739	nan	T	nan	nan	nan
 	58906.145	20.130	0.205	F	nan	nan	nan
+	58906.145	20.328	nan	T	nan	nan	nan
 	58906.262	20.301	0.225	F	nan	nan	nan
 	58906.263	20.518	0.271	F	nan	nan	nan
+	58909.182	19.672	nan	T	nan	nan	nan
+	58909.189	19.816	nan	T	nan	nan	nan
+	58909.190	19.803	nan	T	nan	nan	nan
+	58912.165	19.880	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58833.300	18.714	nan	T	nan	nan	nan
+	58833.303	18.785	nan	T	nan	nan	nan
+	58833.359	19.657	nan	T	nan	nan	nan
+	58833.380	19.545	nan	T	nan	nan	nan
+	58836.453	20.317	nan	T	nan	nan	nan
+	58836.455	20.298	nan	T	nan	nan	nan
+	58846.279	20.216	nan	T	nan	nan	nan
+	58846.282	20.175	nan	T	nan	nan	nan
+	58850.449	19.692	nan	T	nan	nan	nan
+	58850.454	19.940	nan	T	nan	nan	nan
+	58851.434	19.965	nan	T	nan	nan	nan
+	58851.435	20.033	nan	T	nan	nan	nan
+	58854.178	18.843	nan	T	nan	nan	nan
+	58854.443	19.470	nan	T	nan	nan	nan
+	58854.444	19.299	nan	T	nan	nan	nan
+	58855.329	19.527	nan	T	nan	nan	nan
+	58856.323	17.842	nan	T	nan	nan	nan
 	58859.438	18.895	0.177	F	nan	nan	nan
 	58860.250	18.665	0.119	F	nan	nan	nan
 	58860.266	18.550	0.103	F	nan	nan	nan
@@ -49,6 +88,7 @@
 	58860.299	18.490	0.101	F	nan	nan	nan
 	58861.143	18.515	0.143	F	nan	nan	nan
 	58861.144	18.427	0.097	F	nan	nan	nan
+	58862.219	20.107	nan	T	nan	nan	nan
 	58862.220	18.344	0.073	F	nan	nan	nan
 	58862.302	18.283	0.077	F	nan	nan	nan
 	58863.226	18.526	0.200	F	nan	nan	nan
@@ -56,19 +96,24 @@
 	58864.216	18.214	0.054	F	nan	nan	nan
 	58864.219	18.163	0.054	F	nan	nan	nan
 	58867.270	18.057	0.055	F	nan	nan	nan
+	58867.270	20.506	nan	T	nan	nan	nan
 	58871.262	17.970	0.050	F	nan	nan	nan
+	58871.263	20.483	nan	T	nan	nan	nan
 	58872.289	18.012	0.056	F	nan	nan	nan
 	58873.173	17.959	0.047	F	nan	nan	nan
 	58873.195	17.985	0.050	F	nan	nan	nan
 	58874.246	18.046	0.056	F	nan	nan	nan
+	58874.246	20.166	nan	T	nan	nan	nan
 	58875.218	18.020	0.055	F	nan	nan	nan
 	58875.219	18.029	0.052	F	nan	nan	nan
 	58878.160	18.126	0.112	F	nan	nan	nan
 	58878.183	18.209	0.086	F	nan	nan	nan
 	58880.207	18.287	0.060	F	nan	nan	nan
+	58880.207	20.255	nan	T	nan	nan	nan
 	58881.260	18.414	0.070	F	nan	nan	nan
 	58882.144	18.415	0.076	F	nan	nan	nan
 	58882.154	18.477	0.079	F	nan	nan	nan
+	58883.192	17.597	nan	T	nan	nan	nan
 	58884.170	18.569	0.144	F	nan	nan	nan
 	58892.284	18.838	0.089	F	nan	nan	nan
 	58892.285	18.826	0.092	F	nan	nan	nan
@@ -81,10 +126,12 @@
 	58900.186	18.966	0.108	F	nan	nan	nan
 	58900.187	18.817	0.177	F	nan	nan	nan
 	58903.172	19.060	0.079	F	nan	nan	nan
+	58903.179	20.566	nan	T	nan	nan	nan
 	58903.182	19.062	0.108	F	nan	nan	nan
 	58906.169	19.200	0.131	F	nan	nan	nan
 	58906.207	19.192	0.126	F	nan	nan	nan
 	58909.115	19.412	0.224	F	nan	nan	nan
 	58909.115	19.420	0.225	F	nan	nan	nan
+	58909.162	17.141	nan	T	nan	nan	nan
 	58912.174	19.545	0.147	F	nan	nan	nan
 	58915.144	19.622	0.187	F	nan	nan	nan

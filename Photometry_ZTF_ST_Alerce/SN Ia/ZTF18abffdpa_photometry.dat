@@ -4,9 +4,30 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59429.288	20.643	nan	T	nan	nan	nan
+	59429.311	20.738	nan	T	nan	nan	nan
+	59434.245	20.768	nan	T	nan	nan	nan
+	59434.255	20.807	nan	T	nan	nan	nan
+	59436.256	20.670	nan	T	nan	nan	nan
+	59436.256	20.624	nan	T	nan	nan	nan
+	59439.257	20.431	nan	T	nan	nan	nan
+	59439.258	20.341	nan	T	nan	nan	nan
+	59441.235	18.110	nan	T	nan	nan	nan
+	59441.256	20.459	nan	T	nan	nan	nan
+	59443.202	19.732	nan	T	nan	nan	nan
+	59443.202	19.760	nan	T	nan	nan	nan
+	59447.301	19.026	nan	T	nan	nan	nan
+	59447.302	18.952	nan	T	nan	nan	nan
+	59450.225	19.544	nan	T	nan	nan	nan
+	59450.225	19.645	nan	T	nan	nan	nan
+	59452.288	20.035	nan	T	nan	nan	nan
+	59452.289	20.083	nan	T	nan	nan	nan
+	59454.205	20.698	nan	T	nan	nan	nan
+	59454.213	20.660	nan	T	nan	nan	nan
 	59458.176	19.857	0.170	F	nan	nan	nan
 	59458.176	19.891	0.182	F	nan	nan	nan
 	59460.256	19.371	0.130	F	nan	nan	nan
+	59460.256	20.351	nan	T	nan	nan	nan
 	59462.259	19.190	0.129	F	nan	nan	nan
 	59462.276	19.081	0.129	F	nan	nan	nan
 	59464.179	18.925	0.123	F	nan	nan	nan
@@ -31,10 +52,30 @@
 	59487.178	19.870	0.174	F	nan	nan	nan
 	59487.179	19.891	0.247	F	nan	nan	nan
 	59489.196	20.114	0.251	F	nan	nan	nan
+	59489.216	20.079	nan	T	nan	nan	nan
 	59491.143	20.578	0.350	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59429.241	20.688	nan	T	nan	nan	nan
+	59429.242	20.706	nan	T	nan	nan	nan
+	59434.196	20.603	nan	T	nan	nan	nan
+	59434.204	20.678	nan	T	nan	nan	nan
+	59436.223	20.555	nan	T	nan	nan	nan
+	59436.223	20.742	nan	T	nan	nan	nan
+	59439.217	20.238	nan	T	nan	nan	nan
+	59439.217	20.294	nan	T	nan	nan	nan
+	59441.196	20.236	nan	T	nan	nan	nan
+	59443.236	19.763	nan	T	nan	nan	nan
+	59443.256	19.793	nan	T	nan	nan	nan
+	59447.225	19.463	nan	T	nan	nan	nan
+	59447.226	19.577	nan	T	nan	nan	nan
+	59450.288	19.300	nan	T	nan	nan	nan
+	59450.288	19.215	nan	T	nan	nan	nan
+	59452.221	20.360	nan	T	nan	nan	nan
+	59452.222	20.427	nan	T	nan	nan	nan
+	59454.285	20.300	nan	T	nan	nan	nan
+	59454.295	20.203	nan	T	nan	nan	nan
 	59458.209	19.992	0.136	F	nan	nan	nan
 	59458.225	19.869	0.156	F	nan	nan	nan
 	59460.196	19.648	0.115	F	nan	nan	nan

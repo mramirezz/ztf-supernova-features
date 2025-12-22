@@ -4,6 +4,14 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58586.445	20.835	nan	T	nan	nan	nan
+	58586.450	20.645	nan	T	nan	nan	nan
+	58592.472	19.373	nan	T	nan	nan	nan
+	58592.495	17.563	nan	T	nan	nan	nan
+	58596.457	20.042	nan	T	nan	nan	nan
+	58596.468	20.021	nan	T	nan	nan	nan
+	58608.299	20.506	nan	T	nan	nan	nan
+	58608.321	20.457	nan	T	nan	nan	nan
 	58616.450	19.916	0.145	F	nan	nan	nan
 	58616.450	19.873	0.151	F	nan	nan	nan
 	58619.267	18.879	0.152	F	nan	nan	nan
@@ -27,14 +35,37 @@
 	58657.244	19.859	0.179	F	nan	nan	nan
 	58660.201	20.012	0.120	F	nan	nan	nan
 	58660.202	20.125	0.119	F	nan	nan	nan
+	58666.245	19.633	nan	T	nan	nan	nan
 	58666.249	20.437	0.163	F	nan	nan	nan
 	58672.312	20.721	0.269	F	nan	nan	nan
 	58672.313	20.801	0.261	F	nan	nan	nan
+	58675.320	20.223	nan	T	nan	nan	nan
+	58678.274	19.885	nan	T	nan	nan	nan
+	58678.284	19.875	nan	T	nan	nan	nan
+	58681.177	19.762	nan	T	nan	nan	nan
+	58681.182	19.785	nan	T	nan	nan	nan
 	58684.197	20.754	0.246	F	nan	nan	nan
 	58684.199	20.998	0.356	F	nan	nan	nan
+	58688.205	20.793	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58586.383	20.095	nan	T	nan	nan	nan
+	58586.384	20.195	nan	T	nan	nan	nan
+	58589.289	18.061	nan	T	nan	nan	nan
+	58589.341	17.884	nan	T	nan	nan	nan
+	58592.364	18.575	nan	T	nan	nan	nan
+	58593.306	19.617	nan	T	nan	nan	nan
+	58596.315	19.938	nan	T	nan	nan	nan
+	58596.430	20.093	nan	T	nan	nan	nan
+	58602.303	20.509	nan	T	nan	nan	nan
+	58605.386	20.444	nan	T	nan	nan	nan
+	58605.408	20.572	nan	T	nan	nan	nan
+	58606.283	20.550	nan	T	nan	nan	nan
+	58608.364	19.991	nan	T	nan	nan	nan
+	58608.369	20.274	nan	T	nan	nan	nan
+	58612.354	20.860	nan	T	nan	nan	nan
+	58612.428	20.738	nan	T	nan	nan	nan
 	58616.370	20.031	0.205	F	nan	nan	nan
 	58616.388	20.116	0.176	F	nan	nan	nan
 	58617.284	19.648	0.161	F	nan	nan	nan
@@ -73,6 +104,8 @@
 	58678.200	19.894	0.180	F	nan	nan	nan
 	58678.226	19.944	0.198	F	nan	nan	nan
 	58681.265	19.881	0.242	F	nan	nan	nan
+	58681.266	19.835	nan	T	nan	nan	nan
 	58684.179	20.256	0.192	F	nan	nan	nan
 	58684.181	20.167	0.179	F	nan	nan	nan
+	58691.206	20.629	nan	T	nan	nan	nan
 	58691.207	20.457	0.193	F	nan	nan	nan

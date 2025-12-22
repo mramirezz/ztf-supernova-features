@@ -5,6 +5,7 @@
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
 	59385.429	18.022	0.074	F	nan	nan	nan
+	59387.391	17.594	nan	T	nan	nan	nan
 	59392.446	18.372	0.116	F	nan	nan	nan
 	59394.384	18.201	0.121	F	nan	nan	nan
 	59397.452	18.283	0.087	F	nan	nan	nan
@@ -22,14 +23,34 @@
 	59436.427	18.852	0.131	F	nan	nan	nan
 	59439.424	18.841	0.150	F	nan	nan	nan
 	59442.321	18.822	0.116	F	nan	nan	nan
+	59446.472	20.690	nan	T	nan	nan	nan
+	59449.263	19.009	nan	T	nan	nan	nan
+	59453.388	20.040	nan	T	nan	nan	nan
+	59456.341	19.995	nan	T	nan	nan	nan
+	59459.324	20.762	nan	T	nan	nan	nan
+	59461.408	20.767	nan	T	nan	nan	nan
 	59463.353	19.029	0.138	F	nan	nan	nan
 	59465.406	19.035	0.141	F	nan	nan	nan
+	59467.429	20.663	nan	T	nan	nan	nan
 	59471.365	19.267	0.145	F	nan	nan	nan
+	59474.390	20.332	nan	T	nan	nan	nan
+	59477.323	19.502	nan	T	nan	nan	nan
+	59479.219	19.070	nan	T	nan	nan	nan
+	59485.299	18.963	nan	T	nan	nan	nan
+	59488.284	20.614	nan	T	nan	nan	nan
 	59490.346	19.353	0.167	F	nan	nan	nan
+	59497.387	20.247	nan	T	nan	nan	nan
+	59501.415	20.551	nan	T	nan	nan	nan
+	59503.220	19.791	nan	T	nan	nan	nan
+	59505.203	19.623	nan	T	nan	nan	nan
+	59510.245	19.821	nan	T	nan	nan	nan
+	59517.195	20.689	nan	T	nan	nan	nan
 	59520.304	19.797	0.190	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59340.487	19.270	nan	T	nan	nan	nan
+	59340.490	19.176	nan	T	nan	nan	nan
 	59340.492	17.794	0.071	F	nan	nan	nan
 	59340.495	18.042	0.086	F	nan	nan	nan
 	59341.488	17.283	0.090	F	nan	nan	nan
@@ -118,7 +139,77 @@
 	59400.461	17.779	0.085	F	nan	nan	nan
 	59403.433	17.772	0.082	F	nan	nan	nan
 	59406.460	17.783	0.081	F	nan	nan	nan
+	59409.461	20.527	nan	T	nan	nan	nan
 	59411.453	18.192	0.089	F	nan	nan	nan
 	59414.457	18.169	0.079	F	nan	nan	nan
+	59416.429	18.833	nan	T	nan	nan	nan
+	59418.408	19.418	nan	T	nan	nan	nan
+	59422.432	19.961	nan	T	nan	nan	nan
+	59424.415	19.986	nan	T	nan	nan	nan
+	59427.424	20.351	nan	T	nan	nan	nan
+	59429.405	20.516	nan	T	nan	nan	nan
+	59434.368	20.665	nan	T	nan	nan	nan
+	59436.384	20.640	nan	T	nan	nan	nan
+	59439.391	20.455	nan	T	nan	nan	nan
+	59442.429	20.551	nan	T	nan	nan	nan
+	59446.413	19.866	nan	T	nan	nan	nan
+	59449.343	19.353	nan	T	nan	nan	nan
+	59451.345	18.195	nan	T	nan	nan	nan
+	59453.342	20.073	nan	T	nan	nan	nan
+	59459.366	20.714	nan	T	nan	nan	nan
+	59461.368	20.615	nan	T	nan	nan	nan
+	59463.326	20.599	nan	T	nan	nan	nan
 	59465.365	19.023	0.132	F	nan	nan	nan
+	59467.361	20.644	nan	T	nan	nan	nan
+	59469.361	20.662	nan	T	nan	nan	nan
+	59471.429	20.457	nan	T	nan	nan	nan
+	59474.288	20.137	nan	T	nan	nan	nan
+	59477.260	19.610	nan	T	nan	nan	nan
+	59479.358	19.470	nan	T	nan	nan	nan
+	59483.349	19.123	nan	T	nan	nan	nan
+	59485.406	18.192	nan	T	nan	nan	nan
+	59488.301	20.509	nan	T	nan	nan	nan
+	59503.255	19.757	nan	T	nan	nan	nan
+	59505.243	19.645	nan	T	nan	nan	nan
+	59517.240	20.654	nan	T	nan	nan	nan
+	59520.256	20.407	nan	T	nan	nan	nan
+	60429.503	17.806	nan	T	nan	nan	nan
+	60433.498	18.105	nan	T	nan	nan	nan
+	60433.499	18.317	nan	T	nan	nan	nan
+	60434.488	19.165	nan	T	nan	nan	nan
+	60434.489	19.188	nan	T	nan	nan	nan
+	60434.489	19.159	nan	T	nan	nan	nan
+	60437.490	19.028	nan	T	nan	nan	nan
+	60437.490	18.991	nan	T	nan	nan	nan
+	60437.491	18.973	nan	T	nan	nan	nan
+	60438.492	18.800	nan	T	nan	nan	nan
+	60438.493	18.683	nan	T	nan	nan	nan
+	60438.493	18.619	nan	T	nan	nan	nan
+	60439.483	18.770	nan	T	nan	nan	nan
+	60439.486	18.879	nan	T	nan	nan	nan
+	60440.479	19.283	nan	T	nan	nan	nan
+	60440.483	19.168	nan	T	nan	nan	nan
+	60440.487	19.075	nan	T	nan	nan	nan
+	60441.477	19.150	nan	T	nan	nan	nan
+	60441.482	19.131	nan	T	nan	nan	nan
+	60441.486	19.037	nan	T	nan	nan	nan
+	60442.476	19.559	nan	T	nan	nan	nan
+	60442.480	19.457	nan	T	nan	nan	nan
+	60442.483	19.363	nan	T	nan	nan	nan
+	60443.478	19.236	nan	T	nan	nan	nan
+	60443.482	19.089	nan	T	nan	nan	nan
+	60443.486	18.888	nan	T	nan	nan	nan
+	60444.475	19.673	nan	T	nan	nan	nan
+	60444.478	19.704	nan	T	nan	nan	nan
+	60444.483	19.521	nan	T	nan	nan	nan
+	60445.485	19.097	nan	T	nan	nan	nan
+	60445.489	18.923	nan	T	nan	nan	nan
+	60446.475	19.435	nan	T	nan	nan	nan
+	60446.478	19.478	nan	T	nan	nan	nan
+	60446.482	19.309	nan	T	nan	nan	nan
+	60447.472	19.590	nan	T	nan	nan	nan
+	60447.475	19.613	nan	T	nan	nan	nan
+	60447.479	19.393	nan	T	nan	nan	nan
+	60448.476	15.743	nan	T	nan	nan	nan
+	60448.479	17.946	nan	T	nan	nan	nan
 	60449.471	18.655	0.141	F	nan	nan	nan

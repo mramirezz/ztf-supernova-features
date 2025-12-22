@@ -2,18 +2,31 @@
 # SNNAME:	ZTF25abgekqc
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60880.495	18.678	nan	T	nan	nan	nan
+	60880.500	18.115	nan	T	nan	nan	nan
+	60881.496	18.726	nan	T	nan	nan	nan
+	60881.501	18.058	nan	T	nan	nan	nan
+	60882.496	18.587	nan	T	nan	nan	nan
+	60882.501	17.822	nan	T	nan	nan	nan
+	60883.497	19.003	nan	T	nan	nan	nan
+	60883.501	18.392	nan	T	nan	nan	nan
 	60884.496	19.329	0.245	F	nan	nan	nan
+	60884.500	18.755	nan	T	nan	nan	nan
+	60884.505	18.168	nan	T	nan	nan	nan
 	60885.496	19.242	0.255	F	nan	nan	nan
+	60885.501	18.787	nan	T	nan	nan	nan
+	60885.506	18.122	nan	T	nan	nan	nan
 	60886.496	19.372	0.245	F	nan	nan	nan
+	60886.501	18.572	nan	T	nan	nan	nan
+	60886.506	18.074	nan	T	nan	nan	nan
 	60887.488	19.410	0.187	F	nan	nan	nan
 	60887.492	19.352	0.200	F	nan	nan	nan
 	60887.496	19.121	0.148	F	nan	nan	nan
 	60887.497	19.495	0.280	F	nan	nan	nan
+	60887.502	18.884	nan	T	nan	nan	nan
+	60887.507	18.137	nan	T	nan	nan	nan
 	60888.489	19.414	0.164	F	nan	nan	nan
 	60888.493	19.373	0.202	F	nan	nan	nan
 	60888.493	19.373	0.202	F	nan	nan	nan

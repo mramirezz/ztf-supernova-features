@@ -4,13 +4,31 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60920.340	20.282	nan	T	nan	nan	nan
+	60922.438	20.611	nan	T	nan	nan	nan
+	60924.360	19.498	nan	T	nan	nan	nan
+	60929.317	19.233	nan	T	nan	nan	nan
+	60933.276	20.589	nan	T	nan	nan	nan
+	60935.339	20.510	nan	T	nan	nan	nan
+	60939.331	20.719	nan	T	nan	nan	nan
+	60942.359	20.413	nan	T	nan	nan	nan
 	60944.329	20.838	0.296	F	nan	nan	nan
 	60949.383	20.734	0.326	F	nan	nan	nan
+	60951.372	19.989	nan	T	nan	nan	nan
+	60953.305	19.237	nan	T	nan	nan	nan
+	60956.357	19.119	nan	T	nan	nan	nan
+	60959.229	19.659	nan	T	nan	nan	nan
 	60961.236	20.203	0.192	F	nan	nan	nan
+	60965.360	20.190	nan	T	nan	nan	nan
 	60967.322	19.970	0.159	F	nan	nan	nan
+	60969.318	20.509	nan	T	nan	nan	nan
 	60972.296	19.958	0.131	F	nan	nan	nan
 	60974.300	19.990	0.157	F	nan	nan	nan
+	60976.232	20.512	nan	T	nan	nan	nan
 	60978.341	19.791	0.186	F	nan	nan	nan
+	60980.189	19.847	nan	T	nan	nan	nan
+	60984.189	19.108	nan	T	nan	nan	nan
+	60984.250	19.149	nan	T	nan	nan	nan
 	60986.190	19.731	0.245	F	nan	nan	nan
 	60988.188	19.867	0.184	F	nan	nan	nan
 	60990.184	19.632	0.120	F	nan	nan	nan
@@ -20,8 +38,18 @@
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60920.421	20.545	nan	T	nan	nan	nan
+	60922.327	19.796	nan	T	nan	nan	nan
+	60924.379	19.676	nan	T	nan	nan	nan
+	60929.369	19.660	nan	T	nan	nan	nan
+	60933.361	20.363	nan	T	nan	nan	nan
+	60935.273	18.918	nan	T	nan	nan	nan
 	60939.300	20.750	0.294	F	nan	nan	nan
+	60942.294	20.341	nan	T	nan	nan	nan
 	60949.310	20.369	0.190	F	nan	nan	nan
+	60951.319	20.078	nan	T	nan	nan	nan
+	60953.223	19.280	nan	T	nan	nan	nan
+	60956.233	19.249	nan	T	nan	nan	nan
 	60961.177	19.924	0.187	F	nan	nan	nan
 	60965.302	19.871	0.117	F	nan	nan	nan
 	60967.273	19.660	0.169	F	nan	nan	nan
@@ -32,6 +60,7 @@
 	60978.208	19.484	0.128	F	nan	nan	nan
 	60980.314	19.443	0.151	F	nan	nan	nan
 	60986.188	19.454	0.162	F	nan	nan	nan
+	60988.268	19.754	nan	T	nan	nan	nan
 	60990.236	19.320	0.096	F	nan	nan	nan
 	61004.141	19.182	0.091	F	nan	nan	nan
 	61006.171	19.488	0.206	F	nan	nan	nan

@@ -2,15 +2,28 @@
 # SNNAME:	ZTF21acphamy
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59529.544	18.873	nan	T	nan	nan	nan
+	59529.546	18.686	nan	T	nan	nan	nan
+	59529.549	18.732	nan	T	nan	nan	nan
+	59529.551	18.362	nan	T	nan	nan	nan
+	59529.553	18.258	nan	T	nan	nan	nan
+	59530.545	18.711	nan	T	nan	nan	nan
+	59530.547	18.608	nan	T	nan	nan	nan
+	59530.549	18.541	nan	T	nan	nan	nan
 	59531.546	19.761	0.198	F	nan	nan	nan
 	59531.548	19.843	0.213	F	nan	nan	nan
 	59531.551	19.796	0.319	F	nan	nan	nan
+	59531.553	19.241	nan	T	nan	nan	nan
+	59531.555	19.065	nan	T	nan	nan	nan
+	59532.547	19.159	nan	T	nan	nan	nan
+	59532.549	18.983	nan	T	nan	nan	nan
+	59532.552	18.810	nan	T	nan	nan	nan
+	59532.554	18.522	nan	T	nan	nan	nan
+	59532.557	18.203	nan	T	nan	nan	nan
 	59536.547	19.088	0.153	F	nan	nan	nan
+	59536.550	19.187	nan	T	nan	nan	nan
 	59536.552	19.140	0.179	F	nan	nan	nan
 	59536.554	19.094	0.197	F	nan	nan	nan
 	59536.557	19.321	0.237	F	nan	nan	nan

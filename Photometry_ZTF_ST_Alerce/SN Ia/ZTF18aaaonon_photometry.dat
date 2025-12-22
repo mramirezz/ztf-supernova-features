@@ -4,19 +4,111 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59671.404	20.250	nan	T	nan	nan	nan
+	59674.394	19.710	nan	T	nan	nan	nan
+	59678.312	20.060	nan	T	nan	nan	nan
+	59684.279	19.039	nan	T	nan	nan	nan
+	59687.262	19.475	nan	T	nan	nan	nan
+	59689.299	19.275	nan	T	nan	nan	nan
+	59693.214	20.295	nan	T	nan	nan	nan
+	59695.257	18.758	nan	T	nan	nan	nan
 	59699.196	19.390	0.180	F	nan	nan	nan
 	59701.186	19.008	0.109	F	nan	nan	nan
 	59703.271	18.566	0.101	F	nan	nan	nan
 	59711.172	18.815	0.155	F	nan	nan	nan
 	59713.196	18.710	0.166	F	nan	nan	nan
 	59715.215	18.973	0.124	F	nan	nan	nan
+	60031.212	20.207	nan	T	nan	nan	nan
+	60046.191	20.765	nan	T	nan	nan	nan
+	60050.170	20.646	nan	T	nan	nan	nan
+	60052.215	20.570	nan	T	nan	nan	nan
+	60054.171	20.212	nan	T	nan	nan	nan
+	60056.225	20.537	nan	T	nan	nan	nan
+	60058.173	20.399	nan	T	nan	nan	nan
+	60707.277	20.952	nan	T	nan	nan	nan
+	60707.324	21.091	nan	T	nan	nan	nan
+	60707.368	20.918	nan	T	nan	nan	nan
+	60707.415	20.750	nan	T	nan	nan	nan
+	60707.462	20.985	nan	T	nan	nan	nan
+	60708.275	21.349	nan	T	nan	nan	nan
+	60708.322	21.404	nan	T	nan	nan	nan
+	60708.369	21.301	nan	T	nan	nan	nan
+	60708.416	21.393	nan	T	nan	nan	nan
+	60708.462	21.456	nan	T	nan	nan	nan
+	60717.392	18.539	nan	T	nan	nan	nan
+	60723.444	19.494	nan	T	nan	nan	nan
+	60726.342	20.531	nan	T	nan	nan	nan
+	60728.393	19.872	nan	T	nan	nan	nan
+	60730.298	20.065	nan	T	nan	nan	nan
+	60732.356	20.568	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59497.528	19.344	nan	T	nan	nan	nan
+	59497.530	19.246	nan	T	nan	nan	nan
+	59497.532	18.895	nan	T	nan	nan	nan
+	59497.535	18.946	nan	T	nan	nan	nan
+	59497.537	18.602	nan	T	nan	nan	nan
+	59498.529	19.259	nan	T	nan	nan	nan
+	59498.531	19.265	nan	T	nan	nan	nan
+	59498.533	19.083	nan	T	nan	nan	nan
+	59498.536	18.920	nan	T	nan	nan	nan
+	59498.538	18.654	nan	T	nan	nan	nan
+	59503.518	19.625	nan	T	nan	nan	nan
+	59503.520	19.635	nan	T	nan	nan	nan
+	59503.522	19.549	nan	T	nan	nan	nan
+	59503.525	19.736	nan	T	nan	nan	nan
+	59503.527	19.592	nan	T	nan	nan	nan
+	59504.518	20.060	nan	T	nan	nan	nan
+	59504.520	20.049	nan	T	nan	nan	nan
 	59504.522	19.256	0.199	F	nan	nan	nan
+	59671.321	20.519	nan	T	nan	nan	nan
+	59674.304	20.302	nan	T	nan	nan	nan
+	59676.342	19.579	nan	T	nan	nan	nan
+	59678.236	20.273	nan	T	nan	nan	nan
+	59680.215	18.791	nan	T	nan	nan	nan
+	59684.319	18.996	nan	T	nan	nan	nan
+	59687.354	18.919	nan	T	nan	nan	nan
+	59689.171	19.693	nan	T	nan	nan	nan
+	59693.192	20.055	nan	T	nan	nan	nan
+	59695.214	19.094	nan	T	nan	nan	nan
+	59697.187	20.402	nan	T	nan	nan	nan
 	59701.205	18.992	0.100	F	nan	nan	nan
 	59703.280	18.858	0.129	F	nan	nan	nan
 	59711.256	18.833	0.211	F	nan	nan	nan
+	59713.214	19.463	nan	T	nan	nan	nan
 	59718.208	19.171	0.103	F	nan	nan	nan
+	60031.260	20.153	nan	T	nan	nan	nan
+	60042.298	18.817	nan	T	nan	nan	nan
+	60044.203	20.398	nan	T	nan	nan	nan
+	60052.194	20.523	nan	T	nan	nan	nan
+	60056.268	20.372	nan	T	nan	nan	nan
 	60058.201	19.796	0.195	F	nan	nan	nan
+	60707.300	20.804	nan	T	nan	nan	nan
+	60707.347	20.915	nan	T	nan	nan	nan
+	60707.392	20.366	nan	T	nan	nan	nan
+	60707.438	20.477	nan	T	nan	nan	nan
+	60708.252	21.196	nan	T	nan	nan	nan
+	60708.299	21.293	nan	T	nan	nan	nan
+	60708.346	21.265	nan	T	nan	nan	nan
+	60708.392	21.323	nan	T	nan	nan	nan
+	60708.439	21.187	nan	T	nan	nan	nan
+	60709.251	21.087	nan	T	nan	nan	nan
+	60709.273	20.529	nan	T	nan	nan	nan
+	60709.295	21.140	nan	T	nan	nan	nan
+	60709.317	21.219	nan	T	nan	nan	nan
+	60709.340	21.313	nan	T	nan	nan	nan
+	60709.362	20.651	nan	T	nan	nan	nan
+	60709.384	20.958	nan	T	nan	nan	nan
+	60709.406	19.357	nan	T	nan	nan	nan
+	60709.428	19.681	nan	T	nan	nan	nan
+	60709.450	20.222	nan	T	nan	nan	nan
+	60710.375	20.688	nan	T	nan	nan	nan
+	60717.337	17.087	nan	T	nan	nan	nan
+	60723.357	18.224	nan	T	nan	nan	nan
+	60724.394	19.180	nan	T	nan	nan	nan
+	60726.333	20.459	nan	T	nan	nan	nan
+	60728.476	19.919	nan	T	nan	nan	nan
+	60730.371	20.480	nan	T	nan	nan	nan
+	60732.296	20.523	nan	T	nan	nan	nan
 	60734.333	19.932	0.165	F	nan	nan	nan

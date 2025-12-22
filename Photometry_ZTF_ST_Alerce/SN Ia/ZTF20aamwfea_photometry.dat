@@ -2,11 +2,12 @@
 # SNNAME:	ZTF20aamwfea
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58864.316	20.032	nan	T	nan	nan	nan
+	58872.293	19.980	nan	T	nan	nan	nan
+	58875.292	20.174	nan	T	nan	nan	nan
+	58878.292	19.569	nan	T	nan	nan	nan
 	58892.251	17.006	0.044	F	nan	nan	nan
 	58895.272	17.109	0.041	F	nan	nan	nan
 	58900.251	17.425	0.043	F	nan	nan	nan

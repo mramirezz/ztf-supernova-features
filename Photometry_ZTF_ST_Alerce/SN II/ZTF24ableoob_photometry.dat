@@ -2,12 +2,17 @@
 # SNNAME:	ZTF24ableoob
 ###################### HEADER ######################
 
-# FILTER g
-#        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
-
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60575.530	17.570	nan	T	nan	nan	nan
+	60580.523	19.134	nan	T	nan	nan	nan
+	60580.527	18.837	nan	T	nan	nan	nan
 	60580.529	18.506	0.193	F	nan	nan	nan
+	60580.529	18.411	nan	T	nan	nan	nan
+	60580.530	18.350	nan	T	nan	nan	nan
+	60586.517	19.800	nan	T	nan	nan	nan
 	60586.518	18.050	0.073	F	nan	nan	nan
+	60586.520	19.848	nan	T	nan	nan	nan
 	60586.520	18.087	0.088	F	nan	nan	nan
+	60586.524	19.685	nan	T	nan	nan	nan
 	60586.524	18.117	0.078	F	nan	nan	nan

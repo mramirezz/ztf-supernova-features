@@ -4,22 +4,116 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60421.311	19.301	nan	T	nan	nan	nan
+	60422.316	19.386	nan	T	nan	nan	nan
+	60423.290	19.413	nan	T	nan	nan	nan
+	60424.318	19.067	nan	T	nan	nan	nan
+	60429.317	20.625	nan	T	nan	nan	nan
+	60430.321	20.750	nan	T	nan	nan	nan
+	60431.319	20.921	nan	T	nan	nan	nan
+	60432.299	20.422	nan	T	nan	nan	nan
+	60433.343	20.818	nan	T	nan	nan	nan
+	60434.296	20.873	nan	T	nan	nan	nan
+	60437.311	20.357	nan	T	nan	nan	nan
+	60437.311	20.501	nan	T	nan	nan	nan
+	60438.311	20.494	nan	T	nan	nan	nan
+	60438.318	20.581	nan	T	nan	nan	nan
+	60439.327	20.390	nan	T	nan	nan	nan
+	60440.310	20.559	nan	T	nan	nan	nan
+	60441.310	20.360	nan	T	nan	nan	nan
+	60443.304	20.509	nan	T	nan	nan	nan
+	60444.321	20.712	nan	T	nan	nan	nan
+	60445.299	20.224	nan	T	nan	nan	nan
+	60446.215	19.913	nan	T	nan	nan	nan
+	60447.275	19.988	nan	T	nan	nan	nan
+	60448.214	19.547	nan	T	nan	nan	nan
+	60449.275	19.623	nan	T	nan	nan	nan
+	60450.298	19.124	nan	T	nan	nan	nan
 	60451.234	18.285	0.103	F	nan	nan	nan
+	60451.234	19.370	nan	T	nan	nan	nan
+	60452.280	19.290	nan	T	nan	nan	nan
 	60457.255	17.419	0.055	F	nan	nan	nan
+	60458.233	20.738	nan	T	nan	nan	nan
 	60459.236	17.314	0.052	F	nan	nan	nan
+	60460.225	20.695	nan	T	nan	nan	nan
 	60461.248	17.254	0.052	F	nan	nan	nan
+	60462.247	20.948	nan	T	nan	nan	nan
 	60463.281	17.247	0.059	F	nan	nan	nan
+	60464.269	20.009	nan	T	nan	nan	nan
 	60470.228	17.550	0.048	F	nan	nan	nan
 	60472.194	17.693	0.061	F	nan	nan	nan
+	60472.194	20.627	nan	T	nan	nan	nan
+	60474.197	20.064	nan	T	nan	nan	nan
 	60474.213	17.781	0.058	F	nan	nan	nan
+	60476.243	19.962	nan	T	nan	nan	nan
 	60476.271	18.027	0.082	F	nan	nan	nan
 	60479.214	18.363	0.090	F	nan	nan	nan
+	60479.214	19.645	nan	T	nan	nan	nan
 	60481.192	18.502	0.093	F	nan	nan	nan
+	60481.192	19.713	nan	T	nan	nan	nan
+	60481.192	19.737	nan	T	nan	nan	nan
 	60483.206	18.756	0.104	F	nan	nan	nan
+	60483.243	19.494	nan	T	nan	nan	nan
+	60485.219	20.093	nan	T	nan	nan	nan
+	60485.238	20.145	nan	T	nan	nan	nan
+	60487.225	20.441	nan	T	nan	nan	nan
 	60487.226	19.067	0.128	F	nan	nan	nan
+	60489.193	20.342	nan	T	nan	nan	nan
 	60489.217	19.114	0.106	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60421.251	19.355	nan	T	nan	nan	nan
+	60422.290	19.553	nan	T	nan	nan	nan
+	60423.408	19.310	nan	T	nan	nan	nan
+	60424.314	19.349	nan	T	nan	nan	nan
+	60429.350	20.307	nan	T	nan	nan	nan
+	60431.267	20.487	nan	T	nan	nan	nan
+	60432.329	20.387	nan	T	nan	nan	nan
+	60433.275	20.649	nan	T	nan	nan	nan
+	60434.257	20.646	nan	T	nan	nan	nan
+	60437.246	20.500	nan	T	nan	nan	nan
+	60437.247	20.575	nan	T	nan	nan	nan
+	60438.248	20.322	nan	T	nan	nan	nan
+	60438.249	20.335	nan	T	nan	nan	nan
+	60439.274	20.388	nan	T	nan	nan	nan
+	60440.257	20.421	nan	T	nan	nan	nan
+	60441.254	20.286	nan	T	nan	nan	nan
+	60442.236	20.376	nan	T	nan	nan	nan
+	60443.234	20.326	nan	T	nan	nan	nan
+	60444.270	20.428	nan	T	nan	nan	nan
+	60445.234	20.247	nan	T	nan	nan	nan
+	60446.276	19.922	nan	T	nan	nan	nan
+	60447.297	19.934	nan	T	nan	nan	nan
+	60448.267	19.829	nan	T	nan	nan	nan
+	60449.313	19.612	nan	T	nan	nan	nan
+	60450.253	19.275	nan	T	nan	nan	nan
 	60451.318	18.452	0.116	F	nan	nan	nan
+	60451.318	19.218	nan	T	nan	nan	nan
+	60452.343	18.930	nan	T	nan	nan	nan
 	60455.276	17.729	0.075	F	nan	nan	nan
+	60456.300	19.945	nan	T	nan	nan	nan
+	60457.317	19.929	nan	T	nan	nan	nan
+	60458.180	20.499	nan	T	nan	nan	nan
+	60459.359	20.110	nan	T	nan	nan	nan
+	60460.257	20.337	nan	T	nan	nan	nan
+	60461.283	20.465	nan	T	nan	nan	nan
+	60462.205	20.663	nan	T	nan	nan	nan
+	60463.240	20.527	nan	T	nan	nan	nan
+	60464.213	19.139	nan	T	nan	nan	nan
+	60472.318	20.224	nan	T	nan	nan	nan
+	60472.319	20.271	nan	T	nan	nan	nan
+	60474.170	20.075	nan	T	nan	nan	nan
+	60474.171	20.089	nan	T	nan	nan	nan
+	60476.280	19.921	nan	T	nan	nan	nan
+	60476.281	19.948	nan	T	nan	nan	nan
+	60479.290	19.610	nan	T	nan	nan	nan
+	60479.302	19.527	nan	T	nan	nan	nan
+	60481.275	19.593	nan	T	nan	nan	nan
+	60481.276	19.554	nan	T	nan	nan	nan
+	60483.269	19.491	nan	T	nan	nan	nan
+	60483.270	19.486	nan	T	nan	nan	nan
+	60485.187	20.347	nan	T	nan	nan	nan
+	60485.317	19.274	nan	T	nan	nan	nan
+	60487.297	19.678	nan	T	nan	nan	nan
+	60487.297	19.641	nan	T	nan	nan	nan

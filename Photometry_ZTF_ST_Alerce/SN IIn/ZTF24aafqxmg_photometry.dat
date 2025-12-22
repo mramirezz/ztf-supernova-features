@@ -4,7 +4,12 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60327.514	20.566	nan	T	nan	nan	nan
+	60351.409	20.127	nan	T	nan	nan	nan
+	60353.410	20.519	nan	T	nan	nan	nan
 	60355.510	20.105	0.184	F	nan	nan	nan
+	60363.389	17.730	nan	T	nan	nan	nan
+	60365.351	16.493	nan	T	nan	nan	nan
 	60369.496	18.722	0.085	F	nan	nan	nan
 	60391.409	18.574	0.110	F	nan	nan	nan
 	60396.413	18.540	0.105	F	nan	nan	nan
@@ -26,6 +31,7 @@
 	60447.409	19.246	0.113	F	nan	nan	nan
 	60449.286	19.210	0.135	F	nan	nan	nan
 	60451.408	19.239	0.129	F	nan	nan	nan
+	60451.408	19.653	nan	T	nan	nan	nan
 	60455.267	19.275	0.165	F	nan	nan	nan
 	60457.279	19.100	0.100	F	nan	nan	nan
 	60459.284	19.271	0.092	F	nan	nan	nan
@@ -36,7 +42,10 @@
 	60476.367	19.353	0.097	F	nan	nan	nan
 	60479.388	19.263	0.134	F	nan	nan	nan
 	60481.242	19.337	0.206	F	nan	nan	nan
+	60481.242	19.899	nan	T	nan	nan	nan
+	60483.392	19.269	nan	T	nan	nan	nan
 	60485.261	19.250	0.204	F	nan	nan	nan
+	60485.261	19.445	nan	T	nan	nan	nan
 	60488.245	19.326	0.119	F	nan	nan	nan
 	60490.216	19.369	0.115	F	nan	nan	nan
 	60494.222	19.353	0.126	F	nan	nan	nan
@@ -50,6 +59,7 @@
 	60512.201	19.734	0.232	F	nan	nan	nan
 	60514.196	19.495	0.187	F	nan	nan	nan
 	60514.196	19.495	0.187	F	nan	nan	nan
+	60516.282	19.707	nan	T	nan	nan	nan
 	60518.248	19.564	0.125	F	nan	nan	nan
 	60520.311	19.448	0.127	F	nan	nan	nan
 	60520.311	19.448	0.127	F	nan	nan	nan
@@ -64,17 +74,24 @@
 	60545.197	19.607	0.180	F	nan	nan	nan
 	60545.197	19.607	0.180	F	nan	nan	nan
 	60547.182	19.826	0.156	F	nan	nan	nan
+	60549.160	20.532	nan	T	nan	nan	nan
 	60554.242	19.733	0.180	F	nan	nan	nan
 	60556.200	19.847	0.178	F	nan	nan	nan
 	60558.159	19.835	0.190	F	nan	nan	nan
+	60561.166	20.433	nan	T	nan	nan	nan
 	60565.238	19.900	0.251	F	nan	nan	nan
 	60567.221	19.948	0.306	F	nan	nan	nan
+	60569.159	19.414	nan	T	nan	nan	nan
 	60572.158	19.920	0.300	F	nan	nan	nan
+	60575.140	20.285	nan	T	nan	nan	nan
 	60576.127	19.973	0.196	F	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60327.536	20.447	nan	T	nan	nan	nan
+	60351.490	20.321	nan	T	nan	nan	nan
 	60355.467	20.282	0.261	F	nan	nan	nan
+	60363.486	17.815	nan	T	nan	nan	nan
 	60369.432	18.842	0.111	F	nan	nan	nan
 	60383.412	18.455	0.076	F	nan	nan	nan
 	60389.507	18.469	0.059	F	nan	nan	nan
@@ -99,11 +116,14 @@
 	60447.344	19.051	0.103	F	nan	nan	nan
 	60449.366	18.817	0.087	F	nan	nan	nan
 	60451.340	18.837	0.096	F	nan	nan	nan
+	60451.340	19.832	nan	T	nan	nan	nan
 	60455.308	18.835	0.096	F	nan	nan	nan
 	60457.303	18.848	0.079	F	nan	nan	nan
 	60459.351	18.905	0.074	F	nan	nan	nan
+	60461.303	20.639	nan	T	nan	nan	nan
 	60463.261	18.871	0.063	F	nan	nan	nan
 	60469.327	18.935	0.078	F	nan	nan	nan
+	60471.302	20.856	nan	T	nan	nan	nan
 	60473.367	18.973	0.091	F	nan	nan	nan
 	60476.288	18.911	0.081	F	nan	nan	nan
 	60479.310	19.014	0.096	F	nan	nan	nan
@@ -111,6 +131,7 @@
 	60481.284	19.049	0.108	F	nan	nan	nan
 	60483.282	19.019	0.101	F	nan	nan	nan
 	60485.345	18.966	0.120	F	nan	nan	nan
+	60488.311	20.586	nan	T	nan	nan	nan
 	60490.262	19.066	0.069	F	nan	nan	nan
 	60494.262	19.052	0.091	F	nan	nan	nan
 	60500.303	19.069	0.117	F	nan	nan	nan
@@ -134,7 +155,9 @@
 	60556.178	19.510	0.125	F	nan	nan	nan
 	60558.178	19.644	0.142	F	nan	nan	nan
 	60561.199	19.558	0.116	F	nan	nan	nan
+	60565.179	19.581	nan	T	nan	nan	nan
 	60567.178	19.606	0.157	F	nan	nan	nan
+	60569.202	19.311	nan	T	nan	nan	nan
 	60572.197	19.520	0.205	F	nan	nan	nan
 	60575.202	19.734	0.233	F	nan	nan	nan
 	60576.180	19.682	0.153	F	nan	nan	nan

@@ -4,6 +4,25 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60086.285	20.892	nan	T	nan	nan	nan
+	60086.434	20.895	nan	T	nan	nan	nan
+	60088.328	20.910	nan	T	nan	nan	nan
+	60089.405	20.797	nan	T	nan	nan	nan
+	60093.449	20.863	nan	T	nan	nan	nan
+	60093.457	20.942	nan	T	nan	nan	nan
+	60098.279	19.562	nan	T	nan	nan	nan
+	60098.283	19.534	nan	T	nan	nan	nan
+	60100.203	19.784	nan	T	nan	nan	nan
+	60100.227	19.719	nan	T	nan	nan	nan
+	60102.265	18.358	nan	T	nan	nan	nan
+	60102.282	19.564	nan	T	nan	nan	nan
+	60104.277	20.913	nan	T	nan	nan	nan
+	60109.305	20.797	nan	T	nan	nan	nan
+	60109.308	20.835	nan	T	nan	nan	nan
+	60111.396	18.911	nan	T	nan	nan	nan
+	60111.401	19.896	nan	T	nan	nan	nan
+	60114.261	20.533	nan	T	nan	nan	nan
+	60114.289	20.749	nan	T	nan	nan	nan
 	60116.327	18.207	0.054	F	nan	nan	nan
 	60116.341	18.233	0.061	F	nan	nan	nan
 	60118.241	17.771	0.062	F	nan	nan	nan
@@ -15,6 +34,7 @@
 	60124.389	17.827	0.046	F	nan	nan	nan
 	60124.393	17.815	0.050	F	nan	nan	nan
 	60126.411	17.846	0.073	F	nan	nan	nan
+	60126.412	19.917	nan	T	nan	nan	nan
 	60128.292	17.876	0.054	F	nan	nan	nan
 	60128.448	17.869	0.072	F	nan	nan	nan
 	60134.367	17.989	0.063	F	nan	nan	nan
@@ -39,18 +59,50 @@
 	60153.298	19.442	0.180	F	nan	nan	nan
 	60155.246	19.605	0.178	F	nan	nan	nan
 	60155.263	19.581	0.199	F	nan	nan	nan
+	60158.374	18.935	nan	T	nan	nan	nan
+	60159.351	19.103	nan	T	nan	nan	nan
 	60160.329	19.961	0.310	F	nan	nan	nan
 	60161.286	20.050	0.230	F	nan	nan	nan
 	60162.222	20.157	0.156	F	nan	nan	nan
 	60163.241	20.031	0.142	F	nan	nan	nan
+	60169.349	17.804	nan	T	nan	nan	nan
 	60171.326	20.215	0.221	F	nan	nan	nan
+	60171.328	20.384	nan	T	nan	nan	nan
 	60173.203	20.562	0.238	F	nan	nan	nan
 	60173.220	20.304	0.194	F	nan	nan	nan
 	60173.220	20.304	0.194	F	nan	nan	nan
 	60175.194	20.565	0.252	F	nan	nan	nan
+	60179.204	20.535	nan	T	nan	nan	nan
+	60181.195	20.134	nan	T	nan	nan	nan
+	60182.224	20.212	nan	T	nan	nan	nan
+	60183.219	20.027	nan	T	nan	nan	nan
+	60184.216	20.001	nan	T	nan	nan	nan
+	60185.163	19.799	nan	T	nan	nan	nan
+	60186.182	19.781	nan	T	nan	nan	nan
+	60188.177	17.670	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60086.361	20.636	nan	T	nan	nan	nan
+	60086.386	20.532	nan	T	nan	nan	nan
+	60088.383	20.717	nan	T	nan	nan	nan
+	60089.360	20.401	nan	T	nan	nan	nan
+	60090.351	20.088	nan	T	nan	nan	nan
+	60091.388	20.598	nan	T	nan	nan	nan
+	60093.385	20.768	nan	T	nan	nan	nan
+	60093.409	20.599	nan	T	nan	nan	nan
+	60098.361	19.512	nan	T	nan	nan	nan
+	60098.364	19.664	nan	T	nan	nan	nan
+	60100.289	19.693	nan	T	nan	nan	nan
+	60100.292	19.849	nan	T	nan	nan	nan
+	60102.224	19.550	nan	T	nan	nan	nan
+	60104.341	20.483	nan	T	nan	nan	nan
+	60104.344	20.649	nan	T	nan	nan	nan
+	60109.343	20.801	nan	T	nan	nan	nan
+	60109.358	20.496	nan	T	nan	nan	nan
+	60111.455	20.469	nan	T	nan	nan	nan
+	60114.360	20.450	nan	T	nan	nan	nan
+	60114.368	20.520	nan	T	nan	nan	nan
 	60116.279	18.532	0.066	F	nan	nan	nan
 	60116.303	18.679	0.062	F	nan	nan	nan
 	60118.319	17.959	0.042	F	nan	nan	nan
@@ -61,6 +113,7 @@
 	60124.426	17.835	0.070	F	nan	nan	nan
 	60124.429	17.795	0.048	F	nan	nan	nan
 	60126.343	17.749	0.050	F	nan	nan	nan
+	60126.351	19.872	nan	T	nan	nan	nan
 	60128.330	17.730	0.060	F	nan	nan	nan
 	60128.343	17.777	0.055	F	nan	nan	nan
 	60134.219	17.768	0.068	F	nan	nan	nan
@@ -89,6 +142,7 @@
 	60160.187	19.014	0.123	F	nan	nan	nan
 	60161.347	19.106	0.095	F	nan	nan	nan
 	60162.246	19.054	0.100	F	nan	nan	nan
+	60163.283	20.268	nan	T	nan	nan	nan
 	60164.276	19.299	0.135	F	nan	nan	nan
 	60165.198	19.238	0.074	F	nan	nan	nan
 	60169.302	19.615	0.196	F	nan	nan	nan
@@ -97,7 +151,11 @@
 	60171.258	19.384	0.103	F	nan	nan	nan
 	60173.176	19.474	0.165	F	nan	nan	nan
 	60173.247	19.530	0.114	F	nan	nan	nan
+	60179.164	20.308	nan	T	nan	nan	nan
 	60181.248	19.727	0.201	F	nan	nan	nan
+	60182.285	19.637	nan	T	nan	nan	nan
 	60183.181	19.927	0.164	F	nan	nan	nan
 	60184.166	19.647	0.178	F	nan	nan	nan
+	60185.206	19.888	nan	T	nan	nan	nan
+	60186.219	19.624	nan	T	nan	nan	nan
 	60191.156	19.903	0.212	F	nan	nan	nan

@@ -4,6 +4,11 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58605.232	20.884	nan	T	nan	nan	nan
+	58608.276	20.682	nan	T	nan	nan	nan
+	58612.255	20.790	nan	T	nan	nan	nan
+	58619.233	18.521	nan	T	nan	nan	nan
+	58628.194	20.680	nan	T	nan	nan	nan
 	58633.246	18.771	0.073	F	nan	nan	nan
 	58636.246	18.492	0.085	F	nan	nan	nan
 	58639.227	18.398	0.072	F	nan	nan	nan
@@ -14,9 +19,14 @@
 	58658.193	19.450	0.131	F	nan	nan	nan
 	58661.226	19.464	0.154	F	nan	nan	nan
 	58670.205	20.144	0.220	F	nan	nan	nan
+	58676.174	19.308	nan	T	nan	nan	nan
+	58679.186	19.191	nan	T	nan	nan	nan
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	58608.233	20.441	nan	T	nan	nan	nan
+	58612.212	20.633	nan	T	nan	nan	nan
+	58619.156	15.655	nan	T	nan	nan	nan
 	58633.187	17.943	0.058	F	nan	nan	nan
 	58639.177	17.582	0.053	F	nan	nan	nan
 	58642.214	17.511	0.050	F	nan	nan	nan

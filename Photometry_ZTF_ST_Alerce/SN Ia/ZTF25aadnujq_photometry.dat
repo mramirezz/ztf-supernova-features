@@ -4,16 +4,24 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60679.415	20.190	nan	T	nan	nan	nan
+	60681.400	20.367	nan	T	nan	nan	nan
+	60684.435	20.105	nan	T	nan	nan	nan
+	60687.457	19.262	nan	T	nan	nan	nan
+	60689.402	18.326	nan	T	nan	nan	nan
+	60695.340	19.826	nan	T	nan	nan	nan
 	60707.284	20.178	0.119	F	nan	nan	nan
 	60707.330	20.237	0.123	F	nan	nan	nan
 	60707.375	20.097	0.141	F	nan	nan	nan
 	60707.422	20.178	0.122	F	nan	nan	nan
+	60707.468	20.634	nan	T	nan	nan	nan
 	60708.329	19.834	0.083	F	nan	nan	nan
 	60708.376	19.764	0.098	F	nan	nan	nan
 	60708.422	19.839	0.086	F	nan	nan	nan
 	60708.469	19.817	0.070	F	nan	nan	nan
 	60723.427	18.352	0.156	F	nan	nan	nan
 	60725.255	18.426	0.113	F	nan	nan	nan
+	60727.268	19.329	nan	T	nan	nan	nan
 	60729.298	18.738	0.116	F	nan	nan	nan
 	60731.270	18.840	0.084	F	nan	nan	nan
 	60733.295	19.082	0.105	F	nan	nan	nan
@@ -21,8 +29,20 @@
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	60684.379	19.674	nan	T	nan	nan	nan
+	60687.352	18.878	nan	T	nan	nan	nan
+	60693.474	19.778	nan	T	nan	nan	nan
+	60695.318	20.095	nan	T	nan	nan	nan
+	60698.466	19.949	nan	T	nan	nan	nan
+	60705.357	20.217	nan	T	nan	nan	nan
+	60707.307	20.883	nan	T	nan	nan	nan
+	60707.398	20.843	nan	T	nan	nan	nan
+	60707.445	20.761	nan	T	nan	nan	nan
+	60708.259	21.279	nan	T	nan	nan	nan
+	60708.306	21.360	nan	T	nan	nan	nan
 	60708.352	20.071	0.084	F	nan	nan	nan
 	60708.399	20.155	0.098	F	nan	nan	nan
+	60708.446	21.331	nan	T	nan	nan	nan
 	60709.257	19.862	0.105	F	nan	nan	nan
 	60709.280	19.636	0.164	F	nan	nan	nan
 	60709.280	19.637	0.164	F	nan	nan	nan
@@ -32,7 +52,10 @@
 	60709.368	19.791	0.111	F	nan	nan	nan
 	60709.390	19.845	0.080	F	nan	nan	nan
 	60709.413	19.734	0.175	F	nan	nan	nan
+	60709.435	19.431	nan	T	nan	nan	nan
 	60709.457	19.813	0.127	F	nan	nan	nan
+	60710.269	15.527	nan	T	nan	nan	nan
+	60715.393	17.985	nan	T	nan	nan	nan
 	60723.313	18.610	0.165	F	nan	nan	nan
 	60725.339	18.595	0.088	F	nan	nan	nan
 	60727.316	18.690	0.106	F	nan	nan	nan

@@ -4,10 +4,28 @@
 
 # FILTER g
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59008.311	19.690	nan	T	nan	nan	nan
+	59009.277	19.779	nan	T	nan	nan	nan
+	59011.306	20.577	nan	T	nan	nan	nan
+	59012.327	20.875	nan	T	nan	nan	nan
+	59014.355	20.817	nan	T	nan	nan	nan
+	59016.354	20.276	nan	T	nan	nan	nan
+	59017.327	20.930	nan	T	nan	nan	nan
+	59019.278	20.700	nan	T	nan	nan	nan
+	59020.368	20.880	nan	T	nan	nan	nan
+	59022.343	20.717	nan	T	nan	nan	nan
+	59024.372	20.681	nan	T	nan	nan	nan
+	59025.321	20.553	nan	T	nan	nan	nan
+	59026.364	20.878	nan	T	nan	nan	nan
+	59027.239	20.274	nan	T	nan	nan	nan
+	59028.337	20.824	nan	T	nan	nan	nan
+	59029.283	19.925	nan	T	nan	nan	nan
 	59030.373	20.483	0.264	F	nan	nan	nan
+	59031.319	20.058	nan	T	nan	nan	nan
 	59032.382	19.989	0.218	F	nan	nan	nan
 	59033.235	19.955	0.289	F	nan	nan	nan
 	59034.216	19.849	0.277	F	nan	nan	nan
+	59035.216	19.251	nan	T	nan	nan	nan
 	59038.250	19.339	0.108	F	nan	nan	nan
 	59041.225	19.151	0.103	F	nan	nan	nan
 	59044.317	19.004	0.085	F	nan	nan	nan
@@ -17,6 +35,7 @@
 	59059.291	19.562	0.175	F	nan	nan	nan
 	59060.338	19.808	0.151	F	nan	nan	nan
 	59062.351	19.853	0.294	F	nan	nan	nan
+	59065.222	19.539	nan	T	nan	nan	nan
 	59065.267	19.865	0.288	F	nan	nan	nan
 	59068.228	20.375	0.246	F	nan	nan	nan
 	59072.245	20.484	0.214	F	nan	nan	nan
@@ -25,6 +44,26 @@
 
 # FILTER r
 #        MJD  MAG  MAGERR  Upperlimit  Instrument  Telescope  Source
+	59008.338	19.550	nan	T	nan	nan	nan
+	59012.276	20.681	nan	T	nan	nan	nan
+	59013.333	20.675	nan	T	nan	nan	nan
+	59013.448	20.410	nan	T	nan	nan	nan
+	59015.331	20.677	nan	T	nan	nan	nan
+	59016.259	19.642	nan	T	nan	nan	nan
+	59017.280	20.630	nan	T	nan	nan	nan
+	59019.362	20.805	nan	T	nan	nan	nan
+	59020.280	20.450	nan	T	nan	nan	nan
+	59022.254	20.709	nan	T	nan	nan	nan
+	59023.309	20.765	nan	T	nan	nan	nan
+	59024.258	20.591	nan	T	nan	nan	nan
+	59025.369	20.831	nan	T	nan	nan	nan
+	59026.277	16.076	nan	T	nan	nan	nan
+	59027.278	20.427	nan	T	nan	nan	nan
+	59028.255	20.395	nan	T	nan	nan	nan
+	59031.372	20.271	nan	T	nan	nan	nan
+	59032.321	20.131	nan	T	nan	nan	nan
+	59033.331	20.057	nan	T	nan	nan	nan
+	59034.339	19.792	nan	T	nan	nan	nan
 	59035.330	19.793	0.227	F	nan	nan	nan
 	59038.226	19.373	0.102	F	nan	nan	nan
 	59038.349	19.277	0.112	F	nan	nan	nan
