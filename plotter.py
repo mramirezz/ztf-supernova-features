@@ -296,15 +296,46 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         if not (np.any(np.isnan(mag_model_smooth_sample)) or np.any(np.isinf(mag_model_smooth_sample))):
             axes[0].plot(phase_smooth, mag_model_smooth_sample, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
     
-    # Plot en magnitud - datos observados
-    axes[0].errorbar(phase, mag, yerr=mag_err, fmt='o', alpha=0.7, 
-                     label='Observations', markersize=5, zorder=10, 
-                     capsize=2, capthick=1, elinewidth=1.5, color='#2E86AB')
+    # Separar observaciones normales de upper limits usados en el fit (para magnitud)
+    if is_upper_limit is not None and np.any(is_upper_limit):
+        mask_normal = ~is_upper_limit
+        mask_ul_fit = is_upper_limit
+        
+        phase_normal_mag = phase[mask_normal]
+        mag_normal = mag[mask_normal]
+        mag_err_normal = mag_err[mask_normal] if mag_err is not None and len(mag_err) == len(mag) else None
+        
+        phase_ul_fit_mag = phase[mask_ul_fit]
+        mag_ul_fit = mag[mask_ul_fit]
+    else:
+        phase_normal_mag = phase
+        mag_normal = mag
+        mag_err_normal = mag_err if (mag_err is not None and len(mag_err) == len(mag)) else None
+        phase_ul_fit_mag = np.array([])
+        mag_ul_fit = np.array([])
     
-    # Plot upper limits en magnitud si están disponibles
+    # Plot en magnitud - observaciones normales
+    if len(phase_normal_mag) > 0:
+        if mag_err_normal is not None and not np.all(np.isnan(mag_err_normal)):
+            axes[0].errorbar(phase_normal_mag, mag_normal, yerr=mag_err_normal, fmt='o', alpha=0.7,
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB',
+                             capsize=2, capthick=1, elinewidth=1.5)
+        else:
+            axes[0].errorbar(phase_normal_mag, mag_normal, yerr=None, fmt='o', alpha=0.7,
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB')
+    
+    # Plot upper limits usados en el fit (símbolo diferente: triángulo verde)
+    if len(phase_ul_fit_mag) > 0:
+        axes[0].scatter(phase_ul_fit_mag, mag_ul_fit, marker='^', color='green', alpha=0.8, 
+                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
+        for px, py in zip(phase_ul_fit_mag, mag_ul_fit):
+            axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
+                            arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
+    
+    # Plot upper limits NO usados en el fit (solo para visualización)
     if phase_ul is not None and mag_ul is not None and len(phase_ul) > 0:
         axes[0].scatter(phase_ul, mag_ul, marker='v', color='orange', alpha=0.7, 
-                       s=60, label='Upper limits', zorder=9)
+                       s=60, label='Upper limits (not in fit)', zorder=8)
         for px, py in zip(phase_ul, mag_ul):
             axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
                             arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))

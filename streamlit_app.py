@@ -542,7 +542,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
 st.sidebar.header("Configuración")
 
 # Seleccionar tipo de supernova
-sn_types = sorted([d.name for d in BASE_DATA_PATH.iterdir() if d.is_dir()])
+sn_types = sorted([d.name for d in BASE_DATA_PATH.iterdir() if d.is_dir()], key=str.lower)
 selected_type = st.sidebar.selectbox("Tipo de Supernova", sn_types)
 
 # Listar archivos disponibles
@@ -554,7 +554,7 @@ if not dat_files:
     st.stop()
 
 # Seleccionar archivo (ordenado alfabéticamente)
-file_options = sorted([f.name for f in dat_files])
+file_options = sorted([f.name for f in dat_files], key=str.lower)
 selected_file = st.sidebar.selectbox("Archivo", file_options)
 filepath = type_path / selected_file
 
