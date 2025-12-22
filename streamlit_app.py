@@ -401,6 +401,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Root Mean Square (RMS)** mide la desviación promedio entre los datos observados y el modelo ajustado.
                 
+                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud.
+                
                 **Ecuación:**
                 $$
                 \\text{RMS} = \\sqrt{\\frac{\\sum_{i=1}^{N} (m_i - \\hat{m}_i)^2}{N - p}}
@@ -408,7 +410,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 
                 Donde:
                 - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
                 - $N$ = número de puntos observacionales
                 - $p$ = número de parámetros del modelo (6: A, f, t₀, t_rise, t_fall, γ)
                 - $N - p$ = grados de libertad (degrees of freedom, dof)
@@ -425,6 +427,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
                 
+                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud.
+                
                 **Ecuación:**
                 $$
                 \\text{MAD} = \\text{mediana}(|m_i - \\hat{m}_i|)
@@ -432,7 +436,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 
                 Donde:
                 - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
                 - Se calcula el valor absoluto de cada residual y luego se toma la mediana
                 
                 **Interpretación:**
@@ -448,6 +452,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Chi-cuadrado reducido (χ²/ν)** mide la bondad del ajuste considerando los errores observacionales. Evalúa si el modelo es consistente con los datos dentro de sus incertidumbres.
                 
+                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud. Los errores $\\sigma_i$ son los errores en magnitud (MAGERR).
+                
                 **Ecuación:**
                 $$
                 \\chi^2_\\nu = \\frac{\\chi^2}{\\nu} = \\frac{1}{N - p} \\sum_{i=1}^{N} \\frac{(m_i - \\hat{m}_i)^2}{\\sigma_i^2}
@@ -455,8 +461,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 
                 Donde:
                 - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
-                - $\\sigma_i$ = error observacional en el punto $i$ (MAGERR)
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
+                - $\\sigma_i$ = error observacional en magnitud en el punto $i$ (MAGERR)
                 - $N$ = número de puntos observacionales
                 - $p$ = número de parámetros del modelo (6)
                 - $\\nu = N - p$ = grados de libertad
