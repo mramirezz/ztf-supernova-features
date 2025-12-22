@@ -238,11 +238,19 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True):
     samples = sampler.chain[:, burn_in:, :].reshape(-1, ndim)
     
     # Calcular estadísticas
+    # IMPORTANTE: param_medians calcula la mediana de CADA parámetro por separado
+    # Esto significa: mediana_A, mediana_f, mediana_t0, etc.
+    # Luego se evalúa el modelo con estos parámetros medianos: alerce_model(phase, mediana_A, mediana_f, ...)
+    # NOTA: Esto NO es lo mismo que calcular la mediana de las curvas completas.
+    # Si hay correlaciones entre parámetros, la combinación de medianas puede no estar
+    # en el centro de las curvas rojas (que son samples individuales de la distribución).
     param_medians = np.median(samples, axis=0)
     param_std = np.std(samples, axis=0)
     param_percentiles = np.percentile(samples, [16, 50, 84], axis=0)
     
     # Calcular modelo con parámetros medianos
+    # Este es el modelo que se muestra como "MCMC Median" en los gráficos
+    # y los valores que aparecen en "MCMC Fit Results"
     model_flux = alerce_model(phase, *param_medians)
     
     return {

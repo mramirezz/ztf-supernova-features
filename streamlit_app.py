@@ -304,6 +304,9 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Resultados
         st.subheader(f"MCMC Fit Results - Filter {filter_name}")
+        st.caption(f"Estos valores son las **medianas de cada parámetro** calculadas por separado de los {n_total_samples:,} samples del MCMC. "
+                   f"Se calculan como: mediana_A, mediana_f, mediana_t0, etc. "
+                   f"Luego se evalúa el modelo con estos parámetros medianos para obtener la curva 'MCMC Median'.")
         
         param_info = {
             'A': 'Amplitud del flujo máximo (normalización)',
