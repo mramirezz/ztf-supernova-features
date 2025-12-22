@@ -116,8 +116,8 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         print(f"    [OK] Puntos de datos: {len(phase)}")
         print(f"    [OK] Rango de fase: {phase.min():.1f} - {phase.max():.1f} días")
         if peak_phase is not None:
-            print(f"    [OK] Fase del pico: {peak_phase:.1f} días")
-            print(f"    [OK] Datos filtrados: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del pico")
+            print(f"    [OK] Peak phase: {peak_phase:.1f} días")
+            print(f"    [OK] Datos filtrados: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak")
         
         # Ajuste MCMC
         if logger:

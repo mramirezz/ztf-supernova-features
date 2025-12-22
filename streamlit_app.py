@@ -284,9 +284,9 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             st.metric("Duración total", f"{phase_all.max() - phase_all.min():.1f} días" if len(phase_all) > 0 else "N/A")
         
         if peak_phase is not None:
-            st.info(f"📍 **Fase del pico**: {peak_phase:.1f} días | "
+            st.info(f"📍 **Peak phase**: {peak_phase:.1f} días | "
                    f"📊 **Datos filtrados**: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y "
-                   f"{DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del pico | "
+                   f"{DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak | "
                    f"📉 **Puntos usados para MCMC**: {len(phase)} de {len(phase_all)} totales")
         
         st.divider()
