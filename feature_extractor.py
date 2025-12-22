@@ -66,8 +66,13 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     # Error relativo porcentual: mediana del error relativo absoluto
     # Calculado como |(F_obs - F_model) / F_obs| * 100
     # Esto da el porcentaje de error relativo al flujo observado, sin usar errores observacionales
-    relative_errors = np.abs(residuals_valid / flux_valid) * 100  # Porcentaje
-    median_relative_error = np.median(relative_errors) if len(relative_errors) > 0 else np.inf
+    # Evitar división por cero: solo usar puntos donde flux_valid > 0
+    flux_positive_mask = flux_valid > 1e-10  # Evitar valores muy pequeños o cero
+    if np.any(flux_positive_mask):
+        relative_errors = np.abs(residuals_valid[flux_positive_mask] / flux_valid[flux_positive_mask]) * 100  # Porcentaje
+        median_relative_error = np.median(relative_errors) if len(relative_errors) > 0 else np.inf
+    else:
+        median_relative_error = np.inf
     
     # NOTA: No calculamos chi-cuadrado reducido porque la propagación de errores
     # de magnitud a flujo hace que los errores absolutos en flujo sean muy pequeños

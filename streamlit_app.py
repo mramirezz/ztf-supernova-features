@@ -20,7 +20,7 @@ from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, DATA_FILTER_CONFIG
 
 st.set_page_config(page_title="Explorador MCMC Supernovas", layout="wide")
 
-st.title("🔭 Explorador de Ajustes MCMC - Supernovas ZTF")
+st.title("Explorador de Ajustes MCMC - Supernovas ZTF")
 
 def _show_parameter_distributions(sn_type):
     """
@@ -30,15 +30,15 @@ def _show_parameter_distributions(sn_type):
     output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}.csv"
     
     if not output_file.exists():
-        st.warning(f"⚠️ No se encontró el archivo de features: {output_file}")
-        st.info("💡 Ejecuta MCMC para al menos un filtro para ver las distribuciones")
+        st.warning(f"No se encontró el archivo de features: {output_file}")
+        st.info("Ejecuta MCMC para al menos un filtro para ver las distribuciones")
         return
     
     try:
         df = pd.read_csv(output_file)
         
         if len(df) == 0:
-            st.warning("⚠️ El archivo de features está vacío")
+            st.warning("El archivo de features está vacío")
             return
         
         # Los 6 parámetros principales
@@ -56,10 +56,10 @@ def _show_parameter_distributions(sn_type):
         available_filters = sorted(df['filter_band'].unique())
         
         if len(available_filters) == 0:
-            st.warning("⚠️ No hay datos de filtros disponibles")
+            st.warning("No hay datos de filtros disponibles")
             return
         
-        st.subheader("📊 Parameter Distributions by Filter")
+        st.subheader("Parameter Distributions by Filter")
         st.caption(f"Showing distributions of the 6 main MCMC model parameters for type: **{sn_type}**")
         
         # Crear gráficos: 2 filas x 3 columnas para los 6 parámetros
@@ -104,7 +104,7 @@ def _show_parameter_distributions(sn_type):
         plt.close()
         
         # Estadísticas por filtro
-        st.subheader("📈 Descriptive Statistics by Filter")
+        st.subheader("Descriptive Statistics by Filter")
         
         for filter_name in available_filters:
             filter_df = df[df['filter_band'] == filter_name]
@@ -136,7 +136,7 @@ def _show_parameter_distributions(sn_type):
                 st.dataframe(stats_df, width='stretch')
         
         # Información general
-        st.info(f"📊 **Total records**: {len(df)} | **Available filters**: {', '.join(available_filters)} | **Unique supernovae**: {df['sn_name'].nunique()}")
+        st.info(f"**Total records**: {len(df)} | **Available filters**: {', '.join(available_filters)} | **Unique supernovae**: {df['sn_name'].nunique()}")
         
     except Exception as e:
         st.error(f"Error loading distributions: {type(e).__name__}: {e}")
@@ -197,7 +197,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         peak_phase = lc_data.get('peak_phase', None)
         
         # ===== GRÁFICO DE CONTEXTO: TODA LA DATA =====
-        st.subheader(f"📊 Full Light Curve View - Filter {filter_name}")
+        st.subheader(f"Full Light Curve View - Filter {filter_name}")
         
         # Crear gráfico con toda la data
         fig_all, (ax1_all, ax2_all) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
@@ -268,7 +268,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         plt.close()
         
         # Estadísticas
-        st.subheader("📈 Estadísticas de los Datos")
+        st.subheader("Estadísticas de los Datos")
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
             st.metric("Puntos detectados", len(phase_all))
@@ -284,10 +284,10 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             st.metric("Duración total", f"{phase_all.max() - phase_all.min():.1f} días" if len(phase_all) > 0 else "N/A")
         
         if peak_phase is not None:
-            st.info(f"📍 **Peak phase**: {peak_phase:.1f} días | "
-                   f"📊 **Datos filtrados**: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y "
+            st.info(f"**Peak phase**: {peak_phase:.1f} días | "
+                   f"**Datos filtrados**: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y "
                    f"{DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak | "
-                   f"📉 **Puntos usados para MCMC**: {len(phase)} de {len(phase_all)} totales")
+                   f"**Puntos usados para MCMC**: {len(phase)} de {len(phase_all)} totales")
         
         st.divider()
         
@@ -300,7 +300,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         mag_model = flux_to_mag(np.clip(mcmc_results['model_flux'], 1e-10, None))
         
         n_total_samples = len(mcmc_results['samples'])
-        st.info(f"ℹ️ **Samples totales**: {n_total_samples:,} | **Curvas mostradas**: {n_samples_to_show}")
+        st.info(f"**Samples totales**: {n_total_samples:,} | **Curvas mostradas**: {n_samples_to_show}")
         
         # Resultados
         st.subheader(f"MCMC Fit Results - Filter {filter_name}")
@@ -357,27 +357,27 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         plt.close()
         
         if save_results and plot_save_path:
-            st.success(f"✅ Gráfico guardado: {plot_save_path}")
+                st.success(f"Gráfico guardado: {plot_save_path}")
         
         # Corner plot
         st.subheader("Corner Plot")
         n_samples_corner = len(mcmc_results['samples'])
-        st.caption(f"📊 Este corner plot muestra la distribución de los **parámetros** de **{n_samples_corner:,} samples** del MCMC (después de burn-in). Cada sample es un conjunto de 6 parámetros (A, f, t0, t_rise, t_fall, gamma).")
+        st.caption(f"Este corner plot muestra la distribución de los **parámetros** de **{n_samples_corner:,} samples** del MCMC (después de burn-in). Cada sample es un conjunto de 6 parámetros (A, f, t0, t_rise, t_fall, gamma).")
         t0_corner = time.time()
         corner_fig = plot_corner(mcmc_results['samples'], save_path=corner_save_path)
         t_corner = time.time() - t0_corner
         
         if corner_fig is None:
-            st.error("❌ No se pudo generar el corner plot.")
+            st.error("No se pudo generar el corner plot.")
             t_corner = 0
         else:
             st.pyplot(corner_fig)
             plt.close()
             if save_results and corner_save_path:
-                st.success(f"✅ Corner plot guardado: {corner_save_path}")
+                st.success(f"Corner plot guardado: {corner_save_path}")
         
         # Métricas
-        st.subheader("⏱️ Métricas de Tiempo")
+        st.subheader("Métricas de Tiempo")
         col_time1, col_time2, col_time3, col_time4 = st.columns(4)
         with col_time1:
             st.metric("MCMC", f"{t_mcmc:.2f} s")
@@ -402,7 +402,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             else:
                 rms_str = f"{stats['rms']:.6f}"
             st.metric("RMS", rms_str)
-            with st.expander("📐 Ver ecuación RMS"):
+            with st.expander("Ver ecuación RMS"):
                 st.markdown("""
                 **Root Mean Square (RMS)** mide la desviación promedio entre los datos observados y el modelo ajustado.
                 
@@ -436,7 +436,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         with col3:
             st.metric("Error Relativo Mediano", f"{stats['median_relative_error_pct']:.2f}%")
-            with st.expander("📐 Ver ecuación Error Relativo"):
+            with st.expander("Ver ecuación Error Relativo"):
                 st.markdown("""
                 **Error Relativo Mediano** mide el porcentaje de desviación promedio entre los datos observados y el modelo ajustado, relativo al flujo observado.
                 
@@ -459,7 +459,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 - No depende de los errores observacionales, solo de la calidad del ajuste
                 - Unidades: porcentaje (%)
                 """)
-            with st.expander("📐 Ver ecuación MAD"):
+            with st.expander("Ver ecuación MAD"):
                 st.markdown("""
                 **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
                 
@@ -496,14 +496,14 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 mask = (existing_df['sn_name'] == sn_name) & (existing_df['filter_band'] == filter_name)
                 if mask.any():
                     existing_df = existing_df[~mask]
-                    st.warning(f"⚠️ Reemplazando entrada existente para {sn_name} - {filter_name}")
+                    st.warning(f"Reemplazando entrada existente para {sn_name} - {filter_name}")
                 
                 combined_df = pd.concat([existing_df, features_df], ignore_index=True)
                 combined_df.to_csv(output_file, index=False)
             else:
                 features_df.to_csv(output_file, index=False)
             
-            st.success(f"✅ Features guardadas en: {output_file}")
+            st.success(f"Features guardadas en: {output_file}")
             
     except Exception as e:
         st.error(f"Error procesando filtro {filter_name}: {type(e).__name__}: {e}")
@@ -535,7 +535,7 @@ from config import MCMC_CONFIG
 
 # Botón para procesar (AL PRINCIPIO)
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🚀 Ejecutar Análisis")
+st.sidebar.markdown("### Ejecutar Análisis")
 if st.sidebar.button("Ejecutar MCMC", type="primary"):
     st.session_state['process'] = True
 else:
@@ -549,41 +549,41 @@ st.sidebar.subheader("Parámetros MCMC")
 # Número de walkers
 st.sidebar.markdown("**Número de walkers**")
 st.sidebar.caption("Cantidad de cadenas MCMC paralelas. Más walkers = mejor exploración del espacio de parámetros pero más lento.")
-st.sidebar.caption(f"📌 Valor por defecto (main.py): {MCMC_CONFIG['n_walkers']}")
+    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_walkers']}")
 n_walkers = st.sidebar.slider("Walkers", 20, 100, MCMC_CONFIG["n_walkers"], key="n_walkers")
 
 # Pasos MCMC
 st.sidebar.markdown("**Pasos MCMC**")
 st.sidebar.caption("Número de iteraciones que cada walker realiza. Más pasos = mejor convergencia pero más tiempo de cómputo.")
-st.sidebar.caption(f"📌 Valor por defecto (main.py): {MCMC_CONFIG['n_steps']}")
+    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_steps']}")
 n_steps = st.sidebar.slider("Pasos", 500, 5000, MCMC_CONFIG["n_steps"], key="n_steps")
 
 # Burn-in
 st.sidebar.markdown("**Burn-in**")
 st.sidebar.caption("Pasos iniciales a descartar antes de calcular estadísticas. Elimina el período de 'calentamiento' de las cadenas.")
-st.sidebar.caption(f"📌 Valor por defecto (main.py): {MCMC_CONFIG['burn_in']}")
+    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['burn_in']}")
 burn_in = st.sidebar.slider("Burn-in", 100, 1000, MCMC_CONFIG["burn_in"], key="burn_in")
 
 # Recalcular total_samples con los valores actuales
 total_samples = n_walkers * (n_steps - burn_in)
-st.sidebar.info(f"📊 **Samples totales**: {total_samples:,} (después de burn-in)")
+st.sidebar.info(f"**Samples totales**: {total_samples:,} (después de burn-in)")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("💡 **Nota**: Estos valores se usan cuando ejecutas `main.py` para procesar múltiples supernovas en batch.")
+st.sidebar.caption("**Nota**: Estos valores se usan cuando ejecutas `main.py` para procesar múltiples supernovas en batch.")
 
 # Opciones de visualización ANTES de ejecutar
 st.sidebar.subheader("Visualización")
 st.sidebar.markdown("**Realizaciones MCMC a mostrar**")
 st.sidebar.caption("Número de curvas del MCMC a mostrar (0 = solo mediana y promedio). Más curvas = mejor visualización de incertidumbre pero más lento.")
-st.sidebar.caption(f"📌 Valor por defecto: 100")
+    st.sidebar.caption(f"Valor por defecto: 100")
 n_samples_to_show = st.sidebar.slider("Realizaciones", 0, 1000, 100, key="n_samples")
 
 st.sidebar.markdown("---")
 
 # Información sobre los gráficos (DESPUÉS de definir todos los parámetros)
-st.sidebar.subheader("ℹ️ Información sobre los Gráficos")
+st.sidebar.subheader("Información sobre los Gráficos")
 
-st.sidebar.markdown("**📊 Mediana y Promedio del Fit**")
+st.sidebar.markdown("**Mediana y Promedio del Fit**")
 st.sidebar.caption(f"""
 **Distribución de parámetros**: El MCMC genera {total_samples:,} **samples**, cada uno es un vector de 6 parámetros: [A, f, t0, t_rise, t_fall, gamma].
 
@@ -619,7 +619,7 @@ Esto significa que tenemos:
 **Diferencia**: La mediana es más robusta a outliers, mientras que el promedio puede verse afectado por valores extremos. Si ambas líneas son similares, la distribución es simétrica.
 """)
 
-st.sidebar.markdown("**🔴 Líneas Rojas (Realizaciones MCMC)**")
+st.sidebar.markdown("**Líneas Rojas (Realizaciones MCMC)**")
 st.sidebar.caption(f"""
 Las líneas rojas semitransparentes son **curvas de luz** generadas evaluando el modelo con diferentes conjuntos de parámetros del MCMC.
 
@@ -633,7 +633,7 @@ Las líneas rojas semitransparentes son **curvas de luz** generadas evaluando el
 Estas curvas muestran la incertidumbre del ajuste: cuanto más dispersas estén, mayor es la incertidumbre en los parámetros.
 """)
 
-st.sidebar.markdown("**📈 Corner Plot**")
+st.sidebar.markdown("**Corner Plot**")
 st.sidebar.caption(f"""
 El corner plot muestra la distribución de los **parámetros** (no las curvas) de TODOS los {total_samples:,} samples del MCMC (después de burn-in).
 
@@ -698,10 +698,10 @@ if st.session_state.get('process', False):
                         selected_filters.append(filter_name)
             
             if not selected_filters:
-                st.warning("⚠️ Debes seleccionar al menos un filtro para procesar")
+                st.warning("Debes seleccionar al menos un filtro para procesar")
                 st.stop()
             
-            st.info(f"📊 Se procesarán **{len(selected_filters)}** curva(s) de luz: {', '.join(selected_filters)}")
+            st.info(f"Se procesarán **{len(selected_filters)}** curva(s) de luz: {', '.join(selected_filters)}")
             
             # Verificar si hay datos en CSV para mostrar tab de distribuciones
             output_file = FEATURES_DIR / f"features_{selected_type.replace(' ', '_')}.csv"
@@ -723,7 +723,7 @@ if st.session_state.get('process', False):
                 # Múltiples filtros o hay datos para distribuciones: usar tabs
                 tab_names = [f"Filter {f}" for f in selected_filters]
                 if has_features_data:
-                    tab_names.append("📊 Distributions")
+                    tab_names.append("Distributions")
                 
                 tabs = st.tabs(tab_names)
                 
@@ -754,9 +754,9 @@ else:
             has_features_data = False
     
     if has_features_data:
-        st.info("💡 **Tip**: Puedes ver las distribuciones de parámetros sin ejecutar MCMC. Las distribuciones se muestran abajo basadas en los datos ya procesados.")
+        st.info("**Tip**: Puedes ver las distribuciones de parámetros sin ejecutar MCMC. Las distribuciones se muestran abajo basadas en los datos ya procesados.")
         st.markdown("---")
         _show_parameter_distributions(selected_type)
     else:
-        st.info("👈 Selecciona una supernova y configura los parámetros MCMC en la barra lateral, luego presiona 'Ejecutar MCMC'")
+        st.info("Selecciona una supernova y configura los parámetros MCMC en la barra lateral, luego presiona 'Ejecutar MCMC'")
 
