@@ -549,19 +549,19 @@ st.sidebar.subheader("Parámetros MCMC")
 # Número de walkers
 st.sidebar.markdown("**Número de walkers**")
 st.sidebar.caption("Cantidad de cadenas MCMC paralelas. Más walkers = mejor exploración del espacio de parámetros pero más lento.")
-    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_walkers']}")
+st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_walkers']}")
 n_walkers = st.sidebar.slider("Walkers", 20, 100, MCMC_CONFIG["n_walkers"], key="n_walkers")
 
 # Pasos MCMC
 st.sidebar.markdown("**Pasos MCMC**")
 st.sidebar.caption("Número de iteraciones que cada walker realiza. Más pasos = mejor convergencia pero más tiempo de cómputo.")
-    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_steps']}")
+st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['n_steps']}")
 n_steps = st.sidebar.slider("Pasos", 500, 5000, MCMC_CONFIG["n_steps"], key="n_steps")
 
 # Burn-in
 st.sidebar.markdown("**Burn-in**")
 st.sidebar.caption("Pasos iniciales a descartar antes de calcular estadísticas. Elimina el período de 'calentamiento' de las cadenas.")
-    st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['burn_in']}")
+st.sidebar.caption(f"Valor por defecto (main.py): {MCMC_CONFIG['burn_in']}")
 burn_in = st.sidebar.slider("Burn-in", 100, 1000, MCMC_CONFIG["burn_in"], key="burn_in")
 
 # Recalcular total_samples con los valores actuales
