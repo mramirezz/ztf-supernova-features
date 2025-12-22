@@ -467,6 +467,30 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 - $p$ = número de parámetros del modelo (6)
                 - $\\nu = N - p$ = grados de libertad
                 
+                **Propagación de errores (magnitud → flujo):**
+                
+                La relación entre magnitud y flujo es:
+                $$
+                F = 10^{-m/2.5}
+                $$
+                
+                Derivando respecto a $m$:
+                $$
+                \\frac{dF}{dm} = -\\frac{\\ln(10)}{2.5} \\cdot 10^{-m/2.5} = -\\frac{\\ln(10)}{2.5} \\cdot F
+                $$
+                
+                Usando propagación de errores (primer orden):
+                $$
+                \\sigma_F = \\left|\\frac{dF}{dm}\\right| \\cdot \\sigma_m = \\frac{\\ln(10)}{2.5} \\cdot F \\cdot \\sigma_m
+                $$
+                
+                Como $\\ln(10) \\approx 2.3026$ y $2.5 / \\ln(10) \\approx 1.086$, entonces:
+                $$
+                \\sigma_F = \\frac{F \\cdot \\sigma_m}{1.086}
+                $$
+                
+                Donde $\\sigma_m$ es el error en magnitud (MAGERR) y $F$ es el flujo calculado.
+                
                 **Interpretación:**
                 - $\\chi^2_\\nu \\approx 1$: ajuste excelente, modelo consistente con los datos
                 - $\\chi^2_\\nu < 1$: modelo sobreajustado o errores sobreestimados

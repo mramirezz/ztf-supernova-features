@@ -11,30 +11,63 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     Parameters:
     -----------
     phase : array
-        Fases (días)
+        Fases (días) - solo los puntos observados
     flux : array
-        Flujo observado
+        Flujo observado - solo los puntos observados
     flux_err : array
-        Error en flujo observado
+        Error en flujo observado - solo los puntos observados
     flux_model : array
-        Flujo del modelo
+        Flujo del modelo evaluado en los mismos puntos observados (phase)
     
     Returns:
     --------
     dict con: rms, mad, reduced_chi2, n_points, time_span
     """
+    # Verificar que todos los arrays tengan la misma longitud
+    assert len(flux) == len(flux_model), f"flux ({len(flux)}) y flux_model ({len(flux_model)}) deben tener la misma longitud"
+    assert len(flux) == len(flux_err), f"flux ({len(flux)}) y flux_err ({len(flux_err)}) deben tener la misma longitud"
+    assert len(flux) == len(phase), f"flux ({len(flux)}) y phase ({len(phase)}) deben tener la misma longitud"
+    
+    # Calcular residuales
     residuals = flux - flux_model
-    n_points = len(flux)
+    
+    # Verificar que no haya valores NaN o Inf
+    valid_mask = np.isfinite(residuals) & np.isfinite(flux) & np.isfinite(flux_model) & np.isfinite(flux_err)
+    valid_mask &= (flux_err > 0)  # Errores deben ser positivos
+    
+    if not np.all(valid_mask):
+        n_invalid = np.sum(~valid_mask)
+        print(f"  [ADVERTENCIA] {n_invalid} puntos inválidos (NaN/Inf) serán excluidos del cálculo de métricas")
+    
+    residuals_valid = residuals[valid_mask]
+    flux_valid = flux[valid_mask]
+    flux_model_valid = flux_model[valid_mask]
+    flux_err_valid = flux_err[valid_mask]
+    
+    n_points = len(residuals_valid)
     n_params = 6
     dof = n_points - n_params
     
-    rms = np.sqrt(np.sum(residuals**2) / dof) if dof > 0 else np.inf
-    mad = np.median(np.abs(residuals))
+    if n_points < n_params:
+        return {
+            'rms': np.inf,
+            'mad': np.inf,
+            'reduced_chi2': np.inf,
+            'n_points': n_points,
+            'time_span': phase.max() - phase.min() if len(phase) > 0 else 0
+        }
     
-    chi2 = np.sum((residuals / flux_err)**2)
+    # RMS: raíz cuadrada de la media de los residuales al cuadrado
+    rms = np.sqrt(np.sum(residuals_valid**2) / dof) if dof > 0 else np.inf
+    
+    # MAD: mediana de los valores absolutos de los residuales
+    mad = np.median(np.abs(residuals_valid)) if len(residuals_valid) > 0 else np.inf
+    
+    # Chi-cuadrado reducido
+    chi2 = np.sum((residuals_valid / flux_err_valid)**2)
     reduced_chi2 = chi2 / dof if dof > 0 else np.inf
     
-    time_span = phase.max() - phase.min()
+    time_span = phase.max() - phase.min() if len(phase) > 0 else 0
     
     return {
         'rms': rms,
