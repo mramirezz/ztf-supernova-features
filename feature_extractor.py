@@ -21,7 +21,7 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     
     Returns:
     --------
-    dict con: rms, mad, reduced_chi2, n_points, time_span
+    dict con: rms, mad, n_points, time_span
     """
     # Verificar que todos los arrays tengan la misma longitud
     assert len(flux) == len(flux_model), f"flux ({len(flux)}) y flux_model ({len(flux_model)}) deben tener la misma longitud"
@@ -52,7 +52,7 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
         return {
             'rms': np.inf,
             'mad': np.inf,
-            'reduced_chi2': np.inf,
+            'median_relative_error_pct': np.inf,
             'n_points': n_points,
             'time_span': phase.max() - phase.min() if len(phase) > 0 else 0
         }
@@ -63,16 +63,23 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     # MAD: mediana de los valores absolutos de los residuales
     mad = np.median(np.abs(residuals_valid)) if len(residuals_valid) > 0 else np.inf
     
-    # Chi-cuadrado reducido
-    chi2 = np.sum((residuals_valid / flux_err_valid)**2)
-    reduced_chi2 = chi2 / dof if dof > 0 else np.inf
+    # Error relativo porcentual: mediana del error relativo absoluto
+    # Calculado como |(F_obs - F_model) / F_obs| * 100
+    # Esto da el porcentaje de error relativo al flujo observado, sin usar errores observacionales
+    relative_errors = np.abs(residuals_valid / flux_valid) * 100  # Porcentaje
+    median_relative_error = np.median(relative_errors) if len(relative_errors) > 0 else np.inf
+    
+    # NOTA: No calculamos chi-cuadrado reducido porque la propagación de errores
+    # de magnitud a flujo hace que los errores absolutos en flujo sean muy pequeños
+    # para objetos débiles, distorsionando el chi-cuadrado. RMS y MAD son métricas
+    # más robustas que no dependen de los errores observacionales.
     
     time_span = phase.max() - phase.min() if len(phase) > 0 else 0
     
     return {
         'rms': rms,
         'mad': mad,
-        'reduced_chi2': reduced_chi2,
+        'median_relative_error_pct': median_relative_error,
         'n_points': n_points,
         'time_span': time_span
     }
@@ -135,7 +142,7 @@ def extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name):
     features.update({
         'rms': stats['rms'],
         'mad': stats['mad'],
-        'reduced_chi2': stats['reduced_chi2'],
+        'median_relative_error_pct': stats['median_relative_error_pct'],
         'n_points': stats['n_points'],
         'time_span': stats['time_span']
     })

@@ -396,7 +396,12 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("RMS", f"{stats['rms']:.4f}")
+            # Mostrar RMS con formato apropiado para valores pequeños
+            if stats['rms'] < 0.0001:
+                rms_str = f"{stats['rms']:.2e}"
+            else:
+                rms_str = f"{stats['rms']:.6f}"
+            st.metric("RMS", rms_str)
             with st.expander("📐 Ver ecuación RMS"):
                 st.markdown("""
                 **Root Mean Square (RMS)** mide la desviación promedio entre los datos observados y el modelo ajustado.
@@ -422,7 +427,38 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 """)
         
         with col2:
-            st.metric("MAD", f"{stats['mad']:.4f}")
+            # Mostrar MAD con formato apropiado para valores pequeños
+            if stats['mad'] < 0.0001:
+                mad_str = f"{stats['mad']:.2e}"
+            else:
+                mad_str = f"{stats['mad']:.6f}"
+            st.metric("MAD", mad_str)
+        
+        with col3:
+            st.metric("Error Relativo Mediano", f"{stats['median_relative_error_pct']:.2f}%")
+            with st.expander("📐 Ver ecuación Error Relativo"):
+                st.markdown("""
+                **Error Relativo Mediano** mide el porcentaje de desviación promedio entre los datos observados y el modelo ajustado, relativo al flujo observado.
+                
+                **Nota importante:** Esta métrica se calcula en **flujo**, y no depende de los errores observacionales, solo de la diferencia entre observación y modelo.
+                
+                **Ecuación:**
+                $$
+                \\text{Error Relativo Mediano} = \\text{mediana}\\left(\\left|\\frac{F_i - \\hat{F}_i}{F_i}\\right| \\times 100\\right)
+                $$
+                
+                Donde:
+                - $F_i$ = flujo observado en el punto $i$
+                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
+                - Se calcula el error relativo absoluto para cada punto y luego se toma la mediana
+                - El resultado se multiplica por 100 para expresarlo como porcentaje
+                
+                **Interpretación:**
+                - Error relativo más pequeño = mejor ajuste
+                - Es independiente de la escala del flujo (normalizado por el flujo observado)
+                - No depende de los errores observacionales, solo de la calidad del ajuste
+                - Unidades: porcentaje (%)
+                """)
             with st.expander("📐 Ver ecuación MAD"):
                 st.markdown("""
                 **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
@@ -444,58 +480,6 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 - Es resistente a outliers (no se ve afectado por puntos extremos)
                 - Unidades: flujo (mismas unidades que los datos observados)
                 - Típicamente MAD < RMS cuando hay outliers
-                """)
-        
-        with col3:
-            st.metric("χ² reducido", f"{stats['reduced_chi2']:.4f}")
-            with st.expander("📐 Ver ecuación χ² reducido"):
-                st.markdown("""
-                **Chi-cuadrado reducido (χ²/ν)** mide la bondad del ajuste considerando los errores observacionales. Evalúa si el modelo es consistente con los datos dentro de sus incertidumbres.
-                
-                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Los errores $\\sigma_{F,i}$ son los errores en flujo (propagados desde MAGERR).
-                
-                **Ecuación:**
-                $$
-                \\chi^2_\\nu = \\frac{\\chi^2}{\\nu} = \\frac{1}{N - p} \\sum_{i=1}^{N} \\frac{(F_i - \\hat{F}_i)^2}{\\sigma_{F,i}^2}
-                $$
-                
-                Donde:
-                - $F_i$ = flujo observado en el punto $i$
-                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
-                - $\\sigma_{F,i}$ = error observacional en flujo en el punto $i$ (propagado desde MAGERR)
-                - $N$ = número de puntos observacionales
-                - $p$ = número de parámetros del modelo (6)
-                - $\\nu = N - p$ = grados de libertad
-                
-                **Propagación de errores (magnitud → flujo):**
-                
-                La relación entre magnitud y flujo es:
-                $$
-                F = 10^{-m/2.5}
-                $$
-                
-                Derivando respecto a $m$:
-                $$
-                \\frac{dF}{dm} = -\\frac{\\ln(10)}{2.5} \\cdot 10^{-m/2.5} = -\\frac{\\ln(10)}{2.5} \\cdot F
-                $$
-                
-                Usando propagación de errores (primer orden):
-                $$
-                \\sigma_F = \\left|\\frac{dF}{dm}\\right| \\cdot \\sigma_m = \\frac{\\ln(10)}{2.5} \\cdot F \\cdot \\sigma_m
-                $$
-                
-                Como $\\ln(10) \\approx 2.3026$ y $2.5 / \\ln(10) \\approx 1.086$, entonces:
-                $$
-                \\sigma_F = \\frac{F \\cdot \\sigma_m}{1.086}
-                $$
-                
-                Donde $\\sigma_m$ es el error en magnitud (MAGERR) y $F$ es el flujo calculado.
-                
-                **Interpretación:**
-                - $\\chi^2_\\nu \\approx 1$: ajuste excelente, modelo consistente con los datos
-                - $\\chi^2_\\nu < 1$: modelo sobreajustado o errores sobreestimados
-                - $\\chi^2_\\nu > 1$: modelo subajustado o errores subestimados
-                - Unidades: adimensional
                 """)
         
         # Guardar features
