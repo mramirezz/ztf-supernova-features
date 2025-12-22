@@ -5,7 +5,8 @@ from pathlib import Path
 
 # Rutas
 # Ruta relativa: datos en ztf_literature_features/Photometry_ZTF_ST_Alerce
-BASE_DATA_PATH = Path(__file__).parent / "Photometry_ZTF_ST_Alerce"
+# Para pruebas locales, usar ruta absoluta; para producción, usar ruta relativa
+BASE_DATA_PATH = Path(r"G:\Mi unidad\Work\Universidad\Phd\paper2_ZTF\Photometry_ZTF_ST_Alerce")  # Path(__file__).parent / "Photometry_ZTF_ST_Alerce"
 OUTPUT_DIR = Path(__file__).parent / "outputs"
 PLOTS_DIR = OUTPUT_DIR / "plots"
 FEATURES_DIR = OUTPUT_DIR / "features"

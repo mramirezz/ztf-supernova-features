@@ -7,9 +7,15 @@ from typing import Dict, Tuple
 from model import alerce_model
 from config import MCMC_CONFIG, MODEL_CONFIG
 
-def log_likelihood(params, times, flux, flux_err, dynamic_bounds=None):
+def log_likelihood(params, times, flux, flux_err, dynamic_bounds=None, is_upper_limit=None):
     """
     Log-likelihood para MCMC
+    
+    Parameters:
+    -----------
+    is_upper_limit : array of bool, optional
+        Máscara que indica qué puntos son upper limits.
+        Para upper limits, el modelo debe estar por debajo del límite.
     """
     A, f, t0, t_rise, t_fall, gamma = params
     
@@ -39,9 +45,33 @@ def log_likelihood(params, times, flux, flux_err, dynamic_bounds=None):
         if np.any(np.isnan(model_flux)) or np.any(model_flux <= 0):
             return -np.inf
         
-        # Chi-cuadrado
-        chi2 = np.sum(((flux - model_flux) / flux_err) ** 2)
-        return -0.5 * chi2
+        # Separar datos normales y upper limits
+        if is_upper_limit is not None and np.any(is_upper_limit):
+            # Datos normales: chi-cuadrado estándar
+            mask_normal = ~is_upper_limit
+            chi2_normal = 0.0
+            if np.any(mask_normal):
+                chi2_normal = np.sum(((flux[mask_normal] - model_flux[mask_normal]) / flux_err[mask_normal]) ** 2)
+            
+            # Upper limits: penalizar si el modelo está por encima del límite
+            # Usar una penalización suave (erf) en lugar de hard cutoff
+            mask_ul = is_upper_limit
+            penalty_ul = 0.0
+            if np.any(mask_ul):
+                # Calcular cuánto excede el modelo al upper limit
+                excess = model_flux[mask_ul] - flux[mask_ul]
+                # Penalizar solo si excede (excess > 0)
+                excess_positive = np.maximum(excess, 0)
+                # Penalización cuadrática suave: más exceso = más penalización
+                # Usar un factor de escala basado en el flujo del límite
+                scale = flux[mask_ul] * 0.1  # 10% del flujo como escala
+                penalty_ul = np.sum((excess_positive / (scale + 1e-10)) ** 2)
+            
+            return -0.5 * (chi2_normal + penalty_ul)
+        else:
+            # Sin upper limits: chi-cuadrado estándar
+            chi2 = np.sum(((flux - model_flux) / flux_err) ** 2)
+            return -0.5 * chi2
     except:
         return -np.inf
 
@@ -66,16 +96,16 @@ def log_prior(params, dynamic_bounds=None):
         return 0.0
     return -np.inf
 
-def log_posterior(params, times, flux, flux_err, dynamic_bounds=None):
+def log_posterior(params, times, flux, flux_err, dynamic_bounds=None, is_upper_limit=None):
     """
     Log posterior = log prior + log likelihood
     """
     lp = log_prior(params, dynamic_bounds)
     if not np.isfinite(lp):
         return -np.inf
-    return lp + log_likelihood(params, times, flux, flux_err, dynamic_bounds)
+    return lp + log_likelihood(params, times, flux, flux_err, dynamic_bounds, is_upper_limit)
 
-def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True):
+def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True, is_upper_limit=None):
     """
     Ajustar modelo con MCMC
     
@@ -87,6 +117,8 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True):
         Valores iniciales [A, f, t0, t_rise, t_fall, gamma]
     verbose : bool
         Mostrar progreso
+    is_upper_limit : array of bool, optional
+        Máscara que indica qué puntos son upper limits
         
     Returns:
     --------
@@ -220,7 +252,7 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True):
     # Crear sampler con bounds dinámicos
     sampler = emcee.EnsembleSampler(
         n_walkers, ndim, log_posterior,
-        args=(phase, flux, flux_err, dynamic_bounds),
+        args=(phase, flux, flux_err, dynamic_bounds, is_upper_limit),
         threads=MCMC_CONFIG["n_threads"]
     )
     

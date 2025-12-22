@@ -112,12 +112,17 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         mag = lc_data['mag']
         mag_err = lc_data['mag_err']
         peak_phase = lc_data.get('peak_phase', None)
+        is_upper_limit = lc_data.get('is_upper_limit', None)
+        had_upper_limits = lc_data.get('had_upper_limits', False)
         
         print(f"    [OK] Puntos de datos: {len(phase)}")
         print(f"    [OK] Rango de fase: {phase.min():.1f} - {phase.max():.1f} días")
         if peak_phase is not None:
             print(f"    [OK] Peak phase: {peak_phase:.1f} días")
             print(f"    [OK] Datos filtrados: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak")
+        if is_upper_limit is not None and np.any(is_upper_limit):
+            n_ul = np.sum(is_upper_limit)
+            print(f"    [OK] Incluyendo {n_ul} upper limit(s) antes de las observaciones para contexto")
         
         # Ajuste MCMC
         if logger:
@@ -126,7 +131,7 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         t0_mcmc = time.time()
         
         try:
-            mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False)
+            mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
             t_mcmc = time.time() - t0_mcmc
             print(f"    [OK] MCMC completado en {t_mcmc:.2f} segundos")
             if logger:
@@ -177,7 +182,9 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         plot_fit_with_uncertainty(
             phase, mag, mag_err, mag_model, flux, mcmc_results['model_flux'],
             mcmc_results['samples'], n_samples_to_show=100,  # Valor por defecto: 100 realizaciones para visualización
-            sn_name=sn_name, filter_name=filter_name, save_path=str(plot_path)
+            sn_name=sn_name, filter_name=filter_name, save_path=str(plot_path),
+            is_upper_limit=is_upper_limit, flux_err=flux_err,
+            had_upper_limits=had_upper_limits
         )
         t_plot = time.time() - t0_plot
         print(f"    [OK] Gráfico guardado en {t_plot:.2f} segundos: {plot_path}")

@@ -195,6 +195,28 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         mag = lc_data['mag']
         mag_err = lc_data['mag_err']
         peak_phase = lc_data.get('peak_phase', None)
+        is_upper_limit = lc_data.get('is_upper_limit', None)
+        had_upper_limits = lc_data.get('had_upper_limits', False)
+        
+        # Recalcular fases de upper limits usando la misma referencia que los datos filtrados
+        # y filtrar por el mismo rango temporal (hasta 300 días después del pico)
+        if len(df_upperlimit) > 0 and len(phase) > 0 and peak_phase is not None:
+            # Obtener el mínimo MJD de los datos filtrados (que es la referencia usada en prepare_lightcurve)
+            mjd_filtered = filters_data[filter_name][~filters_data[filter_name]['Upperlimit']]['MJD'].values
+            reference_mjd = mjd_filtered.min()
+            # Recalcular fases de upper limits con la misma referencia
+            phase_ul_calc = mjd_to_phase(df_upperlimit['MJD'].values, reference_mjd=reference_mjd)
+            # Filtrar upper limits por el mismo rango temporal que los datos filtrados
+            mask_ul = (phase_ul_calc >= peak_phase - DATA_FILTER_CONFIG["max_days_before_peak"]) & \
+                     (phase_ul_calc <= peak_phase + DATA_FILTER_CONFIG["max_days_after_peak"])
+            phase_ul_filtered = phase_ul_calc[mask_ul]
+            mag_ul_filtered = df_upperlimit['MAG'].values[mask_ul] if len(mask_ul) > 0 else np.array([])
+            flux_ul_filtered = 10**(-mag_ul_filtered / 2.5) if len(mag_ul_filtered) > 0 else np.array([])
+            
+            # Usar los upper limits filtrados para el gráfico principal
+            phase_ul = phase_ul_filtered
+            mag_ul = mag_ul_filtered
+            flux_ul = flux_ul_filtered
         
         # ===== GRÁFICO DE CONTEXTO: TODA LA DATA =====
         st.subheader(f"Full Light Curve View - Filter {filter_name}")
@@ -293,7 +315,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Ajuste MCMC
         t0_mcmc = time.time()
-        mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False)
+        mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
         t_mcmc = time.time() - t0_mcmc
         
         from model import flux_to_mag
@@ -353,7 +375,10 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         fig = plot_fit_with_uncertainty(
             phase, mag, mag_err, mag_model, flux, mcmc_results['model_flux'],
             mcmc_results['samples'], n_samples_to_show,
-            sn_name, filter_name, save_path=plot_save_path
+            sn_name, filter_name, save_path=plot_save_path,
+            phase_ul=phase_ul, mag_ul=mag_ul, flux_ul=flux_ul,
+            is_upper_limit=is_upper_limit, flux_err=flux_err,
+            had_upper_limits=had_upper_limits
         )
         t_plot = time.time() - t0_plot
         st.pyplot(fig)
@@ -528,8 +553,8 @@ if not dat_files:
     st.error(f"No se encontraron archivos en '{selected_type}'")
     st.stop()
 
-# Seleccionar archivo
-file_options = [f.name for f in dat_files]
+# Seleccionar archivo (ordenado alfabéticamente)
+file_options = sorted([f.name for f in dat_files])
 selected_file = st.sidebar.selectbox("Archivo", file_options)
 filepath = type_path / selected_file
 
@@ -688,6 +713,7 @@ if st.session_state.get('process', False):
                 st.stop()
             
             st.success(f"Supernova: **{sn_name}**")
+            st.caption(f"📁 Archivo: `{filepath}`")
             
             # Seleccionar filtros con checkboxes
             available_filters = list(filters_data.keys())

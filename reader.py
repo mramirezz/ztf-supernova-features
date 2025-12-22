@@ -107,44 +107,107 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     --------
     dict con: phase, mag, mag_err, flux, flux_err, sn_name, filter_name, peak_phase
     """
-    # Filtrar límites superiores si es necesario
-    df_clean = df[~df['Upperlimit']].copy()
+    # Separar datos normales y upper limits
+    df_normal = df[~df['Upperlimit']].copy()
+    df_ul = df[df['Upperlimit']].copy()
     
-    if len(df_clean) < 5:
+    if len(df_normal) < 5:
         return None
     
-    # Convertir MJD a fase (relativa al mínimo MJD)
-    phase = mjd_to_phase(df_clean['MJD'].values)
+    # Convertir MJD a fase (relativa al mínimo MJD de datos normales)
+    phase_normal = mjd_to_phase(df_normal['MJD'].values)
     
-    # Convertir magnitud a flujo
-    mag = df_clean['MAG'].values
-    mag_err = df_clean['MAGERR'].values
+    # Convertir magnitud a flujo para datos normales
+    mag_normal = df_normal['MAG'].values
+    mag_err_normal = df_normal['MAGERR'].values
     
-    flux = 10**(-mag / 2.5)
-    flux_err = (mag_err * flux) / 1.086
+    flux_normal = 10**(-mag_normal / 2.5)
+    # Propagación de errores: σ_F = (F * σ_m) / 1.086
+    flux_err_normal = (mag_err_normal * flux_normal) / 1.086
+    
+    # IMPORTANTE: Para evitar que objetos débiles tengan sobrepeso excesivo en el chi-cuadrado
+    min_relative_error_flux = 0.02  # 2% mínimo de error relativo en flujo
+    flux_err_min = flux_normal * min_relative_error_flux
+    flux_err_normal = np.maximum(flux_err_normal, flux_err_min)
     
     # Identificar el pico de flujo máximo (mínimo de magnitud = máximo de flujo)
-    peak_idx = np.argmax(flux)
-    peak_phase = phase[peak_idx]
+    peak_idx = np.argmax(flux_normal)
+    peak_phase = phase_normal[peak_idx]
+    
+    # INCLUIR LOS 3 ÚLTIMOS UPPER LIMITS ANTES DEL PRIMER PUNTO DE OBSERVACIÓN
+    # Esto ayuda a dar contexto sobre el flujo antes de la explosión
+    # CONSTRAINT: Solo incluir upper limits que estén a máximo 20 días de la primera observación
+    first_observation_mjd = df_normal['MJD'].min()
+    max_days_before_first_obs = 20.0  # Máximo 20 días antes de la primera observación
+    
+    # Filtrar upper limits que estén antes de la primera observación
+    ul_before = df_ul[df_ul['MJD'] < first_observation_mjd].copy()
+    
+    if len(ul_before) > 0:
+        # Filtrar por constraint: máximo 20 días antes de la primera observación
+        ul_before = ul_before[ul_before['MJD'] >= (first_observation_mjd - max_days_before_first_obs)].copy()
+        
+        if len(ul_before) > 0:
+            # Ordenar por MJD descendente (más recientes primero) y tomar los 3 últimos
+            ul_before = ul_before.sort_values('MJD', ascending=False).head(3)
+            # Convertir a fase usando la misma referencia que los datos normales
+            reference_mjd = df_normal['MJD'].min()
+            phase_ul_before = mjd_to_phase(ul_before['MJD'].values, reference_mjd=reference_mjd)
+            mag_ul_before = ul_before['MAG'].values
+            flux_ul_before = 10**(-mag_ul_before / 2.5)
+        else:
+            # No hay upper limits dentro del rango de 20 días
+            phase_ul_before = np.array([])
+            mag_ul_before = np.array([])
+            flux_ul_before = np.array([])
+    else:
+        phase_ul_before = np.array([])
+        mag_ul_before = np.array([])
+        flux_ul_before = np.array([])
+    
+    # Combinar datos normales con upper limits seleccionados
+    phase = np.concatenate([phase_normal, phase_ul_before]) if len(phase_ul_before) > 0 else phase_normal
+    mag = np.concatenate([mag_normal, mag_ul_before]) if len(mag_ul_before) > 0 else mag_normal
+    mag_err = np.concatenate([mag_err_normal, np.full(len(mag_ul_before), np.nan)]) if len(mag_ul_before) > 0 else mag_err_normal
+    flux = np.concatenate([flux_normal, flux_ul_before]) if len(flux_ul_before) > 0 else flux_normal
+    flux_err = np.concatenate([flux_err_normal, np.full(len(flux_ul_before), np.nan)]) if len(flux_ul_before) > 0 else flux_err_normal
+    
+    # Crear máscara para identificar upper limits
+    is_upper_limit = np.concatenate([
+        np.zeros(len(phase_normal), dtype=bool),
+        np.ones(len(phase_ul_before), dtype=bool)
+    ]) if len(phase_ul_before) > 0 else np.zeros(len(phase_normal), dtype=bool)
     
     # Filtrar datos: solo hasta max_days_after_peak días después del pico
     # y hasta max_days_before_peak días antes del pico
+    # PERO mantener los upper limits seleccionados (están antes del primer punto)
     mask = (phase >= peak_phase - max_days_before_peak) & (phase <= peak_phase + max_days_after_peak)
+    # Los upper limits seleccionados siempre se incluyen (están antes del primer punto)
+    if len(phase_ul_before) > 0:
+        mask_ul = is_upper_limit
+        mask = mask | mask_ul
     
     phase_filtered = phase[mask]
     mag_filtered = mag[mask]
     mag_err_filtered = mag_err[mask]
     flux_filtered = flux[mask]
     flux_err_filtered = flux_err[mask]
+    is_upper_limit_filtered = is_upper_limit[mask] if len(is_upper_limit) > 0 else np.zeros(len(phase_filtered), dtype=bool)
     
     # Verificar que aún tenemos suficientes datos después del filtro
-    if len(phase_filtered) < 5:
+    # (contar solo datos normales, no upper limits)
+    n_normal_points = np.sum(~is_upper_limit_filtered)
+    if n_normal_points < 5:
         # Si el filtro es muy restrictivo, usar todos los datos pero con advertencia
         phase_filtered = phase
         mag_filtered = mag
         mag_err_filtered = mag_err
         flux_filtered = flux
         flux_err_filtered = flux_err
+        is_upper_limit_filtered = is_upper_limit
+    
+    # Verificar si había upper limits ANTES de combinarlos (para el plot)
+    had_upper_limits_before_combining = len(phase_ul_before) > 0
     
     return {
         'phase': phase_filtered,
@@ -152,6 +215,8 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
         'mag_err': mag_err_filtered,
         'flux': flux_filtered,
         'flux_err': flux_err_filtered,
+        'is_upper_limit': is_upper_limit_filtered,  # Nueva: máscara para upper limits
+        'had_upper_limits': had_upper_limits_before_combining,  # Indica si había upper limits antes de combinar
         'filter': filter_name,
         'peak_phase': peak_phase  # Información adicional sobre el pico
     }

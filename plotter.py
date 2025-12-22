@@ -71,21 +71,30 @@ def plot_fit(phase, mag, mag_err, mag_model, flux, flux_model,
 
 def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                               samples, n_samples_to_show=50,
-                              sn_name=None, filter_name=None, save_path=None):
+                              sn_name=None, filter_name=None, save_path=None,
+                              phase_ul=None, mag_ul=None, flux_ul=None,
+                              is_upper_limit=None, flux_err=None, had_upper_limits=None):
     """
     Generar gráfico de ajuste mostrando múltiples realizaciones del MCMC
     
     Parameters:
     -----------
     phase, mag, mag_err : arrays
-        Datos observados (solo puntos de observación)
+        Datos observados (puntos de observación + upper limits usados en fit)
     mag_model, flux_model : arrays
         Modelo ajustado (mediana) evaluado en los puntos observados
     samples : array (n_samples, n_params)
         TODOS los samples del MCMC (para mediana se usan todos)
     n_samples_to_show : int
         Número de realizaciones a mostrar para visualización (0 = solo mediana)
-        NOTA: Las métricas (RMS, MAD, chi2) se calculan con el modelo mediano (todos los samples)
+    phase_ul, mag_ul, flux_ul : arrays, optional
+        Upper limits para mostrar en el gráfico (NO usados en fit)
+    is_upper_limit : array of bool, optional
+        Máscara que indica qué puntos en phase/mag/flux son upper limits usados en el fit
+    flux_err : array, optional
+        Errores en flujo (si no se proporciona, se calcula desde mag_err o se omite)
+    had_upper_limits : bool, optional
+        Indica si había upper limits ANTES de combinarlos con los datos (para determinar extensión del plot)
     sn_name, filter_name : str
         Identificadores
     save_path : str, optional
@@ -96,10 +105,24 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     fig, axes = plt.subplots(2, 1, figsize=PLOT_CONFIG["figsize"], sharex=True)
     fig.suptitle(f'{sn_name} - Filter {filter_name}', fontsize=13, fontweight='bold', y=0.995)
     
-    # Crear array de fase denso para curvas suaves (desde min-10 hasta max+10, cada 1 día)
+    # Crear array de fase denso para curvas suaves
+    # Si había upper limits ANTES de combinarlos (aunque se filtraron después), solo extender 5 días antes
+    # Si no había upper limits, extender 10 días antes para contexto
     phase_min = phase.min()
     phase_max = phase.max()
-    phase_smooth = np.arange(phase_min - 10, phase_max + 10 + 0.5, 1.0)
+    
+    # Usar had_upper_limits si está disponible, sino verificar is_upper_limit
+    if had_upper_limits is not None:
+        has_ul = had_upper_limits
+    else:
+        # Fallback: verificar is_upper_limit (pero puede estar vacío si se filtraron)
+        has_ul = (is_upper_limit is not None and np.any(is_upper_limit))
+    
+    # Extensión antes del mínimo: 5 días si había upper limits, 10 días si no
+    extension_before = 5.0 if has_ul else 10.0
+    extension_after = 10.0  # Siempre 10 días después para mostrar la caída
+    
+    phase_smooth = np.arange(phase_min - extension_before, phase_max + extension_after + 0.5, 1.0)
     
     # Filtrar y seleccionar samples representativos para visualización
     selected_samples = None
@@ -278,6 +301,14 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                      label='Observations', markersize=5, zorder=10, 
                      capsize=2, capthick=1, elinewidth=1.5, color='#2E86AB')
     
+    # Plot upper limits en magnitud si están disponibles
+    if phase_ul is not None and mag_ul is not None and len(phase_ul) > 0:
+        axes[0].scatter(phase_ul, mag_ul, marker='v', color='orange', alpha=0.7, 
+                       s=60, label='Upper limits', zorder=9)
+        for px, py in zip(phase_ul, mag_ul):
+            axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
+                            arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
+    
     # Modelo mediano en fase suave (más visible)
     if param_medians is not None:
         axes[0].plot(phase_smooth, mag_model_smooth, '-', linewidth=2.5, 
@@ -315,9 +346,56 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     for model_flux_smooth in model_fluxes_smooth:
         axes[1].plot(phase_smooth, model_flux_smooth, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
     
-    # Plot en flujo - datos observados
-    axes[1].errorbar(phase, flux, yerr=None, fmt='o', alpha=0.7,
-                     label='Observations', markersize=5, zorder=10, color='#2E86AB')
+    # Separar observaciones normales de upper limits usados en el fit (para flujo)
+    if is_upper_limit is not None and np.any(is_upper_limit):
+        mask_normal = ~is_upper_limit
+        mask_ul_fit = is_upper_limit
+        
+        phase_normal_flux = phase[mask_normal]
+        flux_normal = flux[mask_normal]
+        if flux_err is not None and len(flux_err) == len(flux):
+            flux_err_normal = flux_err[mask_normal]
+        else:
+            flux_err_normal = None
+        
+        phase_ul_fit_flux = phase[mask_ul_fit]
+        flux_ul_fit = flux[mask_ul_fit]
+    else:
+        phase_normal_flux = phase
+        flux_normal = flux
+        flux_err_normal = flux_err if (flux_err is not None and len(flux_err) == len(flux)) else None
+        phase_ul_fit_flux = np.array([])
+        flux_ul_fit = np.array([])
+    
+    # Plot en flujo - observaciones normales
+    if len(phase_normal_flux) > 0:
+        if flux_err_normal is not None and not np.all(np.isnan(flux_err_normal)):
+            axes[1].errorbar(phase_normal_flux, flux_normal, yerr=flux_err_normal, fmt='o', alpha=0.7,
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB',
+                             capsize=2, capthick=1, elinewidth=1.5)
+        else:
+            axes[1].errorbar(phase_normal_flux, flux_normal, yerr=None, fmt='o', alpha=0.7,
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB')
+    
+    # Plot upper limits usados en el fit (símbolo diferente: triángulo verde)
+    if len(phase_ul_fit_flux) > 0:
+        axes[1].scatter(phase_ul_fit_flux, flux_ul_fit, marker='^', color='green', alpha=0.8, 
+                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
+        for px, py in zip(phase_ul_fit_flux, flux_ul_fit):
+            max_flux = flux.max() if len(flux) > 0 else flux_ul_fit.max()
+            arrow_length = max_flux * 0.05
+            axes[1].annotate('', xy=(px, py), xytext=(px, py - arrow_length),
+                            arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
+    
+    # Plot upper limits NO usados en el fit (solo para visualización)
+    if phase_ul is not None and flux_ul is not None and len(phase_ul) > 0:
+        axes[1].scatter(phase_ul, flux_ul, marker='v', color='orange', alpha=0.7, 
+                       s=60, label='Upper limits (not in fit)', zorder=8)
+        for px, py in zip(phase_ul, flux_ul):
+            max_flux = flux.max() if len(flux) > 0 else flux_ul.max()
+            arrow_length = max_flux * 0.05
+            axes[1].annotate('', xy=(px, py), xytext=(px, py - arrow_length),
+                            arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
     
     # Modelo mediano en fase suave (más visible)
     if param_medians is not None:
