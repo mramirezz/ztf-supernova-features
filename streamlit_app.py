@@ -575,7 +575,7 @@ st.sidebar.caption("**Nota**: Estos valores se usan cuando ejecutas `main.py` pa
 st.sidebar.subheader("Visualización")
 st.sidebar.markdown("**Realizaciones MCMC a mostrar**")
 st.sidebar.caption("Número de curvas del MCMC a mostrar (0 = solo mediana y promedio). Más curvas = mejor visualización de incertidumbre pero más lento.")
-    st.sidebar.caption(f"Valor por defecto: 100")
+st.sidebar.caption(f"Valor por defecto: 100")
 n_samples_to_show = st.sidebar.slider("Realizaciones", 0, 1000, 100, key="n_samples")
 
 st.sidebar.markdown("---")
