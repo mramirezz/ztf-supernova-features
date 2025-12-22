@@ -433,6 +433,28 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             else:
                 mad_str = f"{stats['mad']:.6f}"
             st.metric("MAD", mad_str)
+            with st.expander("Ver ecuación MAD"):
+                st.markdown("""
+                **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
+                
+                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Esto es consistente con el espacio donde se realiza el ajuste.
+                
+                **Ecuación:**
+                $$
+                \\text{MAD} = \\text{mediana}(|F_i - \\hat{F}_i|)
+                $$
+                
+                Donde:
+                - $F_i$ = flujo observado en el punto $i$
+                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
+                - Se calcula el valor absoluto de cada residual y luego se toma la mediana
+                
+                **Interpretación:**
+                - MAD más pequeño = mejor ajuste
+                - Es resistente a outliers (no se ve afectado por puntos extremos)
+                - Unidades: flujo (mismas unidades que los datos observados)
+                - Típicamente MAD < RMS cuando hay outliers
+                """)
         
         with col3:
             st.metric("Error Relativo Mediano", f"{stats['median_relative_error_pct']:.2f}%")
@@ -458,28 +480,6 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 - Es independiente de la escala del flujo (normalizado por el flujo observado)
                 - No depende de los errores observacionales, solo de la calidad del ajuste
                 - Unidades: porcentaje (%)
-                """)
-            with st.expander("Ver ecuación MAD"):
-                st.markdown("""
-                **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
-                
-                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Esto es consistente con el espacio donde se realiza el ajuste.
-                
-                **Ecuación:**
-                $$
-                \\text{MAD} = \\text{mediana}(|F_i - \\hat{F}_i|)
-                $$
-                
-                Donde:
-                - $F_i$ = flujo observado en el punto $i$
-                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
-                - Se calcula el valor absoluto de cada residual y luego se toma la mediana
-                
-                **Interpretación:**
-                - MAD más pequeño = mejor ajuste
-                - Es resistente a outliers (no se ve afectado por puntos extremos)
-                - Unidades: flujo (mismas unidades que los datos observados)
-                - Típicamente MAD < RMS cuando hay outliers
                 """)
         
         # Guardar features
