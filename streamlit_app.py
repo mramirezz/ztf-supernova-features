@@ -307,8 +307,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         param_info = {
             'A': 'Amplitud del flujo máximo (normalización)',
-            'f': 'Fracción que controla la forma del pico (0-1)',
-            't0': 'Tiempo del pico máximo de flujo (días)',
+            'f': 'Fracción que controla la forma del peak (0-1)',
+            't0': 'Tiempo del peak máximo de flujo (días)',
             't_rise': 'Tiempo característico de subida (días)',
             't_fall': 'Tiempo característico de caída (días)',
             'gamma': 'Parámetro de transición entre fase temprana y tardía (días)'
@@ -327,8 +327,9 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                     val = params[idx]
                     err = params_err[idx]
                     with cols[col]:
-                        st.metric(name, f"{val:.4e}", f"±{err:.4e}")
+                        st.metric(name, f"{val:.4e}", delta=None)
                         st.caption(f"*{param_info[name]}*")
+                        st.caption(f"Uncertainty: ±{err:.4e}")
         
         # Crear subcarpeta para esta supernova
         sn_plots_dir = PLOTS_DIR / sn_name
