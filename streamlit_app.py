@@ -397,10 +397,76 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric("RMS", f"{stats['rms']:.4f}")
+            with st.expander("📐 Ver ecuación RMS"):
+                st.markdown("""
+                **Root Mean Square (RMS)** mide la desviación promedio entre los datos observados y el modelo ajustado.
+                
+                **Ecuación:**
+                $$
+                \\text{RMS} = \\sqrt{\\frac{\\sum_{i=1}^{N} (m_i - \\hat{m}_i)^2}{N - p}}
+                $$
+                
+                Donde:
+                - $m_i$ = magnitud observada en el punto $i$
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
+                - $N$ = número de puntos observacionales
+                - $p$ = número de parámetros del modelo (6: A, f, t₀, t_rise, t_fall, γ)
+                - $N - p$ = grados de libertad (degrees of freedom, dof)
+                
+                **Interpretación:**
+                - RMS más pequeño = mejor ajuste
+                - Se divide por $(N-p)$ en lugar de $N$ para corregir por el sesgo (Bessel's correction)
+                - Unidades: magnitudes
+                """)
+        
         with col2:
             st.metric("MAD", f"{stats['mad']:.4f}")
+            with st.expander("📐 Ver ecuación MAD"):
+                st.markdown("""
+                **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
+                
+                **Ecuación:**
+                $$
+                \\text{MAD} = \\text{mediana}(|m_i - \\hat{m}_i|)
+                $$
+                
+                Donde:
+                - $m_i$ = magnitud observada en el punto $i$
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
+                - Se calcula el valor absoluto de cada residual y luego se toma la mediana
+                
+                **Interpretación:**
+                - MAD más pequeño = mejor ajuste
+                - Es resistente a outliers (no se ve afectado por puntos extremos)
+                - Unidades: magnitudes
+                - Típicamente MAD < RMS cuando hay outliers
+                """)
+        
         with col3:
             st.metric("χ² reducido", f"{stats['reduced_chi2']:.4f}")
+            with st.expander("📐 Ver ecuación χ² reducido"):
+                st.markdown("""
+                **Chi-cuadrado reducido (χ²/ν)** mide la bondad del ajuste considerando los errores observacionales. Evalúa si el modelo es consistente con los datos dentro de sus incertidumbres.
+                
+                **Ecuación:**
+                $$
+                \\chi^2_\\nu = \\frac{\\chi^2}{\\nu} = \\frac{1}{N - p} \\sum_{i=1}^{N} \\frac{(m_i - \\hat{m}_i)^2}{\\sigma_i^2}
+                $$
+                
+                Donde:
+                - $m_i$ = magnitud observada en el punto $i$
+                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$
+                - $\\sigma_i$ = error observacional en el punto $i$ (MAGERR)
+                - $N$ = número de puntos observacionales
+                - $p$ = número de parámetros del modelo (6)
+                - $\\nu = N - p$ = grados de libertad
+                
+                **Interpretación:**
+                - $\\chi^2_\\nu \\approx 1$: ajuste excelente, modelo consistente con los datos
+                - $\\chi^2_\\nu < 1$: modelo sobreajustado o errores sobreestimados
+                - $\\chi^2_\\nu > 1$: modelo subajustado o errores subestimados
+                - Unidades: adimensional
+                """)
         
         # Guardar features
         if save_results:
