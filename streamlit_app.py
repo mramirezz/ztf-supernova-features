@@ -329,7 +329,9 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                     with cols[col]:
                         st.metric(name, f"{val:.4e}", delta=None)
                         st.caption(f"*{param_info[name]}*")
-                        st.caption(f"Uncertainty: ±{err:.4e}")
+                        # Calcular porcentaje de incertidumbre relativa
+                        rel_uncertainty = (err / abs(val) * 100) if abs(val) > 1e-10 else np.inf
+                        st.caption(f"Uncertainty: ±{err:.4e} ({rel_uncertainty:.1f}%)")
         
         # Crear subcarpeta para esta supernova
         sn_plots_dir = PLOTS_DIR / sn_name
