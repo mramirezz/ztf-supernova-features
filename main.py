@@ -148,7 +148,7 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         t0_features = time.time()
         
         try:
-            features = extract_features(mcmc_results, phase, mag, mag_err, mag_model,
+            features = extract_features(mcmc_results, phase, flux, flux_err,
                                        sn_name, filter_name)
             features['sn_type'] = sn_type
             t_features = time.time() - t0_features

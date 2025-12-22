@@ -392,7 +392,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         # Estadísticas de ajuste
         st.subheader("Estadísticas de Ajuste")
         from feature_extractor import calculate_fit_statistics
-        stats = calculate_fit_statistics(phase, mag, mag_err, mag_model)
+        stats = calculate_fit_statistics(phase, flux, flux_err, mcmc_results['model_flux'])
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -401,16 +401,16 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Root Mean Square (RMS)** mide la desviación promedio entre los datos observados y el modelo ajustado.
                 
-                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud.
+                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Esto es consistente con el espacio donde se realiza el ajuste.
                 
                 **Ecuación:**
                 $$
-                \\text{RMS} = \\sqrt{\\frac{\\sum_{i=1}^{N} (m_i - \\hat{m}_i)^2}{N - p}}
+                \\text{RMS} = \\sqrt{\\frac{\\sum_{i=1}^{N} (F_i - \\hat{F}_i)^2}{N - p}}
                 $$
                 
                 Donde:
-                - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
+                - $F_i$ = flujo observado en el punto $i$
+                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
                 - $N$ = número de puntos observacionales
                 - $p$ = número de parámetros del modelo (6: A, f, t₀, t_rise, t_fall, γ)
                 - $N - p$ = grados de libertad (degrees of freedom, dof)
@@ -418,7 +418,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 **Interpretación:**
                 - RMS más pequeño = mejor ajuste
                 - Se divide por $(N-p)$ en lugar de $N$ para corregir por el sesgo (Bessel's correction)
-                - Unidades: magnitudes
+                - Unidades: flujo (mismas unidades que los datos observados)
                 """)
         
         with col2:
@@ -427,22 +427,22 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Median Absolute Deviation (MAD)** mide la mediana de las desviaciones absolutas. Es más robusto a outliers que el RMS.
                 
-                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud.
+                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Esto es consistente con el espacio donde se realiza el ajuste.
                 
                 **Ecuación:**
                 $$
-                \\text{MAD} = \\text{mediana}(|m_i - \\hat{m}_i|)
+                \\text{MAD} = \\text{mediana}(|F_i - \\hat{F}_i|)
                 $$
                 
                 Donde:
-                - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
+                - $F_i$ = flujo observado en el punto $i$
+                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
                 - Se calcula el valor absoluto de cada residual y luego se toma la mediana
                 
                 **Interpretación:**
                 - MAD más pequeño = mejor ajuste
                 - Es resistente a outliers (no se ve afectado por puntos extremos)
-                - Unidades: magnitudes
+                - Unidades: flujo (mismas unidades que los datos observados)
                 - Típicamente MAD < RMS cuando hay outliers
                 """)
         
@@ -452,17 +452,17 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 st.markdown("""
                 **Chi-cuadrado reducido (χ²/ν)** mide la bondad del ajuste considerando los errores observacionales. Evalúa si el modelo es consistente con los datos dentro de sus incertidumbres.
                 
-                **Nota importante:** Esta métrica se calcula en **magnitud**, no en flujo. El MCMC ajusta en flujo, pero las métricas se evalúan después de convertir el modelo a magnitud. Los errores $\\sigma_i$ son los errores en magnitud (MAGERR).
+                **Nota importante:** Esta métrica se calcula en **flujo**, ya que el MCMC ajusta en flujo. Los errores $\\sigma_{F,i}$ son los errores en flujo (propagados desde MAGERR).
                 
                 **Ecuación:**
                 $$
-                \\chi^2_\\nu = \\frac{\\chi^2}{\\nu} = \\frac{1}{N - p} \\sum_{i=1}^{N} \\frac{(m_i - \\hat{m}_i)^2}{\\sigma_i^2}
+                \\chi^2_\\nu = \\frac{\\chi^2}{\\nu} = \\frac{1}{N - p} \\sum_{i=1}^{N} \\frac{(F_i - \\hat{F}_i)^2}{\\sigma_{F,i}^2}
                 $$
                 
                 Donde:
-                - $m_i$ = magnitud observada en el punto $i$
-                - $\\hat{m}_i$ = magnitud predicha por el modelo en el punto $i$ (convertida desde flujo)
-                - $\\sigma_i$ = error observacional en magnitud en el punto $i$ (MAGERR)
+                - $F_i$ = flujo observado en el punto $i$
+                - $\\hat{F}_i$ = flujo predicho por el modelo en el punto $i$
+                - $\\sigma_{F,i}$ = error observacional en flujo en el punto $i$ (propagado desde MAGERR)
                 - $N$ = número de puntos observacionales
                 - $p$ = número de parámetros del modelo (6)
                 - $\\nu = N - p$ = grados de libertad
@@ -476,7 +476,7 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Guardar features
         if save_results:
-            features = extract_features(mcmc_results, phase, mag, mag_err, mag_model,
+            features = extract_features(mcmc_results, phase, flux, flux_err,
                                       sn_name, filter_name)
             features['sn_type'] = selected_type
             

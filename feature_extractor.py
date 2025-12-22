@@ -4,23 +4,34 @@ Extracción de features del modelo de Villar
 import numpy as np
 from typing import Dict
 
-def calculate_fit_statistics(phase, mag, mag_err, mag_model):
+def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     """
-    Calcular estadísticas de bondad de ajuste
+    Calcular estadísticas de bondad de ajuste en el espacio de flujo
+    
+    Parameters:
+    -----------
+    phase : array
+        Fases (días)
+    flux : array
+        Flujo observado
+    flux_err : array
+        Error en flujo observado
+    flux_model : array
+        Flujo del modelo
     
     Returns:
     --------
     dict con: rms, mad, reduced_chi2, n_points, time_span
     """
-    residuals = mag - mag_model
-    n_points = len(mag)
+    residuals = flux - flux_model
+    n_points = len(flux)
     n_params = 6
     dof = n_points - n_params
     
     rms = np.sqrt(np.sum(residuals**2) / dof) if dof > 0 else np.inf
     mad = np.median(np.abs(residuals))
     
-    chi2 = np.sum((residuals / mag_err)**2)
+    chi2 = np.sum((residuals / flux_err)**2)
     reduced_chi2 = chi2 / dof if dof > 0 else np.inf
     
     time_span = phase.max() - phase.min()
@@ -33,18 +44,16 @@ def calculate_fit_statistics(phase, mag, mag_err, mag_model):
         'time_span': time_span
     }
 
-def extract_features(mcmc_results, phase, mag, mag_err, mag_model, sn_name, filter_name):
+def extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name):
     """
     Extraer las 25 features del modelo de Villar
     
     Parameters:
     -----------
     mcmc_results : dict
-        Resultados del ajuste MCMC
-    phase, mag, mag_err : arrays
-        Datos observados
-    mag_model : array
-        Magnitudes del modelo
+        Resultados del ajuste MCMC (debe incluir 'model_flux')
+    phase, flux, flux_err : arrays
+        Datos observados en flujo
     sn_name, filter_name : str
         Identificadores
         
@@ -54,6 +63,7 @@ def extract_features(mcmc_results, phase, mag, mag_err, mag_model, sn_name, filt
     """
     params = mcmc_results['params']
     params_err = mcmc_results['params_err']
+    flux_model = mcmc_results['model_flux']
     
     # Parámetros principales
     features = {
@@ -87,8 +97,8 @@ def extract_features(mcmc_results, phase, mag, mag_err, mag_model, sn_name, filt
         'gamma_mc_std': params_err[5],
     })
     
-    # Estadísticas de ajuste
-    stats = calculate_fit_statistics(phase, mag, mag_err, mag_model)
+    # Estadísticas de ajuste (calculadas en flujo)
+    stats = calculate_fit_statistics(phase, flux, flux_err, flux_model)
     features.update({
         'rms': stats['rms'],
         'mad': stats['mad'],
