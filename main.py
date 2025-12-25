@@ -10,6 +10,7 @@ import sys
 import time
 import json
 import logging
+import gc
 from datetime import datetime
 import pandas as pd
 import numpy as np
@@ -17,8 +18,8 @@ from pathlib import Path
 from reader import parse_photometry_file, prepare_lightcurve
 from mcmc_fitter import fit_mcmc
 from feature_extractor import extract_features
-from plotter import plot_fit, plot_corner
-from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, CHECKPOINT_DIR, LOG_DIR, FILTERS_TO_PROCESS, MCMC_CONFIG, DATA_FILTER_CONFIG
+from plotter import plot_corner, plot_fit_with_uncertainty
+from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, CHECKPOINT_DIR, LOG_DIR, OUTPUT_DIR, FILTERS_TO_PROCESS, MCMC_CONFIG, DATA_FILTER_CONFIG
 
 # Configurar logging
 def setup_logger(sn_type):
@@ -106,7 +107,9 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
                 logger.error(f"  [{sn_name} | {filter_name}] ERROR en Paso 1/5: {error_msg}")
             return None
         
-        phase = lc_data['phase']
+        phase = lc_data['phase']  # Fase relativa para MCMC
+        mjd = lc_data.get('mjd', None)  # MJD original para plotting
+        reference_mjd = lc_data.get('reference_mjd', None)  # MJD de referencia
         flux = lc_data['flux']
         flux_err = lc_data['flux_err']
         mag = lc_data['mag']
@@ -115,14 +118,35 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         is_upper_limit = lc_data.get('is_upper_limit', None)
         had_upper_limits = lc_data.get('had_upper_limits', False)
         
-        print(f"    [OK] Puntos de datos: {len(phase)}")
-        print(f"    [OK] Rango de fase: {phase.min():.1f} - {phase.max():.1f} días")
-        if peak_phase is not None:
-            print(f"    [OK] Peak phase: {peak_phase:.1f} días")
-            print(f"    [OK] Datos filtrados: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak")
+        # Contar puntos normales vs totales (incluyendo upper limits)
+        n_normal = np.sum(~is_upper_limit) if is_upper_limit is not None else len(phase)
+        n_total = len(phase)
+        
+        print(f"    [OK] Puntos de datos para MCMC: {n_total} ({n_normal} detecciones normales", end="")
         if is_upper_limit is not None and np.any(is_upper_limit):
             n_ul = np.sum(is_upper_limit)
-            print(f"    [OK] Incluyendo {n_ul} upper limit(s) antes de las observaciones para contexto")
+            print(f" + {n_ul} upper limits)", end="")
+        else:
+            print(")", end="")
+        print()
+        
+        # Mostrar rango en MJD si está disponible, sino en fase
+        if mjd is not None and len(mjd) > 0:
+            print(f"    [OK] Rango MJD: {mjd.min():.1f} - {mjd.max():.1f}")
+            if peak_phase is not None and reference_mjd is not None:
+                peak_mjd = reference_mjd + peak_phase
+                print(f"    [OK] Peak en MJD: {peak_mjd:.1f} (fase relativa: {peak_phase:.1f} días)")
+        else:
+            print(f"    [OK] Rango de fase: {phase.min():.1f} - {phase.max():.1f} días")
+            if peak_phase is not None:
+                print(f"    [OK] Peak phase: {peak_phase:.1f} días")
+        
+        # Construir texto del filtro temporal
+        if DATA_FILTER_CONFIG['max_days_before_peak'] is None:
+            filter_text = f"Solo datos hasta {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak (sin límite antes del peak)"
+        else:
+            filter_text = f"{DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak"
+        print(f"    [OK] Datos filtrados: {filter_text}")
         
         # Ajuste MCMC
         if logger:
@@ -167,21 +191,46 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
                 logger.error(f"  [{sn_name} | {filter_name}] ERROR en Paso 3/5: {error_msg}")
             raise
         
-        # Crear subcarpeta para esta supernova
-        sn_plots_dir = PLOTS_DIR / sn_name
-        sn_plots_dir.mkdir(exist_ok=True)
+        # Convertir modelo a MJD para plotting (igual que en modo debug)
+        if mjd is not None and reference_mjd is not None:
+            # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
+            from model import alerce_model
+            samples_mjd = mcmc_results['samples'].copy()
+            samples_mjd[:, 2] = samples_mjd[:, 2] + reference_mjd  # t0 en MJD absoluto
+            
+            # Recalcular modelo mediano en MJD
+            param_medians_mjd = np.median(samples_mjd, axis=0)
+            flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
+            flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
+            mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
+            
+            # Usar MJD y samples ajustados para el plot
+            phase_for_plot = mjd
+            mag_model_for_plot = mag_model_points_mjd
+            flux_model_for_plot = flux_model_points_mjd
+            samples_for_plot = samples_mjd
+        else:
+            # Fallback: usar fase original
+            phase_for_plot = phase
+            mag_model_for_plot = mag_model
+            flux_model_for_plot = mcmc_results['model_flux']
+            samples_for_plot = mcmc_results['samples']
+        
+        # Crear subcarpeta para esta supernova solo si vamos a guardar algo
+        # Organizar por tipo de supernova: plots/SN Ia/ZTF20abc/
+        sn_plots_dir = PLOTS_DIR / sn_type / sn_name
+        sn_plots_dir.mkdir(parents=True, exist_ok=True)
         
         # Guardar gráficos (con múltiples realizaciones MCMC)
         plot_filename = f"{sn_name}_{filter_name}_fit.png"
         plot_path = sn_plots_dir / plot_filename
-        from plotter import plot_fit_with_uncertainty
         t0_plot = time.time()
         # Calcular número total de samples usados para la mediana
         n_total_samples = len(mcmc_results['samples'])
         print(f"    [INFO] Samples totales para mediana: {n_total_samples:,} (de {MCMC_CONFIG['n_walkers']} walkers × {MCMC_CONFIG['n_steps'] - MCMC_CONFIG['burn_in']} pasos)")
         plot_fit_with_uncertainty(
-            phase, mag, mag_err, mag_model, flux, mcmc_results['model_flux'],
-            mcmc_results['samples'], n_samples_to_show=100,  # Valor por defecto: 100 realizaciones para visualización
+            phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
+            samples_for_plot, n_samples_to_show=100,  # Valor por defecto: 100 realizaciones para visualización
             sn_name=sn_name, filter_name=filter_name, save_path=str(plot_path),
             is_upper_limit=is_upper_limit, flux_err=flux_err,
             had_upper_limits=had_upper_limits
@@ -199,7 +248,6 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         
         # Liberar memoria: eliminar samples grandes del MCMC después de usarlos
         del mcmc_results['samples']
-        import gc
         gc.collect()  # Forzar recolección de basura
         
         t_total_filter = t_mcmc + t_features + t_plot + t_corner
@@ -267,6 +315,44 @@ def save_checkpoint(sn_type, processed_set):
             json.dump(data, f, indent=2)
     except Exception as e:
         print(f"  [WARNING] Error al guardar checkpoint: {e}")
+
+def save_features_incremental(features_list, sn_type):
+    """
+    Guardar features incrementalmente en CSV después de procesar una supernova.
+    Esto asegura que si el proceso se cae, las features ya procesadas estén guardadas.
+    
+    Parameters:
+    -----------
+    features_list : list
+        Lista de dicts con features (uno por filtro procesado)
+    sn_type : str
+        Tipo de supernova
+    """
+    if not features_list:
+        return
+    
+    try:
+        output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}.csv"
+        df_new_features = pd.DataFrame(features_list)
+        
+        # Si el archivo ya existe, leerlo y actualizar
+        if output_file.exists():
+            existing_df = pd.read_csv(output_file)
+            
+            # Eliminar entradas existentes para las mismas combinaciones (sn_name, filter_band)
+            for _, row in df_new_features.iterrows():
+                mask = (existing_df['sn_name'] == row['sn_name']) & (existing_df['filter_band'] == row['filter_band'])
+                if mask.any():
+                    existing_df = existing_df[~mask]
+            
+            # Combinar: primero las existentes (sin duplicados), luego las nuevas
+            combined_df = pd.concat([existing_df, df_new_features], ignore_index=True)
+            combined_df.to_csv(output_file, index=False)
+        else:
+            # Si no existe, crear nuevo archivo
+            df_new_features.to_csv(output_file, index=False)
+    except Exception as e:
+        print(f"  [WARNING] Error al guardar features incrementalmente: {e}")
 
 def is_already_processed(sn_name, filter_name, processed_set):
     """
@@ -372,6 +458,18 @@ def process_supernova(filepath, sn_type, filters_to_process=None, processed_set=
         import gc
         gc.collect()
         
+        # Eliminar carpeta si está vacía (no se procesó ningún filtro exitosamente)
+        if sn_name:
+            sn_plots_dir = PLOTS_DIR / sn_type / sn_name
+            if sn_plots_dir.exists() and sn_plots_dir.is_dir():
+                # Verificar si la carpeta está vacía
+                try:
+                    if not any(sn_plots_dir.iterdir()):
+                        sn_plots_dir.rmdir()
+                        print(f"  [INFO] Carpeta vacía eliminada: {sn_plots_dir}")
+                except OSError:
+                    pass  # Si no se puede eliminar, no es crítico
+        
         t_total_sn = time.time() - t0_sn
         
         # Construir mensaje de resumen
@@ -402,6 +500,435 @@ def process_supernova(filepath, sn_type, filters_to_process=None, processed_set=
         traceback.print_exc()
         return []
 
+
+def filter_by_year(dat_files, min_year=2022):
+    """
+    Filtrar archivos por año (basado en el nombre ZTF)
+    
+    Parameters:
+    -----------
+    dat_files : list
+        Lista de Paths a archivos .dat
+    min_year : int
+        Año mínimo (default: 2022)
+        
+    Returns:
+    --------
+    filtered_files : list
+        Archivos filtrados, ordenados por año (más recientes primero)
+    """
+    filtered = []
+    for filepath in dat_files:
+        filename = filepath.name
+        # Extraer año del nombre: ZTF22, ZTF23, etc.
+        if filename.startswith('ZTF'):
+            try:
+                year_str = filename[3:5]  # ZTF22 -> 22
+                year = 2000 + int(year_str)
+                if year >= min_year:
+                    filtered.append((year, filepath))
+            except (ValueError, IndexError):
+                continue
+    
+    # Ordenar por año descendente (más recientes primero)
+    filtered.sort(key=lambda x: x[0], reverse=True)
+    return [f[1] for f in filtered]
+
+
+def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022):
+    """
+    Generar PDF de debug con fit + corner plot para múltiples supernovas
+    Usa las mismas funciones de plotting que el procesamiento normal
+    """
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+    import io
+    import matplotlib.image as mpimg
+    
+    print(f"\n{'='*80}")
+    print(f"GENERANDO PDF DE DEBUG")
+    print(f"{'='*80}")
+    print(f"Tipo de supernova: {sn_type}")
+    print(f"Número de supernovas: {n_supernovas}")
+    print(f"Año mínimo: {min_year}")
+    if filters_to_process:
+        print(f"Filtros: {', '.join(filters_to_process)}")
+    else:
+        print(f"Filtros: {FILTERS_TO_PROCESS} (desde config.py)")
+    
+    # Buscar archivos
+    type_path = BASE_DATA_PATH / sn_type
+    
+    if not type_path.exists():
+        print(f"\n[ERROR] La carpeta '{sn_type}' no existe")
+        return
+    
+    dat_files = list(type_path.glob("*_photometry.dat"))
+    
+    if not dat_files:
+        print(f"\n[ERROR] No se encontraron archivos .dat en '{sn_type}'")
+        return
+    
+    # Filtrar por año
+    filtered_files = filter_by_year(dat_files, min_year=min_year)
+    
+    if not filtered_files:
+        print(f"\n[ERROR] No se encontraron supernovas del año {min_year} en adelante")
+        return
+    
+    # Seleccionar aleatoriamente TODOS los archivos disponibles (o al menos más de los necesarios)
+    # Esto permite continuar intentando hasta tener n_supernovas exitosas
+    import random
+    random.seed(42)  # Semilla fija para reproducibilidad
+    # Mezclar todos los archivos aleatoriamente
+    selected_files = filtered_files.copy()
+    random.shuffle(selected_files)
+    
+    print(f"\n[INFO] Encontrados {len(filtered_files)} archivos del año {min_year} en adelante")
+    if n_supernovas is None:
+        print(f"[INFO] Procesando TODAS las supernovas disponibles...\n")
+    else:
+        print(f"[INFO] Procesando hasta obtener {n_supernovas} supernovas exitosas...\n")
+    
+    # Determinar qué filtros procesar
+    if filters_to_process is None:
+        filters_to_process = FILTERS_TO_PROCESS
+    
+    if not filters_to_process:
+        # Si está vacía, procesar todos los filtros disponibles (pero limitar a 2 para el PDF)
+        if filtered_files:
+            test_filters, _ = parse_photometry_file(str(filtered_files[0]))
+            filters_to_process = sorted(list(test_filters.keys()))[:2]  # Máximo 2 filtros
+            print(f"[INFO] Procesando filtros: {', '.join(filters_to_process)}")
+    
+    # Crear nombre del archivo PDF
+    pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
+    pdf_path = OUTPUT_DIR / pdf_filename
+    
+    # Procesar supernovas y generar PDF
+    # Continuar hasta tener n_supernovas exitosas
+    processed_count = 0
+    failed_count = 0
+    attempted_count = 0
+    successful_supernovas = []  # Lista para guardar nombres de supernovas exitosas
+    
+    with PdfPages(str(pdf_path)) as pdf:
+        for filepath in selected_files:
+            # Si ya tenemos las suficientes exitosas, parar (solo si n_supernovas no es None)
+            if n_supernovas is not None and processed_count >= n_supernovas:
+                break
+            
+            attempted_count += 1
+            if n_supernovas is None:
+                print(f"\n[Intento {attempted_count}/{len(selected_files)}] Procesando: {Path(filepath).name} (Exitosas: {processed_count})")
+            else:
+                print(f"\n[Intento {attempted_count}/{len(selected_files)}] Procesando: {Path(filepath).name} (Exitosas: {processed_count}/{n_supernovas})")
+            
+            try:
+                # Leer archivo
+                filters_data, sn_name = parse_photometry_file(str(filepath))
+                
+                if not filters_data:
+                    print(f"  [SKIP] No se pudieron extraer datos")
+                    failed_count += 1
+                    del filters_data
+                    continue
+                
+                # Procesar cada filtro y generar figuras
+                filter_figs = {}  # {filter_name: (fit_fig, corner_fig)}
+                skip_reasons = []  # Para acumular razones de skip
+                filter_data_dict = {}  # Guardar datos de cada filtro para calcular rango común
+                
+                for filter_name in filters_to_process:
+                    if filter_name not in filters_data:
+                        skip_reasons.append(f"Filtro {filter_name} no disponible en datos")
+                        continue
+                    
+                    try:
+                        # Preparar datos (igual que en process_single_filter)
+                        lc_data = prepare_lightcurve(
+                            filters_data[filter_name],
+                            filter_name,
+                            max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
+                            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"]
+                        )
+                        
+                        if lc_data is None:
+                            # Contar detecciones antes de prepare_lightcurve para saber por qué falló
+                            df_normal = filters_data[filter_name][~filters_data[filter_name]['Upperlimit']]
+                            n_detections = len(df_normal)
+                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones (mínimo 6 requerido)")
+                            continue
+                        
+                        phase = lc_data['phase']
+                        mjd = lc_data['mjd']  # MJD original para plotear
+                        flux = lc_data['flux']
+                        flux_err = lc_data['flux_err']
+                        mag = lc_data['mag']
+                        mag_err = lc_data['mag_err']
+                        is_upper_limit = lc_data.get('is_upper_limit', None)
+                        had_upper_limits = lc_data.get('had_upper_limits', False)
+                        filter_reference_mjd = lc_data.get('reference_mjd', None)
+                        
+                        # Verificar que haya al menos 6 detecciones (excluyendo upper limits)
+                        # El modelo tiene 6 parámetros, necesitamos al menos 6 puntos para un ajuste determinado
+                        n_detections = len(phase) if is_upper_limit is None else np.sum(~is_upper_limit)
+                        if n_detections < 6:
+                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones después de filtrado (mínimo 6)")
+                            continue
+                        
+                        # Ajuste MCMC (usa fase relativa por filtro, que está bien)
+                        mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
+                        
+                        # Convertir flujo del modelo a magnitud
+                        from model import flux_to_mag
+                        mag_model = flux_to_mag(np.clip(mcmc_results['model_flux'], 1e-10, None))
+                        
+                        # CONVERTIR MODELO A MJD PARA EL PLOT
+                        # El modelo fue ajustado en fase relativa, necesitamos convertirlo a MJD
+                        if filter_reference_mjd is not None:
+                            # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
+                            from model import alerce_model
+                            samples_mjd = mcmc_results['samples'].copy()
+                            samples_mjd[:, 2] = samples_mjd[:, 2] + filter_reference_mjd  # t0 en MJD absoluto
+                            
+                            # Recalcular modelo mediano en MJD
+                            param_medians_mjd = np.median(samples_mjd, axis=0)
+                            flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
+                            flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
+                            mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
+                            
+                            # Usar MJD y samples ajustados para el plot
+                            phase_for_plot = mjd
+                            mag_model_for_plot = mag_model_points_mjd
+                            flux_model_for_plot = flux_model_points_mjd
+                            samples_for_plot = samples_mjd
+                        else:
+                            # Fallback: usar fase original
+                            phase_for_plot = phase
+                            mag_model_for_plot = mag_model
+                            flux_model_for_plot = mcmc_results['model_flux']
+                            samples_for_plot = mcmc_results['samples']
+                        
+                        # Guardar datos para calcular rango común si hay múltiples filtros
+                        filter_data_dict[filter_name] = {
+                            'phase_for_plot': phase_for_plot,
+                            'mag': mag,
+                            'mag_err': mag_err,
+                            'mag_model_for_plot': mag_model_for_plot,
+                            'flux': flux,
+                            'flux_model_for_plot': flux_model_for_plot,
+                            'samples_for_plot': samples_for_plot,
+                            'is_upper_limit': is_upper_limit,
+                            'flux_err': flux_err,
+                            'had_upper_limits': had_upper_limits,
+                            'mcmc_results': mcmc_results  # Guardar para corner plot
+                        }
+                        
+                    except Exception as e:
+                        skip_reasons.append(f"Filtro {filter_name}: Error - {type(e).__name__}: {str(e)}")
+                        import traceback
+                        continue
+                
+                # Calcular rango común de MJD si hay 2 filtros
+                common_xlim = None
+                if len(filter_data_dict) == 2:
+                    all_mjd_min = []
+                    all_mjd_max = []
+                    for filter_name, data in filter_data_dict.items():
+                        mjd_data = data['phase_for_plot']
+                        if len(mjd_data) > 0 and mjd_data.min() > 50000:  # Es MJD
+                            all_mjd_min.append(mjd_data.min())
+                            all_mjd_max.append(mjd_data.max())
+                    if len(all_mjd_min) > 0:
+                        common_xlim = (min(all_mjd_min), max(all_mjd_max))
+                        # Agregar un pequeño margen (2% a cada lado)
+                        mjd_range = common_xlim[1] - common_xlim[0]
+                        common_xlim = (common_xlim[0] - 0.02 * mjd_range, common_xlim[1] + 0.02 * mjd_range)
+                
+                # Generar figuras con rango común si aplica
+                for filter_name, data in filter_data_dict.items():
+                    fit_fig = plot_fit_with_uncertainty(
+                        data['phase_for_plot'], data['mag'], data['mag_err'], 
+                        data['mag_model_for_plot'], data['flux'], data['flux_model_for_plot'],
+                        data['samples_for_plot'], n_samples_to_show=100,
+                        sn_name=sn_name, filter_name=filter_name, save_path=None,
+                        is_upper_limit=data['is_upper_limit'], 
+                        flux_err=data['flux_err'],
+                        had_upper_limits=data['had_upper_limits'],
+                        xlim=common_xlim
+                    )
+                    
+                    # Generar corner plot (sin guardar, solo obtener la figura)
+                    corner_fig = plot_corner(data['mcmc_results']['samples'], save_path=None)
+                    
+                    filter_figs[filter_name] = (fit_fig, corner_fig)
+                    
+                    # Liberar samples y mcmc_results de memoria después de generar corner plot
+                    del data['mcmc_results']['samples']
+                    del data['mcmc_results']
+                    # Eliminar otros datos grandes que ya no se necesitan
+                    del data['samples_for_plot']
+                
+                if not filter_figs:
+                    print(f"  [SKIP] No se pudieron procesar filtros:")
+                    for reason in skip_reasons:
+                        print(f"    - {reason}")
+                    failed_count += 1
+                    # Liberar memoria antes de continuar
+                    del filter_figs, filter_data_dict, filters_data
+                    gc.collect()
+                    # No aumentar processed_count, seguir buscando
+                    continue
+                
+                # Organizar figuras en una página del PDF
+                n_filters = len(filter_figs)
+                
+                if n_filters == 1:
+                    # Una página con fit arriba y corner abajo
+                    filter_name = list(filter_figs.keys())[0]
+                    fit_fig, corner_fig = filter_figs[filter_name]
+                    
+                    # Crear figura combinada con dimensiones que preserven aspect ratio
+                    # Fit plot es aproximadamente 10x6, corner es aproximadamente 8x8
+                    # Usar dimensiones que preserven las proporciones
+                    combined_fig = plt.figure(figsize=(10, 16))
+                    gs = combined_fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=0.05, 
+                                                   left=0.08, right=0.95, top=0.96, bottom=0.05)
+                    
+                    # Copiar fit plot como imagen (preservar aspect ratio)
+                    ax1 = combined_fig.add_subplot(gs[0])
+                    ax1.axis('off')
+                    buf1 = io.BytesIO()
+                    fit_fig.savefig(buf1, format='png', dpi=200, bbox_inches='tight')
+                    buf1.seek(0)
+                    img1 = mpimg.imread(buf1)
+                    # Preservar aspect ratio del fit plot
+                    ax1.imshow(img1, aspect='auto', interpolation='bilinear')
+                    
+                    # Copiar corner plot como imagen (preservar aspect ratio)
+                    ax2 = combined_fig.add_subplot(gs[1])
+                    ax2.axis('off')
+                    buf2 = io.BytesIO()
+                    corner_fig.savefig(buf2, format='png', dpi=200, bbox_inches='tight')
+                    buf2.seek(0)
+                    img2 = mpimg.imread(buf2)
+                    ax2.imshow(img2, aspect='auto', interpolation='bilinear')
+                    
+                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
+                    
+                    pdf.savefig(combined_fig, bbox_inches='tight', dpi=200)
+                    
+                    # Liberar memoria: cerrar figuras y buffers
+                    plt.close(combined_fig)
+                    plt.close(fit_fig)
+                    plt.close(corner_fig)
+                    del img1, img2
+                    buf1.close()
+                    buf2.close()
+                    
+                elif n_filters == 2:
+                    # Una página con fit1, fit2 y corner
+                    filter_names = sorted(filter_figs.keys())
+                    fit_fig1, corner_fig1 = filter_figs[filter_names[0]]
+                    fit_fig2, _ = filter_figs[filter_names[1]]  # Usar corner del primer filtro
+                    
+                    # Dimensiones que preserven las proporciones de los plots
+                    combined_fig = plt.figure(figsize=(10, 20))
+                    gs = combined_fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.2], hspace=0.05,
+                                                   left=0.08, right=0.95, top=0.98, bottom=0.04)
+                    
+                    # Fit 1
+                    ax1 = combined_fig.add_subplot(gs[0])
+                    ax1.axis('off')
+                    buf1 = io.BytesIO()
+                    fit_fig1.savefig(buf1, format='png', dpi=200, bbox_inches='tight')
+                    buf1.seek(0)
+                    img1 = mpimg.imread(buf1)
+                    ax1.imshow(img1, aspect='auto', interpolation='bilinear')
+                    
+                    # Fit 2
+                    ax2 = combined_fig.add_subplot(gs[1])
+                    ax2.axis('off')
+                    buf2 = io.BytesIO()
+                    fit_fig2.savefig(buf2, format='png', dpi=200, bbox_inches='tight')
+                    buf2.seek(0)
+                    img2 = mpimg.imread(buf2)
+                    ax2.imshow(img2, aspect='auto', interpolation='bilinear')
+                    
+                    # Corner
+                    ax3 = combined_fig.add_subplot(gs[2])
+                    ax3.axis('off')
+                    buf3 = io.BytesIO()
+                    corner_fig1.savefig(buf3, format='png', dpi=200, bbox_inches='tight')
+                    buf3.seek(0)
+                    img3 = mpimg.imread(buf3)
+                    ax3.imshow(img3, aspect='auto', interpolation='bilinear')
+                    
+                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.99)
+                    
+                    pdf.savefig(combined_fig, bbox_inches='tight', dpi=200)
+                    
+                    # Liberar memoria: cerrar figuras y buffers
+                    plt.close(combined_fig)
+                    plt.close(fit_fig1)
+                    plt.close(fit_fig2)
+                    plt.close(corner_fig1)
+                    del img1, img2, img3
+                    buf1.close()
+                    buf2.close()
+                    buf3.close()
+                
+                # Liberar memoria: eliminar datos grandes
+                del filter_figs, filter_data_dict, filters_data
+                gc.collect()
+                
+                processed_count += 1
+                successful_supernovas.append(sn_name)  # Guardar nombre de supernova exitosa
+                if n_supernovas is None:
+                    print(f"  [OK] Página agregada al PDF ({processed_count} exitosas)")
+                else:
+                    print(f"  [OK] Página agregada al PDF ({processed_count}/{n_supernovas} exitosas)")
+                
+                # Liberar memoria periódicamente cada 10 supernovas exitosas
+                if processed_count % 10 == 0:
+                    gc.collect()
+                    print(f"  [INFO] Memoria liberada después de procesar {processed_count} supernovas exitosas")
+                
+            except Exception as e:
+                print(f"  [ERROR] Error procesando supernova: {e}")
+                import traceback
+                traceback.print_exc()
+                failed_count += 1
+                # Liberar memoria en caso de error
+                try:
+                    del filters_data, filter_figs, filter_data_dict
+                except:
+                    pass
+                gc.collect()
+                continue
+    
+    # Guardar CSV con supernovas exitosas
+    csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
+    csv_path = OUTPUT_DIR / csv_filename
+    df_successful = pd.DataFrame({'supernova_name': successful_supernovas})
+    df_successful.to_csv(csv_path, index=False)
+    
+    print(f"\n{'='*80}")
+    print(f"[OK] PDF generado: {pdf_path}")
+    print(f"[OK] CSV con supernovas exitosas: {csv_path}")
+    if n_supernovas is None:
+        print(f"[OK] Supernovas exitosas procesadas: {processed_count} (todas disponibles)")
+    else:
+        print(f"[OK] Supernovas exitosas procesadas: {processed_count}/{n_supernovas}")
+    print(f"[INFO] Intentos totales: {attempted_count}")
+    if failed_count > 0:
+        print(f"[INFO] Supernovas fallidas/saltadas: {failed_count}")
+    if processed_count < n_supernovas:
+        print(f"[WARNING] Solo se procesaron {processed_count} de {n_supernovas} supernovas solicitadas")
+    print(f"{'='*80}")
+
+
 def main():
     """
     Función principal
@@ -422,8 +949,41 @@ def main():
     else:
         sn_type = "SN Ia"
     
-    # Verificar si hay flag --resume
+    # Verificar si hay flag --resume o --debug-pdf
     resume_from_checkpoint = '--resume' in sys.argv
+    debug_pdf_mode = '--debug-pdf' in sys.argv
+    
+    # Si está en modo debug-pdf, usar función especial
+    if debug_pdf_mode:
+        # Parsear número de supernovas para PDF
+        n_supernovas = None
+        if len(sys.argv) > 2 and sys.argv[2] != '--debug-pdf':
+            if sys.argv[2].lower() == 'all':
+                n_supernovas = None
+            else:
+                n_supernovas = int(sys.argv[2])
+        else:
+            # Valores por defecto según tipo
+            if sn_type == "SN Ia":
+                n_supernovas = 200
+            elif sn_type in ["SN Ia-91bg-like", "SN Ia-91T-like"]:
+                n_supernovas = 50
+            else:
+                n_supernovas = 100
+        
+        # Parsear filtros (opcional)
+        filters_to_process = None
+        for arg in sys.argv[3:]:
+            if arg == '--debug-pdf':
+                continue
+            filters_input = arg
+            filters_input = filters_input.replace('[', '').replace(']', '').replace("'", '').replace('"', '')
+            filters_to_process = [f.strip() for f in filters_input.replace(',', ' ').split()]
+            print(f"[INFO] Filtros especificados: {filters_to_process}")
+            break
+        
+        generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022)
+        return
     
     # Parsear número de supernovas
     n_supernovas = None
@@ -524,9 +1084,13 @@ def main():
         all_features.extend(features_list)  # Extender con todas las features de todos los filtros
         total_processed += len(features_list)
         
+        # Guardar features incrementalmente después de procesar cada supernova
+        if features_list:
+            save_features_incremental(features_list, sn_type)
+            print(f"  [OK] Features guardadas incrementalmente ({len(features_list)} registros)")
+        
         # Liberar memoria periódicamente cada 10 supernovas
         if (i + 1) % 10 == 0:
-            import gc
             gc.collect()
             print(f"  [INFO] Memoria liberada después de procesar {i+1} supernovas")
     
@@ -541,41 +1105,23 @@ def main():
     else:
         logger.info(f"Procesamiento completado. Total: {len(all_features)} features extraídas ({total_processed} procesados) en {t_total:.2f}s")
     
-    # Guardar features en CSV
+    # Mostrar resumen de features guardadas (ya se guardaron incrementalmente)
     if all_features:
-        df_new_features = pd.DataFrame(all_features)
         output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}.csv"
         
-        # Si el archivo ya existe, leerlo y reemplazar solo las entradas específicas
+        # Leer el archivo final para mostrar estadísticas
         if output_file.exists():
-            existing_df = pd.read_csv(output_file)
-            
-            # Identificar qué entradas se van a reemplazar (mismo sn_name y filter_band)
-            for _, row in df_new_features.iterrows():
-                mask = (existing_df['sn_name'] == row['sn_name']) & (existing_df['filter_band'] == row['filter_band'])
-                if mask.any():
-                    # Eliminar entradas existentes para esta combinación
-                    existing_df = existing_df[~mask]
-                    print(f"  [INFO] Reemplazando entrada existente: {row['sn_name']} - {row['filter_band']}")
-            
-            # Combinar: primero las existentes (sin duplicados), luego las nuevas
-            combined_df = pd.concat([existing_df, df_new_features], ignore_index=True)
-            combined_df.to_csv(output_file, index=False)
-            
+            final_df = pd.read_csv(output_file)
             print(f"\n{'='*80}")
-            print(f"[OK] Features guardadas en: {output_file}")
-            print(f"[OK] Nuevos registros agregados: {len(df_new_features)}")
-            print(f"[OK] Total de registros en archivo: {len(combined_df)}")
-            print(f"[OK] Supernovas únicas: {combined_df['sn_name'].nunique()}")
-            print(f"[OK] Filtros procesados: {', '.join(combined_df['filter_band'].unique())}")
+            print(f"[OK] Features guardadas incrementalmente en: {output_file}")
+            print(f"[OK] Registros procesados en esta sesión: {len(all_features)}")
+            print(f"[OK] Total de registros en archivo: {len(final_df)}")
+            print(f"[OK] Supernovas únicas: {final_df['sn_name'].nunique()}")
+            print(f"[OK] Filtros procesados: {', '.join(sorted(final_df['filter_band'].unique()))}")
         else:
-            # Si no existe, crear nuevo archivo
-            df_new_features.to_csv(output_file, index=False)
+            # Esto no debería pasar si se guardó incrementalmente, pero por si acaso
             print(f"\n{'='*80}")
-            print(f"[OK] Features guardadas en: {output_file}")
-            print(f"[OK] Total de registros (supernovas x filtros): {len(all_features)}")
-            print(f"[OK] Supernovas únicas: {df_new_features['sn_name'].nunique()}")
-            print(f"[OK] Filtros procesados: {', '.join(df_new_features['filter_band'].unique())}")
+            print(f"[WARNING] Archivo de features no encontrado. Esto no debería pasar.")
         
         print(f"[OK] Tiempo total de ejecución: {t_total:.2f} segundos ({t_total/60:.2f} minutos)")
         print(f"{'='*80}")

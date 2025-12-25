@@ -158,23 +158,27 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         df_normal = df_all[~df_all['Upperlimit']].copy()
         df_upperlimit = df_all[df_all['Upperlimit']].copy()
         
-        # Datos normales
-        phase_all = mjd_to_phase(df_normal['MJD'].values) if len(df_normal) > 0 else np.array([])
+        # Datos normales - usar MJD directamente para plotting
+        mjd_all = df_normal['MJD'].values if len(df_normal) > 0 else np.array([])
+        phase_all = mjd_to_phase(mjd_all) if len(df_normal) > 0 else np.array([])  # Para cálculos internos
         mag_all = df_normal['MAG'].values if len(df_normal) > 0 else np.array([])
         mag_err_all = df_normal['MAGERR'].values if len(df_normal) > 0 else np.array([])
         flux_all = 10**(-mag_all / 2.5) if len(df_normal) > 0 else np.array([])
         flux_err_all = (mag_err_all * flux_all) / 1.086 if len(df_normal) > 0 else np.array([])
         
-        # Upper limits
-        phase_ul = mjd_to_phase(df_upperlimit['MJD'].values) if len(df_upperlimit) > 0 else np.array([])
+        # Upper limits - usar MJD directamente para plotting
+        mjd_ul = df_upperlimit['MJD'].values if len(df_upperlimit) > 0 else np.array([])
+        phase_ul = mjd_to_phase(mjd_ul) if len(df_upperlimit) > 0 else np.array([])  # Para cálculos internos
         mag_ul = df_upperlimit['MAG'].values if len(df_upperlimit) > 0 else np.array([])
         flux_ul = 10**(-mag_ul / 2.5) if len(df_upperlimit) > 0 else np.array([])
         
-        # Identificar el pico en todos los datos (solo de los normales)
+        # Identificar el pico en todos los datos (solo de los normales) - usar MJD
         if len(flux_all) > 0:
             peak_idx_all = np.argmax(flux_all)
-            peak_phase_all = phase_all[peak_idx_all]
+            peak_mjd_all = mjd_all[peak_idx_all]
+            peak_phase_all = phase_all[peak_idx_all]  # Para labels que mencionan fase
         else:
+            peak_mjd_all = None
             peak_phase_all = None
         
         # Preparar datos con filtro temporal (solo hasta 300 días después del pico)
@@ -189,7 +193,9 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             st.error(f"No hay suficientes datos filtrados para filtro {filter_name}")
             return
         
-        phase = lc_data['phase']
+        phase = lc_data['phase']  # Fase relativa para MCMC
+        mjd = lc_data.get('mjd', None)  # MJD original para plotting
+        reference_mjd = lc_data.get('reference_mjd', None)  # MJD de referencia
         flux = lc_data['flux']
         flux_err = lc_data['flux_err']
         mag = lc_data['mag']
@@ -198,54 +204,75 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         is_upper_limit = lc_data.get('is_upper_limit', None)
         had_upper_limits = lc_data.get('had_upper_limits', False)
         
-        # Recalcular fases de upper limits usando la misma referencia que los datos filtrados
-        # y filtrar por el mismo rango temporal (hasta 300 días después del pico)
-        if len(df_upperlimit) > 0 and len(phase) > 0 and peak_phase is not None:
-            # Obtener el mínimo MJD de los datos filtrados (que es la referencia usada en prepare_lightcurve)
-            mjd_filtered = filters_data[filter_name][~filters_data[filter_name]['Upperlimit']]['MJD'].values
-            reference_mjd = mjd_filtered.min()
-            # Recalcular fases de upper limits con la misma referencia
-            phase_ul_calc = mjd_to_phase(df_upperlimit['MJD'].values, reference_mjd=reference_mjd)
-            # Filtrar upper limits por el mismo rango temporal que los datos filtrados
-            mask_ul = (phase_ul_calc >= peak_phase - DATA_FILTER_CONFIG["max_days_before_peak"]) & \
-                     (phase_ul_calc <= peak_phase + DATA_FILTER_CONFIG["max_days_after_peak"])
-            phase_ul_filtered = phase_ul_calc[mask_ul]
-            mag_ul_filtered = df_upperlimit['MAG'].values[mask_ul] if len(mask_ul) > 0 else np.array([])
-            flux_ul_filtered = 10**(-mag_ul_filtered / 2.5) if len(mag_ul_filtered) > 0 else np.array([])
+        # Para el "Full Light Curve View", mostrar los upper limits que se usaron en el MCMC
+        # Estos están en mjd, mag, flux con is_upper_limit=True
+        # También mostrar otros upper limits del archivo que estén cerca de las observaciones
+        mjd_ul = np.array([])
+        mag_ul = np.array([])
+        flux_ul = np.array([])
+        
+        # Primero, agregar los upper limits que se usaron en el MCMC
+        if is_upper_limit is not None and np.any(is_upper_limit) and mjd is not None and len(mjd) > 0:
+            mjd_ul_used = mjd[is_upper_limit]
+            mag_ul_used = mag[is_upper_limit]
+            flux_ul_used = flux[is_upper_limit]
             
-            # Usar los upper limits filtrados para el gráfico principal
-            phase_ul = phase_ul_filtered
-            mag_ul = mag_ul_filtered
-            flux_ul = flux_ul_filtered
+            mjd_ul = np.concatenate([mjd_ul, mjd_ul_used]) if len(mjd_ul_used) > 0 else mjd_ul
+            mag_ul = np.concatenate([mag_ul, mag_ul_used]) if len(mag_ul_used) > 0 else mag_ul
+            flux_ul = np.concatenate([flux_ul, flux_ul_used]) if len(flux_ul_used) > 0 else flux_ul
+        
+        # También agregar otros upper limits del archivo que estén cerca de las observaciones
+        if len(df_upperlimit) > 0 and len(mjd_all) > 0:
+            mjd_min_obs = mjd_all.min()
+            mjd_max_obs = mjd_all.max()
+            margin_days = 100.0
+            mjd_ul_all = df_upperlimit['MJD'].values
+            
+            # Filtrar upper limits razonables (cerca de observaciones y MJD > 50000)
+            mask_reasonable = (mjd_ul_all >= mjd_min_obs - margin_days) & (mjd_ul_all <= mjd_max_obs + margin_days)
+            mask_reasonable = mask_reasonable & (mjd_ul_all > 50000)
+            
+            # Excluir los que ya están en mjd_ul (los que se usaron en el fit)
+            if len(mjd_ul) > 0:
+                mask_reasonable = mask_reasonable & ~np.isin(mjd_ul_all, mjd_ul)
+            
+            if np.any(mask_reasonable):
+                mjd_ul_others = mjd_ul_all[mask_reasonable]
+                mag_ul_others = df_upperlimit['MAG'].values[mask_reasonable]
+                flux_ul_others = 10**(-mag_ul_others / 2.5)
+                
+                mjd_ul = np.concatenate([mjd_ul, mjd_ul_others])
+                mag_ul = np.concatenate([mag_ul, mag_ul_others])
+                flux_ul = np.concatenate([flux_ul, flux_ul_others])
         
         # ===== GRÁFICO DE CONTEXTO: TODA LA DATA =====
         st.subheader(f"Full Light Curve View - Filter {filter_name}")
         
-        # Crear gráfico con toda la data
+        # Crear gráfico con toda la data - usar MJD para plotting
         fig_all, (ax1_all, ax2_all) = plt.subplots(2, 1, figsize=(12, 8), sharex=True)
         
         # Gráfico de magnitud
-        if len(phase_all) > 0:
-            ax1_all.errorbar(phase_all, mag_all, yerr=mag_err_all, fmt='o', 
+        if len(mjd_all) > 0:
+            ax1_all.errorbar(mjd_all, mag_all, yerr=mag_err_all, fmt='o', 
                             color='#2E86AB', alpha=0.7, markersize=5, label='Detections',
                             capsize=2, capthick=1, elinewidth=1.5, zorder=10)
         
-        if len(phase_ul) > 0:
-            ax1_all.scatter(phase_ul, mag_ul, marker='v', color='orange', alpha=0.7, 
+        if len(mjd_ul) > 0:
+            ax1_all.scatter(mjd_ul, mag_ul, marker='v', color='orange', alpha=0.7, 
                            s=60, label='Upper limits', zorder=9)
-            for px, py in zip(phase_ul, mag_ul):
+            for px, py in zip(mjd_ul, mag_ul):
                 ax1_all.annotate('', xy=(px, py), xytext=(px, py + 0.3),
                                 arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
         
-        if peak_phase_all is not None:
-            ax1_all.axvline(peak_phase_all, color='red', linestyle='--', alpha=0.6, linewidth=1.5,
-                           label=f'Flux peak (phase {peak_phase_all:.1f} days)')
+        if peak_mjd_all is not None:
+            ax1_all.axvline(peak_mjd_all, color='red', linestyle='--', alpha=0.6, linewidth=1.5,
+                           label=f'Flux peak (MJD {peak_mjd_all:.1f})')
         
-        if peak_phase is not None and len(phase) > 0:
-            region_start = phase.min()
-            region_end = phase.max()
+        if mjd is not None and len(mjd) > 0:
+            region_start = mjd.min()
+            region_end = mjd.max()
             ax1_all.axvspan(region_start, region_end, alpha=0.2, color='green', 
-                          label=f'MCMC region ({len(phase)} points)')
+                          label=f'MCMC region ({len(mjd)} points)')
         
         ax1_all.set_ylabel('Magnitude', fontsize=12)
         ax1_all.set_title(f'{sn_name} - Filter {filter_name} (Full View)', fontsize=13, fontweight='bold')
@@ -255,31 +282,31 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         ax1_all.invert_yaxis()
         
         # Gráfico de flujo
-        if len(phase_all) > 0:
-            ax2_all.errorbar(phase_all, flux_all, yerr=flux_err_all, fmt='o', 
+        if len(mjd_all) > 0:
+            ax2_all.errorbar(mjd_all, flux_all, yerr=flux_err_all, fmt='o', 
                             color='#2E86AB', alpha=0.7, markersize=5, label='Detections',
                             capsize=2, capthick=1, elinewidth=1.5, zorder=10)
         
-        if len(phase_ul) > 0:
-            ax2_all.scatter(phase_ul, flux_ul, marker='v', color='orange', alpha=0.7, 
+        if len(mjd_ul) > 0:
+            ax2_all.scatter(mjd_ul, flux_ul, marker='v', color='orange', alpha=0.7, 
                            s=60, label='Upper limits', zorder=9)
-            for px, py in zip(phase_ul, flux_ul):
+            for px, py in zip(mjd_ul, flux_ul):
                 max_flux = flux_all.max() if len(flux_all) > 0 else flux_ul.max()
                 arrow_length = max_flux * 0.05
                 ax2_all.annotate('', xy=(px, py), xytext=(px, py - arrow_length),
                                 arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
         
-        if peak_phase_all is not None:
-            ax2_all.axvline(peak_phase_all, color='red', linestyle='--', alpha=0.6, linewidth=1.5,
-                           label=f'Flux peak (phase {peak_phase_all:.1f} days)')
+        if peak_mjd_all is not None:
+            ax2_all.axvline(peak_mjd_all, color='red', linestyle='--', alpha=0.6, linewidth=1.5,
+                           label=f'Flux peak (MJD {peak_mjd_all:.1f})')
         
-        if peak_phase is not None and len(phase) > 0:
-            region_start = phase.min()
-            region_end = phase.max()
+        if mjd is not None and len(mjd) > 0:
+            region_start = mjd.min()
+            region_end = mjd.max()
             ax2_all.axvspan(region_start, region_end, alpha=0.2, color='green', 
-                          label=f'MCMC region ({len(phase)} points)')
+                          label=f'MCMC region ({len(mjd)} points)')
         
-        ax2_all.set_xlabel('Phase (days)', fontsize=12)
+        ax2_all.set_xlabel('MJD', fontsize=12)
         ax2_all.set_ylabel('Flux', fontsize=12)
         ax2_all.legend(loc='best', fontsize=10, frameon=True, fancybox=True, shadow=True)
         ax2_all.grid(True, alpha=0.3, linestyle='--', linewidth=0.8)
@@ -291,25 +318,94 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Estadísticas
         st.subheader("Estadísticas de los Datos")
+        
+        # Contar puntos para MCMC
+        n_normal_mcmc = np.sum(~is_upper_limit) if is_upper_limit is not None else len(phase)
+        n_ul_mcmc = np.sum(is_upper_limit) if is_upper_limit is not None else 0
+        
+        # Contar cuántas detecciones se descartaron por el filtro temporal
+        n_discarded = len(phase_all) - n_normal_mcmc
+        
+        # Contar upper limits del archivo para ESTE filtro específico que están antes de la primera observación
+        # Estos son los que prepare_lightcurve puede usar
+        # Usar el mismo DataFrame que se pasó a prepare_lightcurve para asegurar consistencia
+        df_this_filter = filters_data[filter_name].copy()
+        df_ul_this_filter = df_this_filter[df_this_filter['Upperlimit']].copy()
+        
+        first_obs_mjd = mjd_all.min() if len(mjd_all) > 0 else None
+        n_ul_in_file = 0
+        if first_obs_mjd is not None and len(df_ul_this_filter) > 0:
+            # Upper limits antes de la primera observación y dentro de 20 días
+            ul_before = df_ul_this_filter[(df_ul_this_filter['MJD'] < first_obs_mjd) & 
+                                          (df_ul_this_filter['MJD'] >= first_obs_mjd - 20.0)]
+            n_ul_in_file = len(ul_before)  # Total disponibles (máximo 3 se usan)
+        
         col1, col2, col3, col4, col5, col6 = st.columns(6)
         with col1:
-            st.metric("Puntos detectados", len(phase_all))
+            st.metric("Puntos detectados (sin filtrar)", len(phase_all))
+            st.caption("Todas las detecciones normales del archivo")
         with col2:
-            st.metric("Upper limits", len(phase_ul))
+            st.metric("Upper limits en archivo", len(df_ul_this_filter))
+            if n_ul_in_file > 0:
+                st.caption(f"Total: {len(df_ul_this_filter)}, {n_ul_in_file} antes de 1ra obs (máx {min(n_ul_in_file, 3)} usados)")
+            elif n_ul_mcmc > 0:
+                st.caption(f"Total: {len(df_ul_this_filter)}, pero {n_ul_mcmc} usados (revisar)")
+            else:
+                st.caption(f"Filtro {filter_name}: {len(df_ul_this_filter)} upper limits")
         with col3:
-            st.metric("Puntos filtrados", len(phase))
+            st.metric("Puntos para MCMC", len(phase))
+            caption_parts = []
+            if n_discarded > 0:
+                caption_parts.append(f"{n_normal_mcmc} de {len(phase_all)} detecciones")
+            else:
+                caption_parts.append(f"{n_normal_mcmc} detecciones")
+            if n_ul_mcmc > 0:
+                caption_parts.append(f"+ {n_ul_mcmc} upper limits")
+            if n_discarded > 0:
+                caption_parts.append(f"({n_discarded} descartadas por filtro)")
+            st.caption(" | ".join(caption_parts))
         with col4:
-            st.metric("Fase mín", f"{phase_all.min():.1f} días" if len(phase_all) > 0 else "N/A")
+            if mjd_all is not None and len(mjd_all) > 0:
+                st.metric("MJD mín", f"{mjd_all.min():.1f}")
+            else:
+                st.metric("MJD mín", "N/A")
         with col5:
-            st.metric("Fase máx", f"{phase_all.max():.1f} días" if len(phase_all) > 0 else "N/A")
+            if mjd_all is not None and len(mjd_all) > 0:
+                st.metric("MJD máx", f"{mjd_all.max():.1f}")
+            else:
+                st.metric("MJD máx", "N/A")
         with col6:
-            st.metric("Duración total", f"{phase_all.max() - phase_all.min():.1f} días" if len(phase_all) > 0 else "N/A")
+            if mjd_all is not None and len(mjd_all) > 0:
+                st.metric("Duración total", f"{mjd_all.max() - mjd_all.min():.1f} días")
+            else:
+                st.metric("Duración total", "N/A")
         
-        if peak_phase is not None:
-            st.info(f"**Peak phase**: {peak_phase:.1f} días | "
-                   f"**Datos filtrados**: {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y "
-                   f"{DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak | "
-                   f"**Puntos usados para MCMC**: {len(phase)} de {len(phase_all)} totales")
+        # Construir texto de puntos MCMC
+        if n_ul_mcmc > 0:
+            puntos_text = f"{n_normal_mcmc} detecciones normales filtradas + {n_ul_mcmc} upper limits agregados antes de la primera observación"
+        else:
+            puntos_text = f"{n_normal_mcmc} detecciones normales filtradas"
+        
+        # Calcular peak_mjd si tenemos los datos necesarios
+        if peak_phase is not None and reference_mjd is not None:
+            peak_mjd = reference_mjd + peak_phase
+            peak_mjd_str = f"{peak_mjd:.1f}"
+            peak_phase_str = f"{peak_phase:.1f} días (días desde la primera detección normal en MJD {reference_mjd:.1f})"
+        else:
+            peak_mjd_str = "N/A"
+            peak_phase_str = "N/A"
+        
+        # Construir texto del filtro temporal
+        if DATA_FILTER_CONFIG['max_days_before_peak'] is None:
+            filter_text = f"Solo datos hasta {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak (sin límite antes del peak)"
+        else:
+            filter_text = f"Solo datos entre {DATA_FILTER_CONFIG['max_days_before_peak']:.0f} días antes y {DATA_FILTER_CONFIG['max_days_after_peak']:.0f} días después del peak"
+        
+        # Explicar fase relativa y filtro
+        st.info(f"**Peak en MJD**: {peak_mjd_str} | "
+               f"**Fase relativa del peak**: {peak_phase_str} | "
+               f"**Filtro temporal**: {filter_text} | "
+               f"**Puntos usados para MCMC**: {len(phase)} ({puntos_text})")
         
         st.divider()
         
@@ -358,25 +454,55 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                         rel_uncertainty = (err / abs(val) * 100) if abs(val) > 1e-10 else np.inf
                         st.caption(f"Uncertainty: ±{err:.4e} ({rel_uncertainty:.1f}%)")
         
-        # Crear subcarpeta para esta supernova
-        sn_plots_dir = PLOTS_DIR / sn_name
-        sn_plots_dir.mkdir(exist_ok=True)
-        
+        # Solo crear carpeta y rutas si se van a guardar resultados
         plot_save_path = None
         corner_save_path = None
         if save_results:
+            # Crear subcarpeta para esta supernova solo si se van a guardar
+            # Organizar por tipo de supernova: plots/SN Ia/ZTF20abc/
+            sn_plots_dir = PLOTS_DIR / selected_type / sn_name
+            sn_plots_dir.mkdir(parents=True, exist_ok=True)
             plot_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_fit.png")
             corner_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_corner.png")
         
+        # Convertir modelo a MJD para plotting (igual que en modo debug)
+        if mjd is not None and reference_mjd is not None:
+            # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
+            from model import alerce_model
+            samples_mjd = mcmc_results['samples'].copy()
+            samples_mjd[:, 2] = samples_mjd[:, 2] + reference_mjd  # t0 en MJD absoluto
+            
+            # Recalcular modelo mediano en MJD
+            param_medians_mjd = np.median(samples_mjd, axis=0)
+            flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
+            flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
+            mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
+            
+            # Usar MJD y samples ajustados para el plot
+            phase_for_plot = mjd
+            mag_model_for_plot = mag_model_points_mjd
+            flux_model_for_plot = flux_model_points_mjd
+            samples_for_plot = samples_mjd
+        else:
+            # Fallback: usar fase original
+            phase_for_plot = phase
+            mag_model_for_plot = mag_model
+            flux_model_for_plot = mcmc_results['model_flux']
+            samples_for_plot = mcmc_results['samples']
+        
+        # Los upper limits que se usaron en el fit ya están incluidos en phase, mag, flux con is_upper_limit=True
+        # No necesitamos pasar upper limits adicionales al plot, solo los que ya están en los datos del fit
         # Gráficos
         st.subheader("Gráficos de Ajuste")
         from plotter import plot_fit_with_uncertainty
         t0_plot = time.time()
         fig = plot_fit_with_uncertainty(
-            phase, mag, mag_err, mag_model, flux, mcmc_results['model_flux'],
-            mcmc_results['samples'], n_samples_to_show,
+            phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
+            samples_for_plot, n_samples_to_show,
             sn_name, filter_name, save_path=plot_save_path,
-            phase_ul=phase_ul, mag_ul=mag_ul, flux_ul=flux_ul,
+            phase_ul=None,  # No pasar upper limits adicionales, ya están en los datos del fit
+            mag_ul=None,
+            flux_ul=None,
             is_upper_limit=is_upper_limit, flux_err=flux_err,
             had_upper_limits=had_upper_limits
         )

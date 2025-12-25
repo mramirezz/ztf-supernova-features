@@ -111,7 +111,9 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     df_normal = df[~df['Upperlimit']].copy()
     df_ul = df[df['Upperlimit']].copy()
     
-    if len(df_normal) < 5:
+    # El modelo tiene 6 parámetros (A, f, t0, t_rise, t_fall, gamma)
+    # Necesitamos al menos 6 detecciones para tener un sistema determinado
+    if len(df_normal) < 6:
         return None
     
     # Convertir MJD a fase (relativa al mínimo MJD de datos normales)
@@ -179,9 +181,17 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     ]) if len(phase_ul_before) > 0 else np.zeros(len(phase_normal), dtype=bool)
     
     # Filtrar datos: solo hasta max_days_after_peak días después del pico
-    # y hasta max_days_before_peak días antes del pico
-    # PERO mantener los upper limits seleccionados (están antes del primer punto)
-    mask = (phase >= peak_phase - max_days_before_peak) & (phase <= peak_phase + max_days_after_peak)
+    # Si max_days_before_peak es None, no filtrar por días antes del peak (incluir todos desde la primera detección)
+    # PERO mantener:
+    # 1. Los upper limits seleccionados (están antes del primer punto)
+    # 2. La primera detección normal (siempre incluirla para tener contexto del inicio)
+    if max_days_before_peak is None:
+        # Sin límite antes del peak: incluir todos los datos desde la primera detección hasta max_days_after_peak
+        mask = phase <= peak_phase + max_days_after_peak
+    else:
+        # Con límite antes del peak: aplicar el filtro normal
+        mask = (phase >= peak_phase - max_days_before_peak) & (phase <= peak_phase + max_days_after_peak)
+    
     # Los upper limits seleccionados siempre se incluyen (están antes del primer punto)
     if len(phase_ul_before) > 0:
         mask_ul = is_upper_limit
@@ -209,8 +219,16 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     # Verificar si había upper limits ANTES de combinarlos (para el plot)
     had_upper_limits_before_combining = len(phase_ul_before) > 0
     
+    # Guardar la referencia MJD usada para este filtro y los MJD originales
+    reference_mjd = df_normal['MJD'].min()
+    
+    # Reconstruir MJD original de los datos filtrados
+    # phase_filtered es relativo a reference_mjd, así que MJD = phase + reference_mjd
+    mjd_filtered = phase_filtered + reference_mjd
+    
     return {
         'phase': phase_filtered,
+        'mjd': mjd_filtered,  # MJD original para plotear
         'mag': mag_filtered,
         'mag_err': mag_err_filtered,
         'flux': flux_filtered,
@@ -218,6 +236,7 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
         'is_upper_limit': is_upper_limit_filtered,  # Nueva: máscara para upper limits
         'had_upper_limits': had_upper_limits_before_combining,  # Indica si había upper limits antes de combinar
         'filter': filter_name,
-        'peak_phase': peak_phase  # Información adicional sobre el pico
+        'peak_phase': peak_phase,  # Información adicional sobre el pico
+        'reference_mjd': reference_mjd  # MJD usado como referencia (fase 0) para este filtro
     }
 

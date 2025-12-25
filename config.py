@@ -22,8 +22,8 @@ LOG_DIR.mkdir(exist_ok=True)
 
 # Configuración MCMC
 MCMC_CONFIG = {
-    "n_walkers": 50,          # Número de walkers
-    "n_steps": 2000,          # Pasos de MCMC
+    "n_walkers": 100,         # Número de walkers
+    "n_steps": 5000,          # Pasos de MCMC
     "burn_in": 500,           # Burn-in steps
     "n_threads": 1,           # Threads paralelos
     "random_seed": 42         # Semilla aleatoria para reproducibilidad (None = aleatorio)
@@ -56,6 +56,6 @@ FILTERS_TO_PROCESS = ['g', 'r']  # Ejemplo: procesar filtros g y r
 # Configuración de filtrado de datos
 DATA_FILTER_CONFIG = {
     "max_days_after_peak": 300.0,  # Máximo número de días después del pico de flujo para incluir
-    "max_days_before_peak": 50.0   # Máximo número de días antes del pico para incluir (para capturar el rise)
+    "max_days_before_peak": None   # Sin límite de días antes del pico (incluir todos los datos desde la primera detección)
 }
 

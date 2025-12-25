@@ -73,7 +73,8 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                               samples, n_samples_to_show=50,
                               sn_name=None, filter_name=None, save_path=None,
                               phase_ul=None, mag_ul=None, flux_ul=None,
-                              is_upper_limit=None, flux_err=None, had_upper_limits=None):
+                              is_upper_limit=None, flux_err=None, had_upper_limits=None,
+                              xlim=None):
     """
     Generar gráfico de ajuste mostrando múltiples realizaciones del MCMC
     
@@ -103,7 +104,8 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     from model import alerce_model, flux_to_mag
     
     fig, axes = plt.subplots(2, 1, figsize=PLOT_CONFIG["figsize"], sharex=True)
-    fig.suptitle(f'{sn_name} - Filter {filter_name}', fontsize=13, fontweight='bold', y=0.995)
+    fig.subplots_adjust(hspace=0.0, top=0.95, bottom=0.1, left=0.12, right=0.95)  # Márgenes compactos
+    fig.suptitle(f'{sn_name} - Filter {filter_name}', fontsize=13, fontweight='bold', y=0.98)
     
     # Crear array de fase denso para curvas suaves
     # Si había upper limits ANTES de combinarlos (aunque se filtraron después), solo extender 5 días antes
@@ -314,6 +316,30 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         phase_ul_fit_mag = np.array([])
         mag_ul_fit = np.array([])
     
+    # Plotear todas las curvas de magnitud en fase suave (primero, para que queden atrás)
+    for model_flux_smooth in model_fluxes_smooth:
+        mag_model_smooth_sample = flux_to_mag(model_flux_smooth)
+        if not (np.any(np.isnan(mag_model_smooth_sample)) or np.any(np.isinf(mag_model_smooth_sample))):
+            axes[0].plot(phase_smooth, mag_model_smooth_sample, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
+    
+    # Separar observaciones normales de upper limits usados en el fit (para magnitud)
+    if is_upper_limit is not None and np.any(is_upper_limit):
+        mask_normal = ~is_upper_limit
+        mask_ul_fit = is_upper_limit
+        
+        phase_normal_mag = phase[mask_normal]
+        mag_normal = mag[mask_normal]
+        mag_err_normal = mag_err[mask_normal] if mag_err is not None and len(mag_err) == len(mag) else None
+        
+        phase_ul_fit_mag = phase[mask_ul_fit]
+        mag_ul_fit = mag[mask_ul_fit]
+    else:
+        phase_normal_mag = phase
+        mag_normal = mag
+        mag_err_normal = mag_err if (mag_err is not None and len(mag_err) == len(mag)) else None
+        phase_ul_fit_mag = np.array([])
+        mag_ul_fit = np.array([])
+    
     # Plot en magnitud - observaciones normales
     if len(phase_normal_mag) > 0:
         if mag_err_normal is not None and not np.all(np.isnan(mag_err_normal)):
@@ -371,11 +397,33 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     axes[0].legend(loc='best', frameon=True, fancybox=True, shadow=True)
     axes[0].grid(True, alpha=0.3, linestyle='--', linewidth=0.8)
     axes[0].tick_params(direction='in', which='both', top=True, right=True)
+    axes[0].tick_params(axis='x', labelbottom=True)  # Forzar mostrar labels del eje X
     axes[0].invert_yaxis()  # Invertir: valores más pequeños (más brillantes) arriba
     
     # Usar los mismos modelos ya calculados para flujo (sin recalcular) - primero
     for model_flux_smooth in model_fluxes_smooth:
         axes[1].plot(phase_smooth, model_flux_smooth, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
+    
+    # Separar observaciones normales de upper limits usados en el fit (para flujo)
+    if is_upper_limit is not None and np.any(is_upper_limit):
+        mask_normal = ~is_upper_limit
+        mask_ul_fit = is_upper_limit
+        
+        phase_normal_flux = phase[mask_normal]
+        flux_normal = flux[mask_normal]
+        if flux_err is not None and len(flux_err) == len(flux):
+            flux_err_normal = flux_err[mask_normal]
+        else:
+            flux_err_normal = None
+        
+        phase_ul_fit_flux = phase[mask_ul_fit]
+        flux_ul_fit = flux[mask_ul_fit]
+    else:
+        phase_normal_flux = phase
+        flux_normal = flux
+        flux_err_normal = flux_err if (flux_err is not None and len(flux_err) == len(flux)) else None
+        phase_ul_fit_flux = np.array([])
+        flux_ul_fit = np.array([])
     
     # Separar observaciones normales de upper limits usados en el fit (para flujo)
     if is_upper_limit is not None and np.any(is_upper_limit):
@@ -453,11 +501,28 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         # Agregar margen del 10% arriba y abajo
         axes[1].set_ylim(max(0, flux_min - 0.1 * flux_range), flux_max + 0.1 * flux_range)
     
-    axes[1].set_xlabel('Phase (days)', fontsize=12)
+    # Detectar si phase es MJD (valores grandes > 50000) o fase relativa (valores pequeños)
+    # Si es MJD, usar label diferente
+    is_mjd = len(phase) > 0 and phase.min() > 50000
+    if is_mjd:
+        xlabel = 'MJD'
+    else:
+        xlabel = 'Phase (days)'
+    
+    # Actualizar labels de ambos subplots (comparten el eje X)
+    # Forzar mostrar ticks y labels en ambos subplots
+    axes[0].tick_params(axis='x', labelbottom=True, bottom=True)
+    axes[0].set_xlabel(xlabel, fontsize=12)
+    axes[1].set_xlabel(xlabel, fontsize=12)
     axes[1].set_ylabel('Flux', fontsize=12)
     axes[1].legend(loc='best', frameon=True, fancybox=True, shadow=True)
     axes[1].grid(True, alpha=0.3, linestyle='--', linewidth=0.8)
     axes[1].tick_params(direction='in', which='both', top=True, right=True)
+    
+    # Aplicar límites comunes del eje X si se proporcionan
+    if xlim is not None:
+        axes[0].set_xlim(xlim)
+        axes[1].set_xlim(xlim)
     
     plt.tight_layout()
     
@@ -522,8 +587,79 @@ def plot_corner(samples, param_names=None, save_path=None):
             sys.stderr = StringIO()
             
             try:
+                # Calcular quantiles manualmente para tener control sobre el formato
+                quantiles_to_show = [0.16, 0.5, 0.84]  # Percentiles 16, 50 (mediana), 84
+                
+                # Función para formatear números pequeños
+                def format_small_number(val, err_low=None, err_high=None):
+                    """Formatear número, usando notación científica si es muy pequeño"""
+                    abs_val = abs(val)
+                    
+                    # Determinar formato basado en magnitud
+                    if abs_val < 0.01 or abs_val > 1000 or abs_val == 0:
+                        # Notación científica
+                        val_str = f"{val:.2e}"
+                        if err_low is not None and err_high is not None:
+                            err_low_str = f"{abs(err_low):.2e}" if abs(err_low) > 1e-10 else "0.00e+00"
+                            err_high_str = f"{err_high:.2e}" if abs(err_high) > 1e-10 else "0.00e+00"
+                            return val_str, err_low_str, err_high_str
+                        return val_str
+                    else:
+                        # Determinar decimales basado en incertidumbre
+                        if err_low is not None and err_high is not None:
+                            max_err = max(abs(err_low), err_high)
+                            if max_err < 1e-10:
+                                decimals = 6
+                            elif max_err < 0.0001:
+                                decimals = 6
+                            elif max_err < 0.001:
+                                decimals = 5
+                            elif max_err < 0.01:
+                                decimals = 4
+                            elif max_err < 0.1:
+                                decimals = 3
+                            else:
+                                decimals = 2
+                            
+                            val_str = f"{val:.{decimals}f}"
+                            err_low_str = f"{abs(err_low):.{decimals}f}" if abs(err_low) > 1e-10 else f"0.{'0'*decimals}"
+                            err_high_str = f"{err_high:.{decimals}f}" if abs(err_high) > 1e-10 else f"0.{'0'*decimals}"
+                            return val_str, err_low_str, err_high_str
+                        else:
+                            decimals = 4 if abs_val < 1 else 2
+                            return f"{val:.{decimals}f}"
+                
+                # Generar corner plot sin formato personalizado primero (evitar problemas con format specifier)
                 fig = corner.corner(samples, labels=param_names, show_titles=True,
                                     title_kwargs={"fontsize": 10})
+                
+                # Modificar los títulos después para mostrar números pequeños correctamente
+                axes = fig.get_axes()
+                n_params = len(param_names)
+                
+                # Los títulos están en los subplots de la diagonal (cada n_params+1)
+                for i, param_name in enumerate(param_names):
+                    # El subplot diagonal está en la posición i*(n_params+1)
+                    ax_idx = i * (n_params + 1)
+                    if ax_idx < len(axes):
+                        ax = axes[ax_idx]
+                        
+                        # Calcular quantiles manualmente
+                        param_samples = samples[:, i]
+                        median = np.median(param_samples)
+                        p16 = np.percentile(param_samples, 16)
+                        p84 = np.percentile(param_samples, 84)
+                        err_low = median - p16
+                        err_high = p84 - median
+                        
+                        # Formatear con nuestra función
+                        val_str, err_low_str, err_high_str = format_small_number(median, err_low, err_high)
+                        
+                        # Construir nuevo título de manera segura (sin usar .format() con llaves)
+                        new_title = param_name + " = " + val_str + "$"
+                        new_title += "^{+" + err_high_str + "}_{-" + err_low_str + "}$"
+                        
+                        ax.set_title(new_title)
             finally:
                 sys.stderr = old_stderr
                 

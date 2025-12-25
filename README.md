@@ -13,7 +13,7 @@ Este módulo está diseñado para extraer features del modelo de Villar a partir
 conda env create -f environment.yml
 
 # Activar entorno
-conda activate ztf_features
+conda activate ztf_features/streamlit_env
 ```
 
 ### Verificar Instalación
@@ -44,22 +44,42 @@ ztf_literature_features/
 ├── main.py                     # Script principal (batch processing)
 ├── streamlit_app.py            # App Streamlit para exploración interactiva
 ├── explore_data_structure.py   # Script de exploración de datos
-└── outputs/                    # Directorio de salida
-    ├── plots/                  # Gráficos guardados (organizados por supernova)
-    │   └── {sn_name}/         # Subcarpeta por supernova
-    │       ├── {sn_name}_{filter}_fit.png
-    │       └── {sn_name}_{filter}_corner.png
+    └── outputs/                    # Directorio de salida
+    ├── plots/                  # Gráficos guardados (organizados por tipo y supernova)
+    │   └── {sn_type}/         # Subcarpeta por tipo de supernova
+    │       └── {sn_name}/     # Subcarpeta por supernova
+    │           ├── {sn_name}_{filter}_fit.png
+    │           └── {sn_name}_{filter}_corner.png
     ├── features/               # Features extraídas (CSV)
     │   └── features_{sn_type}.csv
     ├── checkpoints/            # Archivos de checkpoint para retomar procesamiento
     │   └── checkpoint_{sn_type}.json
-    └── logs/                   # Archivos de log
-        └── log_{sn_type}_{timestamp}.log
+    ├── logs/                   # Archivos de log
+    │   └── log_{sn_type}_{timestamp}.log
+    └── debug_pdfs/             # PDFs de debug (modo --debug-pdf)
+        ├── SN_Ia_debug.pdf
+        ├── SN_Ia_successful.csv
+        └── ...
 ```
 
 ## Datos Fuente
 
-**Ubicación**: `G:\Mi unidad\Work\Universidad\Phd\paper2_ZTF\Photometry_ZTF_ST_Alerce`
+**Ubicación**: Los datos deben estar en `ztf_literature_features/Photometry_ZTF_ST_Alerce/`
+
+El código lee desde una ruta relativa: `{directorio_del_proyecto}/ztf_literature_features/Photometry_ZTF_ST_Alerce/`
+
+**Estructura esperada**:
+```
+ztf_literature_features/
+└── Photometry_ZTF_ST_Alerce/
+    ├── SN Ia/
+    │   ├── ZTF18aasufva_photometry.dat
+    │   ├── ZTF20acgnrqu_photometry.dat
+    │   └── ...
+    ├── SN II/
+    │   └── ...
+    └── ...
+```
 
 ### Características de los Datos
 
@@ -148,15 +168,36 @@ python explore_data_structure.py
 
 ## Uso del Script de Exploración
 
+**Propósito**: El script `explore_data_structure.py` permite explorar y entender la estructura de los datos antes de procesarlos. Útil para:
+- Ver qué tipos de supernovas están disponibles
+- Verificar la cantidad de archivos por tipo
+- Inspeccionar el formato de archivos individuales
+- Entender qué filtros están disponibles en cada archivo
+- Validar la estructura de datos antes del procesamiento masivo
+
+**Ubicación de datos**: El script `explore_data_structure.py` tiene su propia ruta hardcodeada (puede diferir de `config.py`). El procesamiento principal (`main.py`, `streamlit_app.py`) lee desde:
+- **Ruta relativa**: `ztf_literature_features/Photometry_ZTF_ST_Alerce/` (definida en `config.py`)
+- **Estructura**: `{BASE_DATA_PATH}/{tipo_supernova}/*_photometry.dat`
+- **Ejemplo**: `ztf_literature_features/Photometry_ZTF_ST_Alerce/SN Ia/ZTF18aasufva_photometry.dat`
+
+**Nota**: Asegúrate de que la carpeta `Photometry_ZTF_ST_Alerce` esté dentro de `ztf_literature_features/` para que el código funcione correctamente.
+
 ### Listar todos los tipos disponibles:
 ```bash
 python explore_data_structure.py
 ```
+Muestra una tabla con todos los tipos de supernovas y la cantidad de archivos de cada tipo.
 
 ### Explorar un tipo específico:
 ```bash
 python explore_data_structure.py "SN Ia" 5
 ```
+Muestra información detallada de hasta 5 archivos del tipo especificado, incluyendo:
+- Nombre de cada supernova
+- Filtros disponibles en cada archivo
+- Número de puntos de datos por filtro
+- Rango de fechas (MJD)
+- Ejemplo de datos
 
 **Parámetros**:
 - `tipo_supernova`: Nombre exacto de la carpeta (ej: "SN Ia", "SLSN-II")
@@ -215,31 +256,47 @@ python main.py "SN Ia" 3 "g,r"
 4. **`--resume`** (opcional): 
    - Flag para continuar desde checkpoint
    - Salta automáticamente las supernovas/filtros ya procesados
+5. **`--debug-pdf`** (opcional): 
+   - Modo especial para generar PDFs de debug con múltiples supernovas
+   - Genera un PDF con fit plots y corner plots para inspección visual
+   - Ver sección "Modo Debug PDF" para más detalles
 
 **Ejemplos de Uso:**
 
 ```bash
-# Ejecución básica (3 supernovas, filtros por defecto)
+# SOBRESCRIBE: Ejecución básica (3 supernovas, filtros por defecto)
+# Procesa todo desde cero y SOBRESCRIBE archivos existentes
 python main.py "SN Ia" 3
 
-# Con filtros específicos
+# SOBRESCRIBE: Con filtros específicos
+# Procesa y SOBRESCRIBE archivos existentes
 python main.py "SN Ia" 3 "g,r"
 
-# Con espacios en filtros
+# SOBRESCRIBE: Con espacios en filtros
+# Procesa y SOBRESCRIBE archivos existentes
 python main.py "SN Ia" 3 "g r"
 
-# Procesar TODAS las supernovas
+# SOBRESCRIBE: Procesar TODAS las supernovas
+# Procesa todas y SOBRESCRIBE archivos existentes
 python main.py "SN Ia" all
 
-# Continuar desde checkpoint (retoma donde quedó)
+# NO SOBRESCRIBE: Continuar desde checkpoint (retoma donde quedó)
+# Salta automáticamente las combinaciones ya procesadas, NO sobrescribe
 python main.py "SN Ia" 3 --resume
 
-# Procesar todas con checkpoint
+# NO SOBRESCRIBE: Procesar todas con checkpoint
+# Salta automáticamente las combinaciones ya procesadas, NO sobrescribe
 python main.py "SN Ia" all --resume
 
-# Combinar filtros y checkpoint
+# NO SOBRESCRIBE: Combinar filtros y checkpoint
+# Salta automáticamente las combinaciones ya procesadas, NO sobrescribe
 python main.py "SN Ia" 10 "g,r,i" --resume
 ```
+
+**Importante - Comportamiento de Sobrescritura:**
+
+- **Sin `--resume`**: Todos los comandos **SOBRESCRIBEN** archivos existentes (gráficos, features, etc.). Procesa todo desde cero.
+- **Con `--resume`**: Todos los comandos **NO SOBRESCRIBEN**. Salta automáticamente las combinaciones (supernova + filtro) que ya están en el checkpoint y solo procesa las nuevas.
 
 **Sistema de Checkpoint:**
 
@@ -284,6 +341,57 @@ El código está optimizado para procesar miles de supernovas sin quedarse sin m
 
 **Nota**: Cada filtro genera un registro separado en el CSV. Si procesas 3 supernovas con 2 filtros cada una, obtendrás 6 registros en total.
 
+## Modo Debug PDF (--debug-pdf)
+
+**Para generar PDFs de inspección visual con múltiples supernovas:**
+
+```bash
+# Generar PDF con 200 supernovas tipo Ia (por defecto para SN Ia)
+python main.py "SN Ia" --debug-pdf
+
+# Especificar número de supernovas
+python main.py "SN Ia" 50 --debug-pdf
+
+# Con filtros específicos
+python main.py "SN Ia" 100 "g,r" --debug-pdf
+
+# Para otros tipos (valores por defecto: 50 para subtipos, 100 para otros)
+python main.py "SN Ia-91bg-like" --debug-pdf
+python main.py "SN Ia-91T-like" --debug-pdf
+```
+
+**Características del Modo Debug:**
+
+- **Selección aleatoria**: Selecciona supernovas aleatoriamente (no solo las primeras N)
+- **Filtrado por año**: Solo procesa supernovas del año 2022 en adelante (ZTF22, ZTF23, etc.)
+- **Validación**: Solo incluye supernovas con al menos 6 detecciones normales (excluyendo upper limits)
+- **Continuación automática**: Continúa intentando hasta obtener el número solicitado de supernovas exitosas
+- **Una página por supernova**: Cada página contiene:
+  - Si hay 1 filtro: Fit plot (magnitud y flujo) arriba, corner plot abajo
+  - Si hay 2 filtros: Fit plot filtro 1, fit plot filtro 2, corner plot (del filtro 1)
+- **Rango común de X**: Cuando hay 2 filtros, ambos comparten el mismo rango de MJD para facilitar comparación
+- **Eje X en MJD**: Los plots usan fechas originales (MJD) en lugar de fase relativa
+- **CSV de supernovas exitosas**: Genera un CSV adicional con la lista de supernovas procesadas exitosamente
+- **Corner plot mejorado**: Muestra números pequeños en notación científica cuando es necesario (ej: A = 1.23e-08 en lugar de 0.00)
+
+**Archivos generados:**
+
+- **PDF**: `outputs/debug_pdfs/{sn_type}_debug.pdf`
+- **CSV**: `outputs/debug_pdfs/{sn_type}_successful.csv` (lista de supernovas exitosas)
+
+**Valores por defecto según tipo:**
+
+- **SN Ia**: 200 supernovas
+- **SN Ia-91bg-like, SN Ia-91T-like**: 50 supernovas
+- **Otros tipos**: 100 supernovas
+
+**Notas:**
+
+- El modo debug NO guarda features en el CSV principal (solo genera PDFs)
+- El modo debug NO usa checkpoint (siempre procesa desde cero)
+- El modo debug NO sobrescribe PDFs existentes (genera nuevos cada vez)
+- Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal
+
 ## Exploración Interactiva (streamlit_app.py)
 
 **Para explorar y hacer sanity checks de supernovas individuales:**
@@ -317,9 +425,11 @@ streamlit run streamlit_app.py
 5. **Resultados MCMC**: Métricas de los 6 parámetros principales con descripciones
 6. **Gráficos de Ajuste**: 
    - Dos subplots (magnitud y flujo) compartiendo eje X
+   - Eje X en MJD (fechas originales) para mejor contexto temporal
+   - Sin espacio vertical entre subplots para layout compacto
    - Muestra mediana, promedio y múltiples realizaciones MCMC
    - Estilo profesional para papers
-7. **Corner Plot**: Distribución de parámetros MCMC
+7. **Corner Plot**: Distribución de parámetros MCMC con formato mejorado para números pequeños (notación científica cuando es necesario)
 8. **Distribuciones de Parámetros**: Tab que muestra histogramas de los 6 parámetros principales separados por filtro, basados en datos del CSV (disponible sin ejecutar MCMC)
 
 **Diferencias con main.py:**
@@ -355,7 +465,7 @@ streamlit run streamlit_app.py
 - **Parámetros principales** (6): A, f, t0, t_rise, t_fall, gamma
 - **Errores formales** (6): A_err, f_err, t0_err, t_rise_err, t_fall_err, gamma_err
 - **Errores MCMC** (6): A_mc_std, f_mc_std, t0_mc_std, t_rise_mc_std, t_fall_mc_std, gamma_mc_std
-- **Métricas de ajuste** (3): rms, mad, reduced_chi2
+- **Métricas de ajuste** (3): rms, mad, median_relative_error_pct
 - **Características de curva** (2): n_points, time_span
 - **Metadatos** (2): sn_name, filter_band
 
@@ -385,7 +495,7 @@ DATA_FILTER_CONFIG = {
 }
 ```
 
-Si después del filtro quedan menos de 5 puntos, se usan todos los datos disponibles.
+Si después del filtro quedan menos de 6 puntos de detección normal (excluyendo upper limits), la supernova se omite del procesamiento.
 
 ### Estilo de Gráficos
 
@@ -395,10 +505,13 @@ Los gráficos están configurados con estilo profesional para papers:
 - **Idioma**: Inglés
 - **Formato**: 
   - Eje X compartido entre subplots de magnitud y flujo
+  - Eje X en MJD (fechas originales) cuando se procesa con datos completos
+  - Sin espacio vertical entre subplots (hspace=0.0) para layout compacto
   - Título único para toda la figura
   - Ticks hacia adentro
   - Colores representativos para filtros (verde para g, rojo para r)
   - Nombres de filtros en minúscula (g, r) para filtros Sloan
+  - Cuando hay 2 filtros en modo debug, ambos comparten el mismo rango de MJD para facilitar comparación
 
 ## Guardar Resultados
 
@@ -413,7 +526,7 @@ Los gráficos están configurados con estilo profesional para papers:
 
 ### Organización de Archivos
 
-- **Gráficos**: `outputs/plots/{sn_name}/{sn_name}_{filter}_fit.png` y `{sn_name}_{filter}_corner.png`
+- **Gráficos**: `outputs/plots/{sn_type}/{sn_name}/{sn_name}_{filter}_fit.png` y `{sn_name}_{filter}_corner.png`
 - **Features**: `outputs/features/features_{sn_type}.csv` (consolidado por tipo)
 - **Checkpoints**: `outputs/checkpoints/checkpoint_{sn_type}.json`
 - **Logs**: `outputs/logs/log_{sn_type}_{timestamp}.log`
@@ -428,7 +541,7 @@ Columnas principales:
 - `A`, `f`, `t0`, `t_rise`, `t_fall`, `gamma`: Parámetros del modelo
 - `A_err`, `f_err`, ...: Errores formales
 - `A_mc_std`, `f_mc_std`, ...: Desviaciones estándar MCMC
-- `rms`, `mad`, `reduced_chi2`: Métricas de ajuste
+- `rms`, `mad`, `median_relative_error_pct`: Métricas de ajuste
 - `n_points`, `time_span`: Características de la curva
 - `sn_type`: Tipo de supernova
 
@@ -479,8 +592,9 @@ Este módulo se integrará con:
 ## Troubleshooting
 
 ### Error: "No hay suficientes datos"
-- Verifica que el archivo .dat tenga al menos 5 puntos de datos válidos (no upper limits)
+- Verifica que el archivo .dat tenga al menos 6 puntos de detección normal (excluyendo upper limits)
 - Algunas supernovas pueden tener muy pocos datos
+- El código incluye automáticamente los últimos 3 upper limits antes de la primera detección (si están dentro de 20 días) para mejorar el ajuste
 
 ### Error: "Initial state has a large condition number"
 - El código maneja esto automáticamente con inicialización robusta de walkers
