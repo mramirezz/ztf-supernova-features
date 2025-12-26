@@ -579,7 +579,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     # Seleccionar aleatoriamente TODOS los archivos disponibles (o al menos más de los necesarios)
     # Esto permite continuar intentando hasta tener n_supernovas exitosas
     import random
-    random.seed(42)  # Semilla fija para reproducibilidad
+    seed_value = MCMC_CONFIG.get("random_seed", 42)
+    random.seed(seed_value)  # Semilla fija para reproducibilidad
     # Mezclar todos los archivos aleatoriamente
     selected_files = filtered_files.copy()
     random.shuffle(selected_files)
@@ -942,6 +943,8 @@ def main():
         3. Lista de filtros (opcional, ej: "g,r" o "g r")
            Si no se especifica, usa FILTERS_TO_PROCESS de config.py
         4. --resume : Continuar desde checkpoint (opcional)
+        5. --seed <número> o --random-seed <número> : Semilla aleatoria para reproducibilidad (opcional)
+           Si no se especifica, usa el valor de MCMC_CONFIG["random_seed"] en config.py (por defecto: 42)
     """
     # Parsear argumentos
     if len(sys.argv) > 1:
@@ -974,13 +977,25 @@ def main():
         # Parsear filtros (opcional)
         filters_to_process = None
         for arg in sys.argv[3:]:
-            if arg == '--debug-pdf':
+            if arg == '--debug-pdf' or arg.startswith('--seed') or arg.startswith('--random-seed'):
                 continue
             filters_input = arg
             filters_input = filters_input.replace('[', '').replace(']', '').replace("'", '').replace('"', '')
             filters_to_process = [f.strip() for f in filters_input.replace(',', ' ').split()]
             print(f"[INFO] Filtros especificados: {filters_to_process}")
             break
+        
+        # Parsear semilla aleatoria (opcional) para modo debug-pdf
+        for i, arg in enumerate(sys.argv):
+            if arg == '--seed' or arg == '--random-seed':
+                if i + 1 < len(sys.argv):
+                    try:
+                        random_seed = int(sys.argv[i + 1])
+                        MCMC_CONFIG["random_seed"] = random_seed
+                        print(f"[INFO] Semilla aleatoria especificada: {random_seed}")
+                    except (ValueError, IndexError):
+                        print(f"[WARNING] Valor inválido para --seed, usando valor por defecto: {MCMC_CONFIG.get('random_seed', 'No configurada')}")
+                break
         
         generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022)
         return
@@ -998,7 +1013,7 @@ def main():
     # Parsear filtros (opcional)
     filters_to_process = None
     for arg in sys.argv[3:]:
-        if arg == '--resume':
+        if arg == '--resume' or arg.startswith('--seed') or arg.startswith('--random-seed'):
             continue
         filters_input = arg
         # Aceptar formato "g,r" o "g r" o "['g','r']"
@@ -1006,6 +1021,19 @@ def main():
         filters_to_process = [f.strip() for f in filters_input.replace(',', ' ').split()]
         print(f"[INFO] Filtros especificados: {filters_to_process}")
         break
+    
+    # Parsear semilla aleatoria (opcional)
+    random_seed = None
+    for i, arg in enumerate(sys.argv):
+        if arg == '--seed' or arg == '--random-seed':
+            if i + 1 < len(sys.argv):
+                try:
+                    random_seed = int(sys.argv[i + 1])
+                    MCMC_CONFIG["random_seed"] = random_seed
+                    print(f"[INFO] Semilla aleatoria especificada: {random_seed}")
+                except (ValueError, IndexError):
+                    print(f"[WARNING] Valor inválido para --seed, usando valor por defecto: {MCMC_CONFIG.get('random_seed', 'No configurada')}")
+            break
     
     # Configurar logger
     logger = setup_logger(sn_type)
