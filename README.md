@@ -344,6 +344,9 @@ python main.py "SN Ia" 100 "g,r" --debug-pdf
 # Para otros tipos (valores por defecto: 50 para subtipos, 100 para otros)
 python main.py "SN Ia-91bg-like" --debug-pdf
 python main.py "SN Ia-91T-like" --debug-pdf
+
+# Reanudar desde checkpoint (añade páginas al PDF existente)
+python main.py "SN Ia" 200 --debug-pdf --resume
 ```
 
 **Características del Modo Debug:**
@@ -352,6 +355,11 @@ python main.py "SN Ia-91T-like" --debug-pdf
 - **Filtrado por año**: Solo procesa supernovas del año 2022 en adelante (ZTF22, ZTF23, etc.)
 - **Validación**: Solo incluye supernovas con al menos 6 detecciones normales (excluyendo upper limits)
 - **Continuación automática**: Continúa intentando hasta obtener el número solicitado de supernovas exitosas
+- **Checkpointing y guardado incremental**: 
+  - Guarda checkpoint después de cada supernova exitosa
+  - Guarda cada página al PDF inmediatamente (no espera al final)
+  - Si el proceso se interrumpe, puedes reanudar con `--resume` sin perder trabajo
+  - Al reanudar, añade nuevas páginas al PDF existente (requiere PyPDF2)
 - **Una página por supernova**: Cada página contiene:
   - Si hay 1 filtro: Fit plot (magnitud y flujo) arriba, corner plot abajo
   - Si hay 2 filtros: Fit plot filtro 1, fit plot filtro 2, corner plot (del filtro 1)
@@ -364,6 +372,7 @@ python main.py "SN Ia-91T-like" --debug-pdf
 
 - **PDF**: `outputs/debug_pdfs/{sn_type}_debug.pdf`
 - **CSV**: `outputs/debug_pdfs/{sn_type}_successful.csv` (lista de supernovas exitosas)
+- **Checkpoint**: `outputs/checkpoints/debug_checkpoint_{sn_type}.json` (para reanudar)
 
 **Valores por defecto según tipo:**
 
@@ -371,11 +380,27 @@ python main.py "SN Ia-91T-like" --debug-pdf
 - **SN Ia-91bg-like, SN Ia-91T-like**: 50 supernovas
 - **Otros tipos**: 100 supernovas
 
+**Reanudar desde checkpoint:**
+
+Si el proceso se interrumpe (por ejemplo, por falta de memoria), puedes reanudar usando `--resume`:
+
+```bash
+# Reanudar procesamiento (añade páginas al PDF existente)
+python main.py "SN Ia" 200 --debug-pdf --resume
+```
+
+El sistema:
+1. Carga el checkpoint y salta las supernovas ya procesadas
+2. Añade nuevas páginas al PDF existente (requiere PyPDF2: `pip install PyPDF2`)
+3. Continúa desde donde se quedó
+
 **Notas:**
 
 - El modo debug NO guarda features en el CSV principal (solo genera PDFs)
-- El modo debug NO usa checkpoint (siempre procesa desde cero)
-- El modo debug NO sobrescribe PDFs existentes (genera nuevos cada vez)
+- El modo debug usa checkpoint para reanudar procesamiento (usa `--resume` para reanudar)
+- El modo debug guarda cada página inmediatamente (no espera al final)
+- Si usas `--resume`, el PDF existente se actualiza añadiendo nuevas páginas (requiere PyPDF2)
+- Si no usas `--resume` y existe un PDF, se sobrescribirá
 - Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal
 
 ## Exploración Interactiva (streamlit_app.py)

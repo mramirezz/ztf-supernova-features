@@ -317,6 +317,52 @@ def save_checkpoint(sn_type, processed_set):
     except Exception as e:
         print(f"  [WARNING] Error al guardar checkpoint: {e}")
 
+def load_debug_checkpoint(sn_type):
+    """
+    Cargar checkpoint de supernovas ya procesadas en modo debug
+    
+    Returns:
+    --------
+    set : Conjunto de nombres de supernovas ya procesadas
+    """
+    checkpoint_file = CHECKPOINT_DIR / f"debug_checkpoint_{sn_type.replace(' ', '_')}.json"
+    
+    if not checkpoint_file.exists():
+        return set()
+    
+    try:
+        with open(checkpoint_file, 'r') as f:
+            data = json.load(f)
+            processed = set(data.get('processed', []))
+            return processed
+    except Exception as e:
+        print(f"  [WARNING] Error al leer checkpoint de debug: {e}")
+        return set()
+
+def save_debug_checkpoint(sn_type, processed_set):
+    """
+    Guardar checkpoint de supernovas procesadas en modo debug
+    
+    Parameters:
+    -----------
+    sn_type : str
+        Tipo de supernova
+    processed_set : set
+        Conjunto de nombres de supernovas procesadas
+    """
+    checkpoint_file = CHECKPOINT_DIR / f"debug_checkpoint_{sn_type.replace(' ', '_')}.json"
+    
+    try:
+        data = {
+            'sn_type': sn_type,
+            'processed': list(processed_set),
+            'last_updated': time.strftime('%Y-%m-%d %H:%M:%S')
+        }
+        with open(checkpoint_file, 'w') as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"  [WARNING] Error al guardar checkpoint de debug: {e}")
+
 def save_features_incremental(features_list, sn_type):
     """
     Guardar features incrementalmente en CSV después de procesar una supernova.
@@ -536,15 +582,99 @@ def filter_by_year(dat_files, min_year=2022):
     return [f[1] for f in filtered]
 
 
-def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022):
+def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
+    """
+    Guardar una página al PDF, abriendo y cerrando inmediatamente para evitar acumular en memoria.
+    
+    Parameters:
+    -----------
+    fig : matplotlib.figure.Figure
+        Figura a guardar
+    pdf_path : Path
+        Ruta al archivo PDF
+    pdf_exists : bool
+        Si True y el PDF existe, añade la página usando PyPDF2. Si False, crea nuevo PDF.
+    """
+    from matplotlib.backends.backend_pdf import PdfPages
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        HAS_PYPDF2 = True
+    except ImportError:
+        HAS_PYPDF2 = False
+    
+    # Si el PDF existe y tenemos PyPDF2, usar append mode
+    if pdf_exists and pdf_path.exists() and HAS_PYPDF2:
+        # Modo append: leer PDF existente, añadir nueva página, guardar
+        try:
+            # Guardar nueva página en PDF temporal
+            temp_pdf = pdf_path.parent / f"{pdf_path.stem}_temp_page.pdf"
+            with PdfPages(str(temp_pdf)) as temp_pdf_file:
+                temp_pdf_file.savefig(fig, bbox_inches='tight', dpi=200)
+            
+            # Leer PDF original y PDF temporal
+            reader_original = PdfReader(str(pdf_path))
+            reader_temp = PdfReader(str(temp_pdf))
+            
+            # Crear writer para PDF combinado
+            writer = PdfWriter()
+            
+            # Añadir todas las páginas del PDF original
+            for page in reader_original.pages:
+                writer.add_page(page)
+            
+            # Añadir la nueva página
+            writer.add_page(reader_temp.pages[0])
+            
+            # Guardar PDF combinado
+            with open(pdf_path, 'wb') as output_file:
+                writer.write(output_file)
+            
+            # Eliminar PDF temporal
+            temp_pdf.unlink()
+            
+        except Exception as e:
+            print(f"  [WARNING] Error al añadir página al PDF existente: {e}")
+            print(f"  [INFO] Guardando como nuevo PDF...")
+            # Fallback: crear nuevo PDF
+            with PdfPages(str(pdf_path)) as pdf:
+                pdf.savefig(fig, bbox_inches='tight', dpi=200)
+    else:
+        # Modo normal: crear nuevo PDF (PdfPages sobrescribe si existe)
+        with PdfPages(str(pdf_path)) as pdf:
+            pdf.savefig(fig, bbox_inches='tight', dpi=200)
+
+def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, resume_from_checkpoint=False):
     """
     Generar PDF de debug con fit + corner plot para múltiples supernovas
     Usa las mismas funciones de plotting que el procesamiento normal
+    
+    Parameters:
+    -----------
+    sn_type : str
+        Tipo de supernova
+    n_supernovas : int or None
+        Número de supernovas a procesar (None = todas)
+    filters_to_process : list, optional
+        Lista de filtros a procesar
+    min_year : int
+        Año mínimo para filtrar supernovas
+    resume_from_checkpoint : bool
+        Si True, reanuda desde checkpoint y añade al PDF existente
     """
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
     import io
     import matplotlib.image as mpimg
+    try:
+        from PyPDF2 import PdfReader, PdfWriter
+        HAS_PYPDF2 = True
+    except ImportError:
+        HAS_PYPDF2 = False
+        if resume_from_checkpoint:
+            print("[WARNING] PyPDF2 no está instalado. No se puede añadir páginas al PDF existente.")
+            print("[WARNING] Instala con: pip install PyPDF2")
+            print("[WARNING] Continuando sin reanudar desde checkpoint...")
+            resume_from_checkpoint = False
     
     print(f"\n{'='*80}")
     print(f"GENERANDO PDF DE DEBUG")
@@ -573,34 +703,70 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         print(f"\n[ERROR] No se encontraron archivos .dat en '{sn_type}'")
         return
     
+    # Crear nombre del archivo PDF
+    pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
+    pdf_path = DEBUG_PDF_DIR / pdf_filename
+    
+    # Cargar checkpoint PRIMERO para saber si estamos reanudando
+    processed_supernovas = set()
+    pdf_exists = pdf_path.exists()
+    has_checkpoint = False
+    
+    if resume_from_checkpoint:
+        processed_supernovas = load_debug_checkpoint(sn_type)
+        n_processed = len(processed_supernovas)
+        if n_processed > 0:
+            has_checkpoint = True
+            print(f"[INFO] Checkpoint de debug cargado: {n_processed} supernovas ya procesadas")
+            if pdf_exists:
+                print(f"[INFO] PDF existente encontrado: {pdf_path}")
+                print(f"[INFO] Se añadirán nuevas páginas al PDF existente")
+            else:
+                print(f"[WARNING] Checkpoint encontrado pero PDF no existe. Creando nuevo PDF.")
+        else:
+            print(f"[INFO] No se encontró checkpoint de debug, comenzando desde el inicio")
+            resume_from_checkpoint = False
+    elif pdf_exists:
+        print(f"[WARNING] PDF existente encontrado: {pdf_path}")
+        print(f"[WARNING] Se sobrescribirá. Usa --resume para añadir páginas al PDF existente.")
+    
     # Filtrar por año, reduciendo automáticamente si no hay suficientes
-    # Intentar desde min_year hacia atrás hasta encontrar suficientes archivos
+    # PERO: si estamos reanudando desde checkpoint, mantener el filtro de min_year sin reducir
     current_year = min_year
     min_year_limit = 2018  # ZTF empezó alrededor de 2018
-    filtered_files = []
+    filtered_files_tuples = []
     
-    while current_year >= min_year_limit:
-        filtered_files = filter_by_year(dat_files, min_year=current_year)
-        n_found = len(filtered_files)
-        n_needed = n_supernovas if n_supernovas is not None else 1
-        
-        if n_found >= n_needed:
+    # Si estamos reanudando, no reducir el año - mantener min_year estricto
+    if has_checkpoint:
+        filtered_files_tuples = filter_by_year(dat_files, min_year=min_year)
+        print(f"[INFO] Modo resume: manteniendo filtro de año {min_year} en adelante (sin reducir)")
+    else:
+        # Modo normal: reducir año si no hay suficientes
+        while current_year >= min_year_limit:
+            filtered_files_tuples = filter_by_year(dat_files, min_year=current_year)
+            n_found = len(filtered_files_tuples)
+            n_needed = n_supernovas if n_supernovas is not None else 1
+            
+            if n_found >= n_needed:
+                if current_year < min_year:
+                    print(f"[INFO] No se encontraron suficientes supernovas desde {min_year}, reduciendo a {current_year}")
+                break
+            
+            # Mostrar progreso si está reduciendo el año
             if current_year < min_year:
-                print(f"[INFO] No se encontraron suficientes supernovas desde {min_year}, reduciendo a {current_year}")
-            break
-        
-        # Mostrar progreso si está reduciendo el año
-        if current_year < min_year:
-            print(f"[INFO] Probando año {current_year}: {n_found} archivos encontrados (necesarios: {n_needed})")
-        
-        current_year -= 1
+                print(f"[INFO] Probando año {current_year}: {n_found} archivos encontrados (necesarios: {n_needed})")
+            
+            current_year -= 1
     
-    if not filtered_files:
+    if not filtered_files_tuples:
         print(f"\n[ERROR] No se encontraron supernovas desde {min_year_limit} en adelante")
         return
     
     if current_year < min_year:
         print(f"[INFO] Usando año mínimo: {current_year} (solicitado: {min_year})")
+    
+    # filter_by_year ya retorna filepaths directamente, no tuplas
+    filtered_files = filtered_files_tuples
     
     # Seleccionar aleatoriamente TODOS los archivos disponibles (o al menos más de los necesarios)
     # Esto permite continuar intentando hasta tener n_supernovas exitosas
@@ -628,22 +794,33 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
             filters_to_process = sorted(list(test_filters.keys()))[:2]  # Máximo 2 filtros
             print(f"[INFO] Procesando filtros: {', '.join(filters_to_process)}")
     
-    # Crear nombre del archivo PDF
-    pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
-    pdf_path = DEBUG_PDF_DIR / pdf_filename
-    
     # Procesar supernovas y generar PDF
     # Continuar hasta tener n_supernovas exitosas
-    processed_count = 0
+    processed_count = len(processed_supernovas)  # Empezar desde las ya procesadas
     failed_count = 0
     attempted_count = 0
-    successful_supernovas = []  # Lista para guardar nombres de supernovas exitosas
+    successful_supernovas = list(processed_supernovas)  # Empezar con las ya procesadas
     
-    with PdfPages(str(pdf_path)) as pdf:
-        for filepath in selected_files:
+    # NO usar PdfPages con contexto - abriremos y cerraremos después de cada supernova
+    # para evitar acumular páginas en memoria
+    for filepath in selected_files:
             # Si ya tenemos las suficientes exitosas, parar (solo si n_supernovas no es None)
             if n_supernovas is not None and processed_count >= n_supernovas:
                 break
+            
+            # Leer nombre de supernova para verificar checkpoint
+            try:
+                _, sn_name_test = parse_photometry_file(str(filepath))
+            except:
+                sn_name_test = Path(filepath).stem.replace('_photometry', '')
+            
+            # Saltar si ya está procesada
+            if sn_name_test in processed_supernovas:
+                if n_supernovas is None:
+                    print(f"\n[SKIP] {Path(filepath).name} ya procesada (checkpoint) - Exitosas: {processed_count}")
+                else:
+                    print(f"\n[SKIP] {Path(filepath).name} ya procesada (checkpoint) - Exitosas: {processed_count}/{n_supernovas}")
+                continue
             
             attempted_count += 1
             if n_supernovas is None:
@@ -659,6 +836,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     print(f"  [SKIP] No se pudieron extraer datos")
                     failed_count += 1
                     del filters_data
+                    gc.collect()  # Liberar memoria inmediatamente en caso de error
                     continue
                 
                 # Procesar cada filtro y generar figuras
@@ -677,7 +855,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             filters_data[filter_name],
                             filter_name,
                             max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
-                            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"]
+                            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
+                            max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
                         )
                         
                         if lc_data is None:
@@ -709,18 +888,21 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         
                         # Convertir flujo del modelo a magnitud
                         from model import flux_to_mag
-                        mag_model = flux_to_mag(np.clip(mcmc_results['model_flux'], 1e-10, None))
+                        model_flux_clipped = np.clip(mcmc_results['model_flux'], 1e-10, None)
+                        mag_model = flux_to_mag(model_flux_clipped)
+                        del model_flux_clipped  # Liberar inmediatamente
                         
                         # CONVERTIR MODELO A MJD PARA EL PLOT
                         # El modelo fue ajustado en fase relativa, necesitamos convertirlo a MJD
                         if filter_reference_mjd is not None:
                             # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
                             from model import alerce_model
-                            samples_mjd = mcmc_results['samples'].copy()
-                            samples_mjd[:, 2] = samples_mjd[:, 2] + filter_reference_mjd  # t0 en MJD absoluto
+                            # Modificar in-place para evitar duplicar memoria (samples puede ser muy grande)
+                            samples_for_plot = mcmc_results['samples'].copy()  # Necesitamos copia para no modificar original
+                            samples_for_plot[:, 2] = samples_for_plot[:, 2] + filter_reference_mjd  # t0 en MJD absoluto
                             
                             # Recalcular modelo mediano en MJD
-                            param_medians_mjd = np.median(samples_mjd, axis=0)
+                            param_medians_mjd = np.median(samples_for_plot, axis=0)
                             flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
                             flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
                             mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
@@ -729,7 +911,6 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             phase_for_plot = mjd
                             mag_model_for_plot = mag_model_points_mjd
                             flux_model_for_plot = flux_model_points_mjd
-                            samples_for_plot = samples_mjd
                         else:
                             # Fallback: usar fase original
                             phase_for_plot = phase
@@ -738,6 +919,10 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             samples_for_plot = mcmc_results['samples']
                         
                         # Guardar datos para calcular rango común si hay múltiples filtros
+                        # IMPORTANTE: Guardar solo lo necesario, no todo mcmc_results
+                        # Para corner plot, usar samples originales (no samples_for_plot que puede ser copia)
+                        mcmc_samples_for_corner = mcmc_results['samples']
+                        
                         filter_data_dict[filter_name] = {
                             'phase_for_plot': phase_for_plot,
                             'mag': mag,
@@ -749,8 +934,16 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             'is_upper_limit': is_upper_limit,
                             'flux_err': flux_err,
                             'had_upper_limits': had_upper_limits,
-                            'mcmc_results': mcmc_results  # Guardar para corner plot
+                            'mcmc_samples': mcmc_samples_for_corner  # Solo samples para corner plot
                         }
+                        
+                        # Liberar mcmc_results completo inmediatamente (ya guardamos lo necesario)
+                        del mcmc_results, mcmc_samples_for_corner
+                        # Liberar lc_data y otros datos intermedios inmediatamente
+                        del lc_data, phase, mjd, flux, flux_err, mag, mag_err
+                        if filter_reference_mjd is not None:
+                            del param_medians_mjd, flux_model_points_mjd, mag_model_points_mjd
+                        del mag_model, filter_reference_mjd
                         
                     except Exception as e:
                         skip_reasons.append(f"Filtro {filter_name}: Error - {type(e).__name__}: {str(e)}")
@@ -787,15 +980,17 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     )
                     
                     # Generar corner plot (sin guardar, solo obtener la figura)
-                    corner_fig = plot_corner(data['mcmc_results']['samples'], save_path=None)
+                    corner_fig = plot_corner(data['mcmc_samples'], save_path=None)
                     
                     filter_figs[filter_name] = (fit_fig, corner_fig)
                     
-                    # Liberar samples y mcmc_results de memoria después de generar corner plot
-                    del data['mcmc_results']['samples']
-                    del data['mcmc_results']
-                    # Eliminar otros datos grandes que ya no se necesitan
+                    # Liberar samples de memoria inmediatamente después de generar corner plot
+                    del data['mcmc_samples']
                     del data['samples_for_plot']
+                    # Liberar otros datos grandes que ya no se necesitan
+                    del data['phase_for_plot'], data['mag'], data['mag_err']
+                    del data['mag_model_for_plot'], data['flux'], data['flux_model_for_plot']
+                    del data['flux_err']
                 
                 if not filter_figs:
                     print(f"  [SKIP] No se pudieron procesar filtros:")
@@ -803,8 +998,15 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         print(f"    - {reason}")
                     failed_count += 1
                     # Liberar memoria antes de continuar
-                    del filter_figs, filter_data_dict, filters_data
-                    gc.collect()
+                    try:
+                        del filter_figs, filter_data_dict
+                        for filter_name in filters_to_process:
+                            if filter_name in filters_data:
+                                del filters_data[filter_name]
+                        del filters_data
+                    except:
+                        pass
+                    gc.collect()  # Forzar recolección inmediata
                     # No aumentar processed_count, seguir buscando
                     continue
                 
@@ -844,15 +1046,21 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     
                     combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
                     
-                    pdf.savefig(combined_fig, bbox_inches='tight', dpi=200)
+                    # Guardar página al PDF inmediatamente (abrir, escribir, cerrar)
+                    # Si el PDF existe (modo resume), usar append mode
+                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
+                    pdf_exists = True  # Ahora el PDF existe
                     
-                    # Liberar memoria: cerrar figuras y buffers
+                    # Liberar memoria: cerrar figuras y buffers inmediatamente
                     plt.close(combined_fig)
                     plt.close(fit_fig)
                     plt.close(corner_fig)
                     del img1, img2
                     buf1.close()
                     buf2.close()
+                    del buf1, buf2
+                    # Forzar liberación de memoria de matplotlib
+                    plt.close('all')
                     
                 elif n_filters == 2:
                     # Una página con fit1, fit2 y corner
@@ -894,9 +1102,12 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     
                     combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.99)
                     
-                    pdf.savefig(combined_fig, bbox_inches='tight', dpi=200)
+                    # Guardar página al PDF inmediatamente (abrir, escribir, cerrar)
+                    # Si el PDF existe (modo resume), usar append mode
+                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
+                    pdf_exists = True  # Ahora el PDF existe
                     
-                    # Liberar memoria: cerrar figuras y buffers
+                    # Liberar memoria: cerrar figuras y buffers inmediatamente
                     plt.close(combined_fig)
                     plt.close(fit_fig1)
                     plt.close(fit_fig2)
@@ -905,20 +1116,35 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     buf1.close()
                     buf2.close()
                     buf3.close()
+                    del buf1, buf2, buf3
+                    # Forzar liberación de memoria de matplotlib
+                    plt.close('all')
                 
-                # Liberar memoria: eliminar datos grandes
-                del filter_figs, filter_data_dict, filters_data
+                # Liberar memoria: eliminar datos grandes inmediatamente
+                del filter_figs, filter_data_dict
+                # Limpiar referencias a datos de filtros
+                for filter_name in filters_to_process:
+                    if filter_name in filters_data:
+                        del filters_data[filter_name]
+                del filters_data
+                
+                # Forzar recolección de basura después de cada supernova
                 gc.collect()
                 
                 processed_count += 1
                 successful_supernovas.append(sn_name)  # Guardar nombre de supernova exitosa
-                if n_supernovas is None:
-                    print(f"  [OK] Página agregada al PDF ({processed_count} exitosas)")
-                else:
-                    print(f"  [OK] Página agregada al PDF ({processed_count}/{n_supernovas} exitosas)")
+                processed_supernovas.add(sn_name)  # Añadir al set de procesadas
                 
-                # Liberar memoria periódicamente cada 10 supernovas exitosas
-                if processed_count % 10 == 0:
+                # Guardar checkpoint después de cada supernova exitosa
+                save_debug_checkpoint(sn_type, processed_supernovas)
+                
+                if n_supernovas is None:
+                    print(f"  [OK] Página agregada al PDF y checkpoint guardado ({processed_count} exitosas)")
+                else:
+                    print(f"  [OK] Página agregada al PDF y checkpoint guardado ({processed_count}/{n_supernovas} exitosas)")
+                
+                # Liberar memoria periódicamente cada 5 supernovas exitosas (más frecuente)
+                if processed_count % 5 == 0:
                     gc.collect()
                     print(f"  [INFO] Memoria liberada después de procesar {processed_count} supernovas exitosas")
                 
@@ -929,12 +1155,19 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 failed_count += 1
                 # Liberar memoria en caso de error
                 try:
-                    del filters_data, filter_figs, filter_data_dict
+                    del filter_figs, filter_data_dict
+                    if 'filters_data' in locals():
+                        for filter_name in filters_to_process:
+                            if filter_name in filters_data:
+                                del filters_data[filter_name]
+                        del filters_data
                 except:
                     pass
-                gc.collect()
+                plt.close('all')  # Cerrar todas las figuras de matplotlib
+                gc.collect()  # Forzar recolección inmediata
                 continue
     
+    # No necesitamos combinar PDFs al final - ya se guardaron incrementalmente
     # Guardar CSV con supernovas exitosas
     csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
     csv_path = DEBUG_PDF_DIR / csv_filename
@@ -979,8 +1212,9 @@ def main():
         sn_type = "SN Ia"
     
     # Verificar si hay flag --resume o --debug-pdf
-    resume_from_checkpoint = '--resume' in sys.argv
-    debug_pdf_mode = '--debug-pdf' in sys.argv
+    # Buscar en todos los argumentos, incluso si están concatenados sin espacio
+    resume_from_checkpoint = any('--resume' in arg for arg in sys.argv)
+    debug_pdf_mode = any('--debug-pdf' in arg for arg in sys.argv)
     
     # Si está en modo debug-pdf, usar función especial
     if debug_pdf_mode:
@@ -1003,7 +1237,10 @@ def main():
         # Parsear filtros (opcional)
         filters_to_process = None
         for arg in sys.argv[3:]:
-            if arg == '--debug-pdf' or arg.startswith('--seed') or arg.startswith('--random-seed'):
+            # Ignorar flags y argumentos que contengan flags
+            if (arg == '--debug-pdf' or arg == '--resume' or 
+                '--debug-pdf' in arg or '--resume' in arg or
+                arg.startswith('--seed') or arg.startswith('--random-seed')):
                 continue
             filters_input = arg
             filters_input = filters_input.replace('[', '').replace(']', '').replace("'", '').replace('"', '')
@@ -1023,7 +1260,7 @@ def main():
                         print(f"[WARNING] Valor inválido para --seed, usando valor por defecto: {MCMC_CONFIG.get('random_seed', 'No configurada')}")
                 break
         
-        generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022)
+        generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022, resume_from_checkpoint=resume_from_checkpoint)
         return
     
     # Parsear número de supernovas
