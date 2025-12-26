@@ -550,7 +550,10 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     print(f"GENERANDO PDF DE DEBUG")
     print(f"{'='*80}")
     print(f"Tipo de supernova: {sn_type}")
-    print(f"Número de supernovas: {n_supernovas}")
+    if n_supernovas is None:
+        print(f"Número de supernovas: TODAS")
+    else:
+        print(f"Número de supernovas: {n_supernovas}")
     print(f"Año mínimo inicial: {min_year} (se reducirá automáticamente si no hay suficientes)")
     if filters_to_process:
         print(f"Filtros: {', '.join(filters_to_process)}")

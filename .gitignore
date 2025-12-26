@@ -61,7 +61,5 @@ desktop.ini
 .streamlit/secrets.toml
 .streamlit/credentials.toml
 
-outputs/SN_Ia_debug.pdf
-outputs/SN_Ia_successful.csv
-outputs/debug_pdfs/SN_Ia_debug.pdf
-outputs/debug_pdfs/SN_Ia_successful.csv
+# Debug PDFs (ignorar toda la carpeta y su contenido)
+outputs/debug_pdfs/
