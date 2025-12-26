@@ -31,9 +31,13 @@ ENV/
 
 # Outputs (datos generados)
 # Subir CSVs de features, pero NO imágenes ni logs
-outputs/plots/
-outputs/logs/
-outputs/checkpoints/
+# Ignorar contenido pero mantener estructura con .gitkeep
+outputs/plots/*
+!outputs/plots/.gitkeep
+outputs/logs/*
+!outputs/logs/.gitkeep
+outputs/checkpoints/*
+!outputs/checkpoints/.gitkeep
 *.png
 *.log
 # Mantener *.csv para que se suban los features
@@ -61,5 +65,6 @@ desktop.ini
 .streamlit/secrets.toml
 .streamlit/credentials.toml
 
-# Debug PDFs (ignorar toda la carpeta y su contenido)
-outputs/debug_pdfs/
+# Debug PDFs (ignorar contenido pero mantener estructura)
+outputs/debug_pdfs/*
+!outputs/debug_pdfs/.gitkeep
