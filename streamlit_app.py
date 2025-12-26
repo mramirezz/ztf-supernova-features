@@ -186,7 +186,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             filters_data[filter_name], 
             filter_name,
             max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
-            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"]
+            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
+            max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
         )
         
         if lc_data is None:

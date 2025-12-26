@@ -4,30 +4,6 @@
 
 Este módulo está diseñado para extraer features del modelo de Villar a partir de datos de fotometría de supernovas de la literatura ZTF almacenados en formato `.dat`. Utiliza MCMC (Markov Chain Monte Carlo) con `emcee` para ajustar el modelo ALERCE y extraer 25 características de cada curva de luz.
 
-## Configuración del Entorno
-
-### Crear Entorno Conda
-
-```bash
-# Crear entorno desde environment.yml
-conda env create -f environment.yml
-
-# Activar entorno
-conda activate ztf_features/streamlit_env
-```
-
-### Verificar Instalación
-
-```bash
-# Verificar que el entorno está activo
-conda info --envs
-
-# Verificar paquetes instalados
-conda list
-```
-
-**Nota**: El entorno se llama `ztf_features` y contiene todas las dependencias necesarias (numpy, pandas, matplotlib, scipy, emcee, corner, streamlit).
-
 ## Estructura del Proyecto
 
 ```
@@ -44,7 +20,11 @@ ztf_literature_features/
 ├── main.py                     # Script principal (batch processing)
 ├── streamlit_app.py            # App Streamlit para exploración interactiva
 ├── explore_data_structure.py   # Script de exploración de datos
-    └── outputs/                    # Directorio de salida
+├── Photometry_ZTF_ST_Alerce/   # Directorio de datos (debe estar presente)
+│   ├── SN Ia/                  # Subcarpetas por tipo de supernova
+│   ├── SN II/
+│   └── ...
+└── outputs/                    # Directorio de salida (generado automáticamente)
     ├── plots/                  # Gráficos guardados (organizados por tipo y supernova)
     │   └── {sn_type}/         # Subcarpeta por tipo de supernova
     │       └── {sn_name}/     # Subcarpeta por supernova
@@ -57,8 +37,8 @@ ztf_literature_features/
     ├── logs/                   # Archivos de log
     │   └── log_{sn_type}_{timestamp}.log
     └── debug_pdfs/             # PDFs de debug (modo --debug-pdf)
-        ├── SN_Ia_debug.pdf
-        ├── SN_Ia_successful.csv
+        ├── {sn_type}_debug.pdf
+        ├── {sn_type}_successful.csv
         └── ...
 ```
 
@@ -203,7 +183,7 @@ Muestra información detallada de hasta 5 archivos del tipo especificado, incluy
 - `tipo_supernova`: Nombre exacto de la carpeta (ej: "SN Ia", "SLSN-II")
 - `max_files`: Número máximo de archivos a explorar (opcional, default: 5)
 
-## Instalación y Uso
+## Instalación y Configuración
 
 ### Crear Entorno Conda (Recomendado)
 
@@ -212,7 +192,19 @@ Muestra información detallada de hasta 5 archivos del tipo especificado, incluy
 conda env create -f environment.yml
 
 # Activar entorno
-conda activate ztf_features
+conda activate ztf_features/streamlit_env
+```
+
+**Nota**: El entorno se llama `ztf_features` y contiene todas las dependencias necesarias (numpy, pandas, matplotlib, scipy, emcee, corner, streamlit).
+
+### Verificar Instalación
+
+```bash
+# Verificar que el entorno está activo
+conda info --envs
+
+# Verificar paquetes instalados
+conda list
 ```
 
 ### Instalación con pip (Alternativa)
@@ -323,12 +315,6 @@ El sistema de checkpoint permite interrumpir y retomar el procesamiento sin perd
 - No procesa duplicados (ahorra tiempo)
 - Guarda progreso incremental (no pierdes trabajo)
 - Compatible con ejecuciones anteriores (sin `--resume` funciona igual)
-
-**Reproducibilidad:**
-
-- **Semilla aleatoria**: Configurada en `config.py` (`MCMC_CONFIG["random_seed"] = 42`)
-- **Resultados consistentes**: Con la misma semilla, los resultados MCMC son reproducibles
-- **Mismo ajuste**: Si ejecutas dos veces con los mismos datos y parámetros, obtienes el mismo resultado
 
 **Optimización de Memoria:**
 
@@ -477,8 +463,8 @@ Los parámetros por defecto están en `config.py`:
 
 ```python
 MCMC_CONFIG = {
-    "n_walkers": 50,
-    "n_steps": 2000,
+    "n_walkers": 100,
+    "n_steps": 5000,
     "burn_in": 500,
     "random_seed": 42  # Para reproducibilidad
 }
@@ -491,27 +477,92 @@ El código filtra automáticamente los datos para enfocarse en la fase relevante
 ```python
 DATA_FILTER_CONFIG = {
     "max_days_after_peak": 300.0,   # Máximo 300 días después del pico
-    "max_days_before_peak": 50.0    # Máximo 50 días antes del pico
+    "max_days_before_peak": None,   # Sin límite de días antes del pico (incluir todos los datos desde la primera detección)
+    "max_days_before_first_obs": 20.0  # Máximo número de días antes de la primera observación para incluir upper limits
 }
 ```
 
 Si después del filtro quedan menos de 6 puntos de detección normal (excluyendo upper limits), la supernova se omite del procesamiento.
 
-### Estilo de Gráficos
+### Tratamiento de Upper Limits
 
-Los gráficos están configurados con estilo profesional para papers:
+Los upper limits son observaciones donde la supernova no fue detectada, pero se conoce un límite superior de brillo (magnitud más débil que cierto valor). Estos datos requieren un tratamiento especial en el ajuste MCMC.
 
-- **Fuente**: DejaVu Sans (sans-serif, compatible con caracteres especiales)
-- **Idioma**: Inglés
-- **Formato**: 
-  - Eje X compartido entre subplots de magnitud y flujo
-  - Eje X en MJD (fechas originales) cuando se procesa con datos completos
-  - Sin espacio vertical entre subplots (hspace=0.0) para layout compacto
-  - Título único para toda la figura
-  - Ticks hacia adentro
-  - Colores representativos para filtros (verde para g, rojo para r)
-  - Nombres de filtros en minúscula (g, r) para filtros Sloan
-  - Cuando hay 2 filtros en modo debug, ambos comparten el mismo rango de MJD para facilitar comparación
+**Inclusión de Upper Limits:**
+
+El código incluye automáticamente los últimos 3 upper limits que ocurren antes de la primera detección normal, siempre que estén dentro del rango configurado en `DATA_FILTER_CONFIG["max_days_before_first_obs"]` (por defecto: 20 días antes de la primera observación). Estos upper limits proporcionan información valiosa sobre el flujo antes de la explosión, ayudando a constreñir mejor el modelo en la fase temprana de la curva de luz. Los upper limits después de la primera detección no se incluyen en el ajuste MCMC, ya que el modelo ya está bien constreñido por las detecciones normales.
+
+**Tratamiento en el Ajuste MCMC:**
+
+El MCMC evalúa qué tan bien se ajusta el modelo mediante el log-likelihood total, que combina contribuciones de detecciones normales y upper limits:
+
+```
+log L_total = Σ log L_normal + Σ log L_ul
+```
+
+**Detecciones Normales:**
+
+Cada detección normal contribuye con chi-cuadrado estándar:
+```
+log L_normal = -0.5 × χ²
+donde χ² = ((flux_obs - flux_model) / flux_err)²
+```
+
+**Upper Limits:**
+
+Cada upper limit se evalúa de forma diferente:
+```
+excess = max(0, flux_model - flux_ul)  # Solo si el modelo excede el límite
+scale = flux_ul × 0.1  # 10% del flujo del límite como escala
+penalty = (excess / scale)²
+log L_ul = -0.5 × penalty  (solo si excess > 0)
+```
+
+**Comportamiento:**
+- Si el modelo está por debajo del límite: `excess = 0` → `log L_ul = 0` (no contribuye, no penaliza)
+- Si el modelo excede el límite: `excess > 0` → `log L_ul < 0` (penaliza proporcionalmente al cuadrado del exceso)
+
+**Ejemplo Concreto:**
+
+Imagina un upper limit con `flux_ul = 10.0` y `flux_err_ul = 1.0`:
+
+1. **Caso 1: Modelo predice `flux_model = 5.0`** (por debajo del límite)
+   - `excess = max(0, 5.0 - 10.0) = 0`
+   - `penalty = 0`
+   - `log L_ul = 0` (no penaliza, el modelo es consistente con el upper limit)
+
+2. **Caso 2: Modelo predice `flux_model = 12.0`** (excede el límite en 2.0)
+   - `excess = max(0, 12.0 - 10.0) = 2.0`
+   - `scale = 10.0 × 0.1 = 1.0`
+   - `penalty = (2.0 / 1.0)² = 4.0`
+   - `log L_ul = -0.5 × 4.0 = -2.0` (penaliza moderadamente)
+
+3. **Caso 3: Modelo predice `flux_model = 20.0`** (excede el límite en 10.0)
+   - `excess = max(0, 20.0 - 10.0) = 10.0`
+   - `scale = 10.0 × 0.1 = 1.0`
+   - `penalty = (10.0 / 1.0)² = 100.0`
+   - `log L_ul = -0.5 × 100.0 = -50.0` (penaliza fuertemente)
+
+**Ejemplo Numérico:**
+
+Para un upper limit con `flux_ul = 10.0`:
+
+- **Modelo predice `flux_model = 5.0`** (por debajo): `excess = 0` → `log L_ul = 0` (no penaliza)
+- **Modelo predice `flux_model = 12.0`** (excede en 2.0): `penalty = 4.0` → `log L_ul = -2.0` (penalización moderada)
+- **Modelo predice `flux_model = 20.0`** (excede en 10.0): `penalty = 100.0` → `log L_ul = -50.0` (penalización fuerte)
+
+**Implicaciones para el MCMC:**
+
+El MCMC busca maximizar `log L_total`, por lo que:
+- Naturalmente evita parámetros que hacen que el modelo exceda los upper limits (penalización cuadrática)
+- Si el modelo es consistente con todos los upper limits, estos no afectan el ajuste (contribución = 0)
+- La penalización suave permite cierta flexibilidad y mejor exploración del espacio de parámetros, especialmente cuando hay incertidumbre en los límites o cuando el modelo necesita priorizar el ajuste a las detecciones normales
+
+**Visualización:**
+
+En los gráficos, los upper limits se muestran como triángulos invertidos:
+- **Triángulos verdes**: Upper limits incluidos en el ajuste MCMC (los 3 últimos antes de la primera detección)
+- **Triángulos naranjas**: Otros upper limits mostrados para contexto visual pero no usados en el ajuste
 
 ## Guardar Resultados
 
@@ -578,8 +629,10 @@ Esto mejora la convergencia del MCMC, especialmente para supernovas con caracter
 
 ### Reproducibilidad
 
-- Semilla fija configurada en `config.py` (`random_seed = 42`)
-- Mismos datos + mismos parámetros = mismos resultados
+- **Semilla aleatoria**: Configurada en `config.py` (`MCMC_CONFIG["random_seed"] = 42`)
+- **Resultados consistentes**: Con la misma semilla, los resultados MCMC son reproducibles
+- **Mismo ajuste**: Si ejecutas dos veces con los mismos datos y parámetros, obtienes el mismo resultado
+- **Cambiar semilla**: Puedes especificar una semilla diferente desde la línea de comandos usando `--seed <número>` o `--random-seed <número>`
 - Útil para debugging y comparaciones
 
 ## Integración con Sistema Existente

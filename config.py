@@ -12,6 +12,7 @@ PLOTS_DIR = OUTPUT_DIR / "plots"
 FEATURES_DIR = OUTPUT_DIR / "features"
 CHECKPOINT_DIR = OUTPUT_DIR / "checkpoints"
 LOG_DIR = OUTPUT_DIR / "logs"
+DEBUG_PDF_DIR = OUTPUT_DIR / "debug_pdfs"
 
 # Crear directorios
 OUTPUT_DIR.mkdir(exist_ok=True)
@@ -19,6 +20,7 @@ PLOTS_DIR.mkdir(exist_ok=True)
 FEATURES_DIR.mkdir(exist_ok=True)
 CHECKPOINT_DIR.mkdir(exist_ok=True)
 LOG_DIR.mkdir(exist_ok=True)
+DEBUG_PDF_DIR.mkdir(exist_ok=True)
 
 # Configuración MCMC
 MCMC_CONFIG = {
@@ -26,7 +28,7 @@ MCMC_CONFIG = {
     "n_steps": 5000,          # Pasos de MCMC
     "burn_in": 500,           # Burn-in steps
     "n_threads": 1,           # Threads paralelos
-    "random_seed": 42         # Semilla aleatoria para reproducibilidad (None = aleatorio)
+    "random_seed": 41         # Semilla aleatoria para reproducibilidad (None = aleatorio)
 }
 
 # Configuración del modelo
@@ -56,6 +58,7 @@ FILTERS_TO_PROCESS = ['g', 'r']  # Ejemplo: procesar filtros g y r
 # Configuración de filtrado de datos
 DATA_FILTER_CONFIG = {
     "max_days_after_peak": 300.0,  # Máximo número de días después del pico de flujo para incluir
-    "max_days_before_peak": None   # Sin límite de días antes del pico (incluir todos los datos desde la primera detección)
+    "max_days_before_peak": None,   # Sin límite de días antes del pico (incluir todos los datos desde la primera detección)
+    "max_days_before_first_obs": 20.0  # Máximo número de días antes de la primera observación para incluir upper limits
 }
 

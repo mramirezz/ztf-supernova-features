@@ -87,7 +87,8 @@ def mjd_to_phase(mjd: np.ndarray, reference_mjd: Optional[float] = None) -> np.n
 
 def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None, 
                        max_days_after_peak: float = 300.0, 
-                       max_days_before_peak: float = 50.0) -> Dict:
+                       max_days_before_peak: float = 50.0,
+                       max_days_before_first_obs: float = 20.0) -> Dict:
     """
     Preparar curva de luz para ajuste
     
@@ -102,6 +103,8 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
         Las supernovas típicamente no duran más de 300 días después del pico
     max_days_before_peak : float, default=50.0
         Máximo número de días antes del pico para incluir (para capturar el rise)
+    max_days_before_first_obs : float, default=20.0
+        Máximo número de días antes de la primera observación para incluir upper limits
     
     Returns:
     --------
@@ -138,9 +141,9 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     
     # INCLUIR LOS 3 ÚLTIMOS UPPER LIMITS ANTES DEL PRIMER PUNTO DE OBSERVACIÓN
     # Esto ayuda a dar contexto sobre el flujo antes de la explosión
-    # CONSTRAINT: Solo incluir upper limits que estén a máximo 20 días de la primera observación
+    # CONSTRAINT: Solo incluir upper limits que estén dentro del rango configurado antes de la primera observación
     first_observation_mjd = df_normal['MJD'].min()
-    max_days_before_first_obs = 20.0  # Máximo 20 días antes de la primera observación
+    # max_days_before_first_obs viene como parámetro (por defecto desde config.py)
     
     # Filtrar upper limits que estén antes de la primera observación
     ul_before = df_ul[df_ul['MJD'] < first_observation_mjd].copy()
