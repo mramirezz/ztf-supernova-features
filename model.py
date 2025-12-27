@@ -12,20 +12,40 @@ def alerce_model(times, A, f, t0, t_rise, t_fall, gamma):
     times : array
         Tiempos (fase relativa)
     A, f, t0, t_rise, t_fall, gamma : float
-        Parámetros del modelo
+        Parámetros del modelo (NO se modifican, vienen de ALERCE con bounds específicos)
         
     Returns:
     --------
     flux : array
         Flujo modelado
     """
+    # NO modificar los parámetros originales - solo proteger los cálculos numéricos
     t1 = t0 + gamma
     
-    sigmoid = 1.0 / (1.0 + np.exp(-1/3 * (times - t1)))
-    den = 1 + np.exp(-(times - t0) / t_rise)
+    # Calcular exponentes con protección contra overflow
+    # Limitar el argumento del exponente a un rango seguro para evitar overflow
+    # Los parámetros originales se mantienen intactos
+    exp_arg_sigmoid = -1/3 * (times - t1)
+    exp_arg_sigmoid = np.clip(exp_arg_sigmoid, -500, 500)  # np.exp(500) es el límite práctico
+    sigmoid = 1.0 / (1.0 + np.exp(exp_arg_sigmoid))
     
-    flux = (A * (1 - f) * np.exp(-(times - t1) / t_fall) / den * sigmoid
+    # Proteger contra división por cero o valores extremos en t_rise
+    # Usar el valor original de t_rise pero proteger el cálculo
+    exp_arg_den = -(times - t0) / t_rise
+    exp_arg_den = np.clip(exp_arg_den, -500, 500)
+    den = 1 + np.exp(exp_arg_den)
+    
+    # Proteger contra valores extremos en t_fall
+    # Usar el valor original de t_fall pero proteger el cálculo
+    exp_arg_fall = -(times - t1) / t_fall
+    exp_arg_fall = np.clip(exp_arg_fall, -500, 500)
+    exp_fall = np.exp(exp_arg_fall)
+    
+    flux = (A * (1 - f) * exp_fall / den * sigmoid
             + A * (1. - f * (times - t0) / gamma) / den * (1 - sigmoid))
+    
+    # Asegurar que el flujo sea finito y positivo (solo protección numérica final)
+    flux = np.clip(flux, 1e-10, 1e10)
     
     return flux
 
