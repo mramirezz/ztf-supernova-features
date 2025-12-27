@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import time
 from pathlib import Path
 import sys
+import os
 
 # Agregar directorio actual al path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -20,7 +21,42 @@ from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, DATA_FILTER_CONFIG
 
 st.set_page_config(page_title="Explorador MCMC Supernovas", layout="wide")
 
+def is_streamlit_cloud():
+    """
+    Detectar si la app está corriendo en Streamlit Cloud
+    
+    Returns:
+    --------
+    bool : True si está en Streamlit Cloud, False si es local
+    """
+    # Método 1: Verificar variables de entorno específicas de Streamlit Cloud
+    # Streamlit Cloud establece estas variables
+    if os.environ.get("STREAMLIT_SHARING_MODE") == "public" or os.environ.get("STREAMLIT_SHARING_MODE") == "private":
+        return True
+    
+    # Método 2: Intentar escribir en el directorio de outputs
+    # En Streamlit Cloud, generalmente no se puede escribir fuera de /tmp
+    try:
+        test_dir = FEATURES_DIR
+        test_file = test_dir / ".streamlit_cloud_test"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        test_file.write_text("test")
+        test_file.unlink()
+        return False  # Si puede escribir, probablemente es local
+    except (PermissionError, OSError, Exception):
+        # Si no puede escribir, probablemente es cloud
+        return True
+    
+    return False
+
+# Detectar si estamos en Streamlit Cloud
+IS_STREAMLIT_CLOUD = is_streamlit_cloud()
+
 st.title("Explorador de Ajustes MCMC - Supernovas ZTF")
+
+# Mostrar advertencia si está en Streamlit Cloud
+if IS_STREAMLIT_CLOUD:
+    st.info("ℹ️ **Modo Streamlit Cloud**: La funcionalidad de guardar archivos está deshabilitada en este entorno. Los gráficos y features solo se pueden guardar en ejecuciones locales.")
 
 def _show_parameter_distributions(sn_type):
     """
@@ -458,13 +494,19 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         # Solo crear carpeta y rutas si se van a guardar resultados
         plot_save_path = None
         corner_save_path = None
-        if save_results:
-            # Crear subcarpeta para esta supernova solo si se van a guardar
-            # Organizar por tipo de supernova: plots/SN Ia/ZTF20abc/
-            sn_plots_dir = PLOTS_DIR / selected_type / sn_name
-            sn_plots_dir.mkdir(parents=True, exist_ok=True)
-            plot_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_fit.png")
-            corner_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_corner.png")
+        if save_results and not IS_STREAMLIT_CLOUD:
+            try:
+                # Crear subcarpeta para esta supernova solo si se van a guardar
+                # Organizar por tipo de supernova: plots/SN Ia/ZTF20abc/
+                sn_plots_dir = PLOTS_DIR / selected_type / sn_name
+                sn_plots_dir.mkdir(parents=True, exist_ok=True)
+                plot_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_fit.png")
+                corner_save_path = str(sn_plots_dir / f"{sn_name}_{filter_name}_corner.png")
+            except (PermissionError, OSError) as e:
+                st.warning(f"No se pueden crear directorios para guardar: {e}")
+                save_results = False
+                plot_save_path = None
+                corner_save_path = None
         
         # Convertir modelo a MJD para plotting (igual que en modo debug)
         if mjd is not None and reference_mjd is not None:
@@ -497,10 +539,12 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         st.subheader("Gráficos de Ajuste")
         from plotter import plot_fit_with_uncertainty
         t0_plot = time.time()
+        # No pasar save_path aquí para que siempre retorne la figura
+        # Guardaremos manualmente después si es necesario
         fig = plot_fit_with_uncertainty(
             phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
             samples_for_plot, n_samples_to_show,
-            sn_name, filter_name, save_path=plot_save_path,
+            sn_name, filter_name, save_path=None,  # No guardar aquí, guardar después
             phase_ul=None,  # No pasar upper limits adicionales, ya están en los datos del fit
             mag_ul=None,
             flux_ul=None,
@@ -508,28 +552,50 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             had_upper_limits=had_upper_limits
         )
         t_plot = time.time() - t0_plot
-        st.pyplot(fig)
-        plt.close()
         
-        if save_results and plot_save_path:
-                st.success(f"Gráfico guardado: {plot_save_path}")
+        # Mostrar en Streamlit pasando la figura explícitamente
+        if fig is not None:
+            st.pyplot(fig)
+            
+            # Guardar manualmente si es necesario
+            if save_results and plot_save_path and not IS_STREAMLIT_CLOUD:
+                try:
+                    from config import PLOT_CONFIG
+                    fig.savefig(plot_save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
+                    st.success(f"Gráfico guardado: {plot_save_path}")
+                except (PermissionError, OSError) as e:
+                    st.warning(f"No se pudo guardar el gráfico: {e}")
+            
+            plt.close(fig)
+        else:
+            st.error("No se pudo generar el gráfico de ajuste.")
         
         # Corner plot
         st.subheader("Corner Plot")
         n_samples_corner = len(mcmc_results['samples'])
         st.caption(f"Este corner plot muestra la distribución de los **parámetros** de **{n_samples_corner:,} samples** del MCMC (después de burn-in). Cada sample es un conjunto de 6 parámetros (A, f, t0, t_rise, t_fall, gamma).")
         t0_corner = time.time()
-        corner_fig = plot_corner(mcmc_results['samples'], save_path=corner_save_path)
+        # No pasar save_path aquí para que siempre retorne la figura
+        corner_fig = plot_corner(mcmc_results['samples'], save_path=None)
         t_corner = time.time() - t0_corner
         
         if corner_fig is None:
             st.error("No se pudo generar el corner plot.")
             t_corner = 0
         else:
+            # Mostrar en Streamlit pasando la figura explícitamente
             st.pyplot(corner_fig)
-            plt.close()
-            if save_results and corner_save_path:
-                st.success(f"Corner plot guardado: {corner_save_path}")
+            
+            # Guardar manualmente si es necesario
+            if save_results and corner_save_path and not IS_STREAMLIT_CLOUD:
+                try:
+                    from config import PLOT_CONFIG
+                    corner_fig.savefig(corner_save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
+                    st.success(f"Corner plot guardado: {corner_save_path}")
+                except (PermissionError, OSError) as e:
+                    st.warning(f"No se pudo guardar el corner plot: {e}")
+            
+            plt.close(corner_fig)
         
         # Métricas
         st.subheader("Métricas de Tiempo")
@@ -638,27 +704,34 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 """)
         
         # Guardar features
-        if save_results:
-            features = extract_features(mcmc_results, phase, flux, flux_err,
-                                      sn_name, filter_name)
-            features['sn_type'] = selected_type
-            
-            features_df = pd.DataFrame([features])
-            output_file = FEATURES_DIR / f"features_{selected_type.replace(' ', '_')}.csv"
-            
-            if output_file.exists():
-                existing_df = pd.read_csv(output_file)
-                mask = (existing_df['sn_name'] == sn_name) & (existing_df['filter_band'] == filter_name)
-                if mask.any():
-                    existing_df = existing_df[~mask]
-                    st.warning(f"Reemplazando entrada existente para {sn_name} - {filter_name}")
+        if save_results and not IS_STREAMLIT_CLOUD:
+            try:
+                features = extract_features(mcmc_results, phase, flux, flux_err,
+                                          sn_name, filter_name)
+                features['sn_type'] = selected_type
                 
-                combined_df = pd.concat([existing_df, features_df], ignore_index=True)
-                combined_df.to_csv(output_file, index=False)
-            else:
-                features_df.to_csv(output_file, index=False)
-            
-            st.success(f"Features guardadas en: {output_file}")
+                features_df = pd.DataFrame([features])
+                output_file = FEATURES_DIR / f"features_{selected_type.replace(' ', '_')}.csv"
+                
+                # Asegurar que el directorio existe
+                output_file.parent.mkdir(parents=True, exist_ok=True)
+                
+                if output_file.exists():
+                    existing_df = pd.read_csv(output_file)
+                    mask = (existing_df['sn_name'] == sn_name) & (existing_df['filter_band'] == filter_name)
+                    if mask.any():
+                        existing_df = existing_df[~mask]
+                        st.warning(f"Reemplazando entrada existente para {sn_name} - {filter_name}")
+                    
+                    combined_df = pd.concat([existing_df, features_df], ignore_index=True)
+                    combined_df.to_csv(output_file, index=False)
+                else:
+                    features_df.to_csv(output_file, index=False)
+                
+                st.success(f"Features guardadas en: {output_file}")
+            except (PermissionError, OSError) as e:
+                st.warning(f"No se pudieron guardar las features: {e}")
+                st.info("💡 **Sugerencia**: En Streamlit Cloud, el guardado de archivos no está disponible. Ejecuta la app localmente para guardar resultados.")
             
     except Exception as e:
         st.error(f"Error procesando filtro {filter_name}: {type(e).__name__}: {e}")
@@ -735,6 +808,30 @@ n_samples_to_show = st.sidebar.slider("Realizaciones", 0, 1000, 100, key="n_samp
 
 st.sidebar.markdown("---")
 
+# Opción para guardar resultados ANTES de la información de gráficos
+st.sidebar.subheader("Guardar Resultados")
+if IS_STREAMLIT_CLOUD:
+    st.sidebar.info("⚠️ **Streamlit Cloud**: El guardado de archivos no está disponible en este entorno.")
+    save_results = False  # Forzar a False en cloud
+else:
+    st.sidebar.markdown("**Guardar gráficos y features**")
+    st.sidebar.caption("Si está activado, guarda automáticamente los gráficos y features después del cálculo.")
+    save_results = st.sidebar.checkbox("Guardar gráficos y features", value=False, key="save_results")
+
+st.sidebar.markdown("---")
+
+# Opción para semilla aleatoria (reproducibilidad) ANTES de la información de gráficos
+st.sidebar.subheader("Reproducibilidad")
+st.sidebar.markdown("**Semilla aleatoria**")
+st.sidebar.caption("Fijar semilla para obtener resultados reproducibles. Si cambias los parámetros MCMC, los resultados serán consistentes.")
+use_fixed_seed = st.sidebar.checkbox("Usar semilla fija (reproducible)", value=True, key="use_seed")
+if use_fixed_seed:
+    random_seed = st.sidebar.number_input("Valor de semilla", min_value=0, max_value=999999, value=42, key="seed_value")
+else:
+    random_seed = None
+
+st.sidebar.markdown("---")
+
 # Información sobre los gráficos (DESPUÉS de definir todos los parámetros)
 st.sidebar.subheader("Información sobre los Gráficos")
 
@@ -802,25 +899,6 @@ Cada panel muestra:
 Esto permite ver correlaciones entre parámetros y la forma de las distribuciones posteriores de los parámetros del modelo.
 """)
 
-st.sidebar.markdown("---")
-
-# Opción para guardar resultados ANTES de ejecutar
-st.sidebar.subheader("Guardar Resultados")
-st.sidebar.markdown("**Guardar gráficos y features**")
-st.sidebar.caption("Si está activado, guarda automáticamente los gráficos y features después del cálculo.")
-save_results = st.sidebar.checkbox("Guardar gráficos y features", value=False, key="save_results")
-
-st.sidebar.markdown("---")
-
-# Opción para semilla aleatoria (reproducibilidad)
-st.sidebar.subheader("Reproducibilidad")
-st.sidebar.markdown("**Semilla aleatoria**")
-st.sidebar.caption("Fijar semilla para obtener resultados reproducibles. Si cambias los parámetros MCMC, los resultados serán consistentes.")
-use_fixed_seed = st.sidebar.checkbox("Usar semilla fija (reproducible)", value=True, key="use_seed")
-if use_fixed_seed:
-    random_seed = st.sidebar.number_input("Valor de semilla", min_value=0, max_value=999999, value=42, key="seed_value")
-else:
-    random_seed = None
 
 # Actualizar configuración
 MCMC_CONFIG["n_walkers"] = n_walkers
