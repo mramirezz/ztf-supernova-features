@@ -4,7 +4,7 @@ Lector de archivos .dat de fotometría ZTF
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 def parse_photometry_file(filepath: str) -> Dict[str, pd.DataFrame]:
     """
@@ -242,4 +242,53 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
         'peak_phase': peak_phase,  # Información adicional sobre el pico
         'reference_mjd': reference_mjd  # MJD usado como referencia (fase 0) para este filtro
     }
+
+def load_supernovas_from_csv(csv_path: str) -> List[str]:
+    """
+    Leer CSV de supernovas exitosas y extraer lista de nombres
+    
+    Parameters:
+    -----------
+    csv_path : str or Path
+        Ruta al archivo CSV con supernovas exitosas
+    
+    Returns:
+    --------
+    list : Lista de nombres de supernovas (sin duplicados, preservando orden)
+    """
+    csv_path = Path(csv_path)
+    
+    if not csv_path.exists():
+        raise FileNotFoundError(f"Archivo CSV no encontrado: {csv_path}")
+    
+    try:
+        df = pd.read_csv(csv_path)
+        
+        # Buscar columna con nombres de supernovas
+        # Puede ser 'supernova_name', 'sn_name', 'name', etc.
+        possible_columns = ['supernova_name', 'sn_name', 'name', 'supernova']
+        sn_column = None
+        
+        for col in possible_columns:
+            if col in df.columns:
+                sn_column = col
+                break
+        
+        if sn_column is None:
+            # Si no encontramos ninguna columna conocida, usar la primera
+            if len(df.columns) > 0:
+                sn_column = df.columns[0]
+                print(f"[WARNING] No se encontró columna conocida, usando primera columna: {sn_column}")
+            else:
+                raise ValueError("CSV vacío o sin columnas")
+        
+        # Extraer nombres, eliminar duplicados pero preservar orden
+        supernovas = df[sn_column].dropna().unique().tolist()
+        
+        print(f"[INFO] CSV leído: {len(supernovas)} supernovas encontradas en columna '{sn_column}'")
+        
+        return supernovas
+    
+    except Exception as e:
+        raise ValueError(f"Error leyendo CSV: {e}")
 

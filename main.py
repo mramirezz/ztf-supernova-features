@@ -15,7 +15,7 @@ from datetime import datetime
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from reader import parse_photometry_file, prepare_lightcurve
+from reader import parse_photometry_file, prepare_lightcurve, load_supernovas_from_csv
 from mcmc_fitter import fit_mcmc
 from feature_extractor import extract_features
 from plotter import plot_corner, plot_fit_with_uncertainty
@@ -363,7 +363,7 @@ def save_debug_checkpoint(sn_type, processed_set):
     except Exception as e:
         print(f"  [WARNING] Error al guardar checkpoint de debug: {e}")
 
-def save_features_incremental(features_list, sn_type):
+def save_features_incremental(features_list, sn_type, debug_mode=False, from_csv=False):
     """
     Guardar features incrementalmente en CSV después de procesar una supernova.
     Esto asegura que si el proceso se cae, las features ya procesadas estén guardadas.
@@ -374,12 +374,24 @@ def save_features_incremental(features_list, sn_type):
         Lista de dicts con features (uno por filtro procesado)
     sn_type : str
         Tipo de supernova
+    debug_mode : bool
+        Si True, guarda en archivo separado para modo debug
+    from_csv : bool
+        Si True y debug_mode=True, agrega sufijo _from_csv al nombre
     """
     if not features_list:
         return
     
     try:
-        output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}.csv"
+        # Determinar nombre del archivo según el modo
+        if debug_mode:
+            if from_csv:
+                output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug_from_csv.csv"
+            else:
+                output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug.csv"
+        else:
+            output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}.csv"
+        
         df_new_features = pd.DataFrame(features_list)
         
         # Si el archivo ya existe, leerlo y actualizar
@@ -643,7 +655,8 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
         with PdfPages(str(pdf_path)) as pdf:
             pdf.savefig(fig, bbox_inches='tight', dpi=200)
 
-def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, resume_from_checkpoint=False):
+def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, 
+                       resume_from_checkpoint=False, supernovas_from_csv=None, csv_file_path=None):
     """
     Generar PDF de debug con fit + corner plot para múltiples supernovas
     Usa las mismas funciones de plotting que el procesamiento normal
@@ -653,13 +666,15 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     sn_type : str
         Tipo de supernova
     n_supernovas : int or None
-        Número de supernovas a procesar (None = todas)
+        Número de supernovas a procesar (None = todas). Se ignora si supernovas_from_csv está especificado.
     filters_to_process : list, optional
         Lista de filtros a procesar
     min_year : int
-        Año mínimo para filtrar supernovas
+        Año mínimo para filtrar supernovas (se ignora si supernovas_from_csv está especificado)
     resume_from_checkpoint : bool
         Si True, reanuda desde checkpoint y añade al PDF existente
+    supernovas_from_csv : list, optional
+        Lista de nombres de supernovas del CSV a procesar. Si se especifica, se procesan solo estas.
     """
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
@@ -680,11 +695,15 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     print(f"GENERANDO PDF DE DEBUG")
     print(f"{'='*80}")
     print(f"Tipo de supernova: {sn_type}")
-    if n_supernovas is None:
-        print(f"Número de supernovas: TODAS")
+    if supernovas_from_csv:
+        print(f"Modo CSV: procesando {len(supernovas_from_csv)} supernovas específicas del CSV")
+        print(f"(Se ignoran n_supernovas y filtro de año)")
     else:
-        print(f"Número de supernovas: {n_supernovas}")
-    print(f"Año mínimo inicial: {min_year} (se reducirá automáticamente si no hay suficientes)")
+        if n_supernovas is None:
+            print(f"Número de supernovas: TODAS")
+        else:
+            print(f"Número de supernovas: {n_supernovas}")
+        print(f"Año mínimo inicial: {min_year} (se reducirá automáticamente si no hay suficientes)")
     if filters_to_process:
         print(f"Filtros: {', '.join(filters_to_process)}")
     else:
@@ -703,8 +722,52 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         print(f"\n[ERROR] No se encontraron archivos .dat en '{sn_type}'")
         return
     
+    # Si se especificó CSV, filtrar archivos para procesar solo esas supernovas
+    if supernovas_from_csv:
+        # Crear un diccionario para mapear nombres de supernovas a archivos
+        # El nombre del archivo es como "ZTF18aaaibml_photometry.dat" y la supernova es "ZTF18aaaibml"
+        sn_to_file = {}
+        for filepath in dat_files:
+            # Extraer nombre de supernova del archivo
+            file_stem = Path(filepath).stem.replace('_photometry', '')
+            sn_to_file[file_stem] = filepath
+        
+        # Filtrar archivos para solo incluir las supernovas del CSV
+        selected_files = []
+        not_found = []
+        for sn_name in supernovas_from_csv:
+            if sn_name in sn_to_file:
+                selected_files.append(sn_to_file[sn_name])
+            else:
+                not_found.append(sn_name)
+        
+        if not_found:
+            print(f"[WARNING] {len(not_found)} supernovas del CSV no se encontraron en los archivos .dat:")
+            for sn in not_found[:10]:  # Mostrar solo las primeras 10
+                print(f"  - {sn}")
+            if len(not_found) > 10:
+                print(f"  ... y {len(not_found) - 10} más")
+        
+        if not selected_files:
+            print(f"\n[ERROR] No se encontraron archivos .dat para ninguna supernova del CSV")
+            return
+        
+        print(f"[INFO] {len(selected_files)} archivos encontrados de {len(supernovas_from_csv)} supernovas del CSV")
+        # Usar selected_files como la lista de archivos a procesar
+        # Saltar el filtrado por año ya que estamos usando archivos específicos
+        filtered_files = selected_files
+        # No necesitamos shuffle porque queremos mantener el orden del CSV
+        # Pero podemos hacerlo opcional si el usuario quiere
+    else:
+        # Comportamiento normal: filtrar por año y seleccionar aleatoriamente
+        filtered_files = None  # Se asignará más abajo
+    
     # Crear nombre del archivo PDF
-    pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
+    if supernovas_from_csv and csv_file_path:
+        # Si se usa CSV, agregar sufijo claro para no sobrescribir el PDF original
+        pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug_from_csv.pdf'
+    else:
+        pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
     pdf_path = DEBUG_PDF_DIR / pdf_filename
     
     # Cargar checkpoint PRIMERO para saber si estamos reanudando
@@ -730,58 +793,68 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         print(f"[WARNING] PDF existente encontrado: {pdf_path}")
         print(f"[WARNING] Se sobrescribirá. Usa --resume para añadir páginas al PDF existente.")
     
-    # Filtrar por año, reduciendo automáticamente si no hay suficientes
-    # PERO: si estamos reanudando desde checkpoint, mantener el filtro de min_year sin reducir
-    current_year = min_year
-    min_year_limit = 2018  # ZTF empezó alrededor de 2018
-    filtered_files_tuples = []
-    
-    # Si estamos reanudando, no reducir el año - mantener min_year estricto
-    if has_checkpoint:
-        filtered_files_tuples = filter_by_year(dat_files, min_year=min_year)
-        print(f"[INFO] Modo resume: manteniendo filtro de año {min_year} en adelante (sin reducir)")
-    else:
-        # Modo normal: reducir año si no hay suficientes
-        while current_year >= min_year_limit:
-            filtered_files_tuples = filter_by_year(dat_files, min_year=current_year)
-            n_found = len(filtered_files_tuples)
-            n_needed = n_supernovas if n_supernovas is not None else 1
-            
-            if n_found >= n_needed:
+    # Filtrar por año solo si NO estamos usando modo CSV
+    current_year = None  # Inicializar para evitar errores
+    if not supernovas_from_csv:
+        # Filtrar por año, reduciendo automáticamente si no hay suficientes
+        # PERO: si estamos reanudando desde checkpoint, mantener el filtro de min_year sin reducir
+        current_year = min_year
+        min_year_limit = 2018  # ZTF empezó alrededor de 2018
+        filtered_files_tuples = []
+        
+        # Si estamos reanudando, no reducir el año - mantener min_year estricto
+        if has_checkpoint:
+            filtered_files_tuples = filter_by_year(dat_files, min_year=min_year)
+            print(f"[INFO] Modo resume: manteniendo filtro de año {min_year} en adelante (sin reducir)")
+        else:
+            # Modo normal: reducir año si no hay suficientes
+            while current_year >= min_year_limit:
+                filtered_files_tuples = filter_by_year(dat_files, min_year=current_year)
+                n_found = len(filtered_files_tuples)
+                n_needed = n_supernovas if n_supernovas is not None else 1
+                
+                if n_found >= n_needed:
+                    if current_year < min_year:
+                        print(f"[INFO] No se encontraron suficientes supernovas desde {min_year}, reduciendo a {current_year}")
+                    break
+                
+                # Mostrar progreso si está reduciendo el año
                 if current_year < min_year:
-                    print(f"[INFO] No se encontraron suficientes supernovas desde {min_year}, reduciendo a {current_year}")
-                break
-            
-            # Mostrar progreso si está reduciendo el año
-            if current_year < min_year:
-                print(f"[INFO] Probando año {current_year}: {n_found} archivos encontrados (necesarios: {n_needed})")
-            
-            current_year -= 1
-    
-    if not filtered_files_tuples:
-        print(f"\n[ERROR] No se encontraron supernovas desde {min_year_limit} en adelante")
-        return
-    
-    if current_year < min_year:
-        print(f"[INFO] Usando año mínimo: {current_year} (solicitado: {min_year})")
-    
-    # filter_by_year ya retorna filepaths directamente, no tuplas
-    filtered_files = filtered_files_tuples
-    
-    # Seleccionar aleatoriamente TODOS los archivos disponibles (o al menos más de los necesarios)
-    # Esto permite continuar intentando hasta tener n_supernovas exitosas
-    import random
-    seed_value = MCMC_CONFIG.get("random_seed", 42)
-    random.seed(seed_value)  # Semilla fija para reproducibilidad
-    # Mezclar todos los archivos aleatoriamente
-    selected_files = filtered_files.copy()
-    random.shuffle(selected_files)
-    
-    print(f"\n[INFO] Encontrados {len(filtered_files)} archivos del año {current_year} en adelante")
-    if n_supernovas is None:
-        print(f"[INFO] Procesando TODAS las supernovas disponibles...\n")
+                    print(f"[INFO] Probando año {current_year}: {n_found} archivos encontrados (necesarios: {n_needed})")
+                
+                current_year -= 1
+        
+        if not filtered_files_tuples:
+            print(f"\n[ERROR] No se encontraron supernovas desde {min_year_limit} en adelante")
+            return
+        
+        if current_year < min_year:
+            print(f"[INFO] Usando año mínimo: {current_year} (solicitado: {min_year})")
+        
+        # filter_by_year ya retorna filepaths directamente, no tuplas
+        filtered_files = filtered_files_tuples
+        
+        # Seleccionar aleatoriamente TODOS los archivos disponibles (o al menos más de los necesarios)
+        # Esto permite continuar intentando hasta tener n_supernovas exitosas
+        import random
+        seed_value = MCMC_CONFIG.get("random_seed", 42)
+        random.seed(seed_value)  # Semilla fija para reproducibilidad
+        # Mezclar todos los archivos aleatoriamente
+        selected_files = filtered_files.copy()
+        random.shuffle(selected_files)
     else:
-        print(f"[INFO] Procesando hasta obtener {n_supernovas} supernovas exitosas...\n")
+        # Modo CSV: ya tenemos selected_files filtrados arriba
+        # No necesitamos shuffle, mantener orden del CSV
+        selected_files = filtered_files
+    
+    if supernovas_from_csv:
+        print(f"\n[INFO] Procesando {len(selected_files)} supernovas del CSV...\n")
+    else:
+        print(f"\n[INFO] Encontrados {len(filtered_files)} archivos del año {current_year} en adelante")
+        if n_supernovas is None:
+            print(f"[INFO] Procesando TODAS las supernovas disponibles...\n")
+        else:
+            print(f"[INFO] Procesando hasta obtener {n_supernovas} supernovas exitosas...\n")
     
     # Determinar qué filtros procesar
     if filters_to_process is None:
@@ -789,8 +862,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     
     if not filters_to_process:
         # Si está vacía, procesar todos los filtros disponibles (pero limitar a 2 para el PDF)
-        if filtered_files:
-            test_filters, _ = parse_photometry_file(str(filtered_files[0]))
+        if selected_files:
+            test_filters, _ = parse_photometry_file(str(selected_files[0]))
             filters_to_process = sorted(list(test_filters.keys()))[:2]  # Máximo 2 filtros
             print(f"[INFO] Procesando filtros: {', '.join(filters_to_process)}")
     
@@ -885,6 +958,13 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         
                         # Ajuste MCMC (usa fase relativa por filtro, que está bien)
                         mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
+                        
+                        # Extraer features (igual que en modo normal)
+                        features = extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name)
+                        features['sn_type'] = sn_type
+                        
+                        # Guardar features incrementalmente en archivo separado para debug
+                        save_features_incremental([features], sn_type, debug_mode=True, from_csv=(supernovas_from_csv is not None))
                         
                         # Convertir flujo del modelo a magnitud
                         from model import flux_to_mag
@@ -1169,7 +1249,11 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     
     # No necesitamos combinar PDFs al final - ya se guardaron incrementalmente
     # Guardar CSV con supernovas exitosas
-    csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
+    if supernovas_from_csv and csv_file_path:
+        # Si se usa CSV, agregar sufijo claro para no sobrescribir el CSV original
+        csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful_from_csv.csv'
+    else:
+        csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
     csv_path = DEBUG_PDF_DIR / csv_filename
     df_successful = pd.DataFrame({'supernova_name': successful_supernovas})
     df_successful.to_csv(csv_path, index=False)
@@ -1184,7 +1268,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     print(f"[INFO] Intentos totales: {attempted_count}")
     if failed_count > 0:
         print(f"[INFO] Supernovas fallidas/saltadas: {failed_count}")
-    if processed_count < n_supernovas:
+    if n_supernovas is not None and processed_count < n_supernovas:
         print(f"[WARNING] Solo se procesaron {processed_count} de {n_supernovas} supernovas solicitadas")
     print(f"{'='*80}")
 
@@ -1218,7 +1302,7 @@ def main():
     
     # Si está en modo debug-pdf, usar función especial
     if debug_pdf_mode:
-        # Parsear número de supernovas para PDF
+        # Parsear número de supernovas para PDF (se ignorará si se usa --from-csv)
         n_supernovas = None
         if len(sys.argv) > 2 and sys.argv[2] != '--debug-pdf':
             if sys.argv[2].lower() == 'all':
@@ -1234,13 +1318,29 @@ def main():
             else:
                 n_supernovas = 100
         
+        # Parsear --from-csv o --csv-file (opcional)
+        csv_file_path = None
+        for i, arg in enumerate(sys.argv):
+            if arg == '--from-csv' or arg == '--csv-file':
+                if i + 1 < len(sys.argv):
+                    csv_file_path = sys.argv[i + 1]
+                    print(f"[INFO] Modo CSV activado: procesando supernovas del archivo: {csv_file_path}")
+                    # Si se especifica CSV, ignorar n_supernovas
+                    n_supernovas = None
+                else:
+                    print(f"[ERROR] --from-csv requiere un archivo CSV como argumento")
+                    return
+                break
+        
         # Parsear filtros (opcional)
         filters_to_process = None
         for arg in sys.argv[3:]:
             # Ignorar flags y argumentos que contengan flags
             if (arg == '--debug-pdf' or arg == '--resume' or 
                 '--debug-pdf' in arg or '--resume' in arg or
-                arg.startswith('--seed') or arg.startswith('--random-seed')):
+                arg.startswith('--seed') or arg.startswith('--random-seed') or
+                arg == '--from-csv' or arg == '--csv-file' or
+                (csv_file_path and arg == csv_file_path)):
                 continue
             filters_input = arg
             filters_input = filters_input.replace('[', '').replace(']', '').replace("'", '').replace('"', '')
@@ -1251,7 +1351,7 @@ def main():
         # Parsear semilla aleatoria (opcional) para modo debug-pdf
         for i, arg in enumerate(sys.argv):
             if arg == '--seed' or arg == '--random-seed':
-                if i + 1 < len(sys.argv):
+                if i + 1 < len(sys.argv) and sys.argv[i + 1] != csv_file_path:
                     try:
                         random_seed = int(sys.argv[i + 1])
                         MCMC_CONFIG["random_seed"] = random_seed
@@ -1260,7 +1360,19 @@ def main():
                         print(f"[WARNING] Valor inválido para --seed, usando valor por defecto: {MCMC_CONFIG.get('random_seed', 'No configurada')}")
                 break
         
-        generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022, resume_from_checkpoint=resume_from_checkpoint)
+        # Cargar lista de supernovas del CSV si se especificó
+        supernovas_from_csv = None
+        if csv_file_path:
+            try:
+                supernovas_from_csv = load_supernovas_from_csv(csv_file_path)
+            except Exception as e:
+                print(f"[ERROR] No se pudo leer el CSV: {e}")
+                return
+        
+        generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022, 
+                         resume_from_checkpoint=resume_from_checkpoint, 
+                         supernovas_from_csv=supernovas_from_csv,
+                         csv_file_path=csv_file_path)
         return
     
     # Parsear número de supernovas
