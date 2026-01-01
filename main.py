@@ -363,7 +363,7 @@ def save_debug_checkpoint(sn_type, processed_set):
     except Exception as e:
         print(f"  [WARNING] Error al guardar checkpoint de debug: {e}")
 
-def save_features_incremental(features_list, sn_type, debug_mode=False, from_csv=False):
+def save_features_incremental(features_list, sn_type, debug_mode=False, from_csv=False, overwrite_pdf=False):
     """
     Guardar features incrementalmente en CSV después de procesar una supernova.
     Esto asegura que si el proceso se cae, las features ya procesadas estén guardadas.
@@ -378,6 +378,8 @@ def save_features_incremental(features_list, sn_type, debug_mode=False, from_csv
         Si True, guarda en archivo separado para modo debug
     from_csv : bool
         Si True y debug_mode=True, agrega sufijo _from_csv al nombre
+    overwrite_pdf : bool
+        Si True y from_csv=True, usa el mismo nombre que el modo normal (sobrescribir)
     """
     if not features_list:
         return
@@ -386,6 +388,7 @@ def save_features_incremental(features_list, sn_type, debug_mode=False, from_csv
         # Determinar nombre del archivo según el modo
         if debug_mode:
             if from_csv:
+                # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
                 output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug_from_csv.csv"
             else:
                 output_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug.csv"
@@ -656,7 +659,8 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
             pdf.savefig(fig, bbox_inches='tight', dpi=200)
 
 def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, 
-                       resume_from_checkpoint=False, supernovas_from_csv=None, csv_file_path=None):
+                       resume_from_checkpoint=False, supernovas_from_csv=None, csv_file_path=None,
+                       overwrite_pdf=False):
     """
     Generar PDF de debug con fit + corner plot para múltiples supernovas
     Usa las mismas funciones de plotting que el procesamiento normal
@@ -764,11 +768,38 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     
     # Crear nombre del archivo PDF
     if supernovas_from_csv and csv_file_path:
-        # Si se usa CSV, agregar sufijo claro para no sobrescribir el PDF original
+        # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
         pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug_from_csv.pdf'
+        print(f"[INFO] Modo from-csv: usando PDF: {pdf_filename}")
     else:
         pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
+        print(f"[INFO] Modo normal: usando PDF: {pdf_filename}")
     pdf_path = DEBUG_PDF_DIR / pdf_filename
+    print(f"[INFO] Ruta completa del PDF: {pdf_path}")
+    
+    # Si se usa --overwrite, borrar los archivos existentes UNA VEZ al inicio
+    if overwrite_pdf:
+        # Eliminar PDF existente
+        if pdf_path.exists():
+            try:
+                pdf_path.unlink()
+                print(f"[INFO] PDF existente eliminado (modo overwrite)")
+            except Exception as e:
+                print(f"[WARNING] No se pudo eliminar el PDF existente: {e}")
+        
+        # Eliminar CSV de features existente (solo en modo debug)
+        from config import FEATURES_DIR
+        if supernovas_from_csv and csv_file_path:
+            features_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug_from_csv.csv"
+        else:
+            features_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug.csv"
+        
+        if features_file.exists():
+            try:
+                features_file.unlink()
+                print(f"[INFO] Archivo de features existente eliminado (modo overwrite)")
+            except Exception as e:
+                print(f"[WARNING] No se pudo eliminar el archivo de features existente: {e}")
     
     # Cargar checkpoint PRIMERO para saber si estamos reanudando
     processed_supernovas = set()
@@ -790,8 +821,12 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
             print(f"[INFO] No se encontró checkpoint de debug, comenzando desde el inicio")
             resume_from_checkpoint = False
     elif pdf_exists:
-        print(f"[WARNING] PDF existente encontrado: {pdf_path}")
-        print(f"[WARNING] Se sobrescribirá. Usa --resume para añadir páginas al PDF existente.")
+        if overwrite_pdf:
+            print(f"[INFO] PDF existente encontrado: {pdf_path}")
+            print(f"[INFO] Modo overwrite activado: se sobrescribirá el PDF existente")
+        else:
+            print(f"[WARNING] PDF existente encontrado: {pdf_path}")
+            print(f"[WARNING] Se sobrescribirá. Usa --resume para añadir páginas al PDF existente, o --overwrite para sobrescribir explícitamente.")
     
     # Filtrar por año solo si NO estamos usando modo CSV
     current_year = None  # Inicializar para evitar errores
@@ -936,7 +971,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             # Contar detecciones antes de prepare_lightcurve para saber por qué falló
                             df_normal = filters_data[filter_name][~filters_data[filter_name]['Upperlimit']]
                             n_detections = len(df_normal)
-                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones (mínimo 6 requerido)")
+                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones (mínimo 7 requerido)")
                             continue
                         
                         phase = lc_data['phase']
@@ -949,11 +984,11 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         had_upper_limits = lc_data.get('had_upper_limits', False)
                         filter_reference_mjd = lc_data.get('reference_mjd', None)
                         
-                        # Verificar que haya al menos 6 detecciones (excluyendo upper limits)
-                        # El modelo tiene 6 parámetros, necesitamos al menos 6 puntos para un ajuste determinado
+                        # Verificar que haya al menos 7 detecciones (excluyendo upper limits)
+                        # El modelo tiene 6 parámetros, necesitamos al menos 7 puntos para un ajuste determinado (n > p)
                         n_detections = len(phase) if is_upper_limit is None else np.sum(~is_upper_limit)
-                        if n_detections < 6:
-                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones después de filtrado (mínimo 6)")
+                        if n_detections < 7:
+                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones después de filtrado (mínimo 7)")
                             continue
                         
                         # Ajuste MCMC (usa fase relativa por filtro, que está bien)
@@ -964,7 +999,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         features['sn_type'] = sn_type
                         
                         # Guardar features incrementalmente en archivo separado para debug
-                        save_features_incremental([features], sn_type, debug_mode=True, from_csv=(supernovas_from_csv is not None))
+                        save_features_incremental([features], sn_type, debug_mode=True, from_csv=(supernovas_from_csv is not None), overwrite_pdf=overwrite_pdf)
                         
                         # Convertir flujo del modelo a magnitud
                         from model import flux_to_mag
@@ -1250,11 +1285,20 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     # No necesitamos combinar PDFs al final - ya se guardaron incrementalmente
     # Guardar CSV con supernovas exitosas
     if supernovas_from_csv and csv_file_path:
-        # Si se usa CSV, agregar sufijo claro para no sobrescribir el CSV original
+        # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
         csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful_from_csv.csv'
     else:
         csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
     csv_path = DEBUG_PDF_DIR / csv_filename
+    
+    # Si se usa --overwrite, borrar el CSV existente antes de escribir
+    if overwrite_pdf and csv_path.exists():
+        try:
+            csv_path.unlink()
+            print(f"[INFO] CSV existente eliminado (modo overwrite)")
+        except Exception as e:
+            print(f"[WARNING] No se pudo eliminar el CSV existente: {e}")
+    
     df_successful = pd.DataFrame({'supernova_name': successful_supernovas})
     df_successful.to_csv(csv_path, index=False)
     
@@ -1320,6 +1364,7 @@ def main():
         
         # Parsear --from-csv o --csv-file (opcional)
         csv_file_path = None
+        overwrite_pdf = False
         for i, arg in enumerate(sys.argv):
             if arg == '--from-csv' or arg == '--csv-file':
                 if i + 1 < len(sys.argv):
@@ -1332,6 +1377,11 @@ def main():
                     return
                 break
         
+        # Parsear --overwrite (opcional, solo tiene efecto con --from-csv)
+        if any('--overwrite' in arg for arg in sys.argv):
+            overwrite_pdf = True
+            print(f"[INFO] Modo overwrite activado: se sobrescribirá el PDF si existe")
+        
         # Parsear filtros (opcional)
         filters_to_process = None
         for arg in sys.argv[3:]:
@@ -1340,6 +1390,7 @@ def main():
                 '--debug-pdf' in arg or '--resume' in arg or
                 arg.startswith('--seed') or arg.startswith('--random-seed') or
                 arg == '--from-csv' or arg == '--csv-file' or
+                arg == '--overwrite' or '--overwrite' in arg or
                 (csv_file_path and arg == csv_file_path)):
                 continue
             filters_input = arg
@@ -1372,7 +1423,8 @@ def main():
         generate_debug_pdf(sn_type, n_supernovas, filters_to_process, min_year=2022, 
                          resume_from_checkpoint=resume_from_checkpoint, 
                          supernovas_from_csv=supernovas_from_csv,
-                         csv_file_path=csv_file_path)
+                         csv_file_path=csv_file_path,
+                         overwrite_pdf=overwrite_pdf)
         return
     
     # Parsear número de supernovas

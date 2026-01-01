@@ -535,7 +535,8 @@ donde χ² = ((flux_obs - flux_model) / flux_err)²
 
 **Upper Limits:**
 
-Cada upper limit se evalúa de forma diferente:
+Cada upper limit se evalúa mediante una penalización cuadrática suave basada en el exceso del modelo sobre el límite:
+
 ```
 excess = max(0, flux_model - flux_ul)  # Solo si el modelo excede el límite
 scale = flux_ul × 0.1  # 10% del flujo del límite como escala
@@ -543,38 +544,55 @@ penalty = (excess / scale)²
 log L_ul = -0.5 × penalty  (solo si excess > 0)
 ```
 
+Este método de penalización cuadrática suave es una implementación práctica del enfoque de penalización en funciones objetivo para estimación con restricciones, adaptado para el contexto de datos censurados (upper limits) en ajustes bayesianos con MCMC. La penalización solo se aplica cuando el modelo excede el límite superior, permitiendo que el modelo explore libremente valores por debajo del límite.
+
+**Referencia Bibliográfica:**
+
+El tratamiento de upper limits mediante penalización en la función de verosimilitud se basa conceptualmente en métodos de estimación con restricciones usando penalización y MCMC. Aunque el paper de referencia no trata específicamente sobre upper limits en datos astronómicos, proporciona la base metodológica para el uso de penalizaciones en funciones objetivo dentro de ajustes bayesianos con MCMC.
+
+- **Gallant, A. R., Hong, H., Leung, M. H., & Li, J. (2022).** "Constrained estimation using penalization and MCMC." *Journal of Econometrics*, 231(2), 374-400. 
+  - [PDF directo](https://people.ucsc.edu/~jeqli/penalizedbayescombined.pdf)
+
+**Relación con nuestro método:**
+
+El paper discute el uso de penalizaciones adaptativas (Sección 3) en la función objetivo para manejar restricciones en parámetros durante la estimación con MCMC. Nuestro método adapta este concepto general al caso específico de datos censurados (upper limits): en lugar de penalizar restricciones en parámetros, penalizamos cuando el modelo predicho excede los límites superiores observados. La penalización cuadrática que implementamos (`penalty = (excess/scale)²`) es una forma específica de penalización suave que desalienta violaciones de los upper limits mientras permite flexibilidad en el ajuste.
+
+Este trabajo explora la inferencia de parámetros sujetos a restricciones no lineales mediante penalización en la función objetivo y uso de MCMC, proporcionando una base metodológica para el tratamiento de datos censurados y restricciones en ajustes bayesianos.
+
 **Comportamiento:**
 - Si el modelo está por debajo del límite: `excess = 0` → `log L_ul = 0` (no contribuye, no penaliza)
-- Si el modelo excede el límite: `excess > 0` → `log L_ul < 0` (penaliza proporcionalmente al cuadrado del exceso)
+- Si el modelo excede el límite: `excess > 0` → `log L_ul < 0` (penaliza proporcionalmente al cuadrado del exceso relativo)
 
-**Ejemplo Concreto:**
+**Ejemplo Numérico con Valores Realistas:**
 
-Imagina un upper limit con `flux_ul = 10.0` y `flux_err_ul = 1.0`:
+Consideremos un upper limit típico de una supernova en el filtro g, con un flujo límite de `flux_ul = 1.0 × 10⁻⁸` (correspondiente aproximadamente a magnitud ~22.5):
 
-1. **Caso 1: Modelo predice `flux_model = 5.0`** (por debajo del límite)
-   - `excess = max(0, 5.0 - 10.0) = 0`
+1. **Caso 1: Modelo predice `flux_model = 0.5 × 10⁻⁸`** (por debajo del límite)
+   - `excess = max(0, 0.5×10⁻⁸ - 1.0×10⁻⁸) = 0`
    - `penalty = 0`
    - `log L_ul = 0` (no penaliza, el modelo es consistente con el upper limit)
 
-2. **Caso 2: Modelo predice `flux_model = 12.0`** (excede el límite en 2.0)
-   - `excess = max(0, 12.0 - 10.0) = 2.0`
-   - `scale = 10.0 × 0.1 = 1.0`
-   - `penalty = (2.0 / 1.0)² = 4.0`
-   - `log L_ul = -0.5 × 4.0 = -2.0` (penaliza moderadamente)
+2. **Caso 2: Modelo predice `flux_model = 1.2 × 10⁻⁸`** (excede el límite en 20%)
+   - `excess = max(0, 1.2×10⁻⁸ - 1.0×10⁻⁸) = 0.2×10⁻⁸`
+   - `scale = 1.0×10⁻⁸ × 0.1 = 0.1×10⁻⁸`
+   - `penalty = (0.2×10⁻⁸ / 0.1×10⁻⁸)² = (2.0)² = 4.0`
+   - `log L_ul = -0.5 × 4.0 = -2.0` (penalización moderada)
 
-3. **Caso 3: Modelo predice `flux_model = 20.0`** (excede el límite en 10.0)
-   - `excess = max(0, 20.0 - 10.0) = 10.0`
-   - `scale = 10.0 × 0.1 = 1.0`
-   - `penalty = (10.0 / 1.0)² = 100.0`
-   - `log L_ul = -0.5 × 100.0 = -50.0` (penaliza fuertemente)
+3. **Caso 3: Modelo predice `flux_model = 2.0 × 10⁻⁸`** (excede el límite en 100%)
+   - `excess = max(0, 2.0×10⁻⁸ - 1.0×10⁻⁸) = 1.0×10⁻⁸`
+   - `scale = 1.0×10⁻⁸ × 0.1 = 0.1×10⁻⁸`
+   - `penalty = (1.0×10⁻⁸ / 0.1×10⁻⁸)² = (10.0)² = 100.0`
+   - `log L_ul = -0.5 × 100.0 = -50.0` (penalización fuerte)
 
-**Ejemplo Numérico:**
+**Resumen del Ejemplo Numérico:**
 
-Para un upper limit con `flux_ul = 10.0`:
+Para un upper limit con `flux_ul = 1.0 × 10⁻⁸`:
 
-- **Modelo predice `flux_model = 5.0`** (por debajo): `excess = 0` → `log L_ul = 0` (no penaliza)
-- **Modelo predice `flux_model = 12.0`** (excede en 2.0): `penalty = 4.0` → `log L_ul = -2.0` (penalización moderada)
-- **Modelo predice `flux_model = 20.0`** (excede en 10.0): `penalty = 100.0` → `log L_ul = -50.0` (penalización fuerte)
+| `flux_model` | Exceso | Penalización | `log L_ul` | Interpretación |
+|--------------|--------|--------------|------------|----------------|
+| `0.5 × 10⁻⁸` | 0 | 0 | 0 | No penaliza (modelo por debajo) |
+| `1.2 × 10⁻⁸` | `0.2 × 10⁻⁸` | 4.0 | -2.0 | Penalización moderada (excede 20%) |
+| `2.0 × 10⁻⁸` | `1.0 × 10⁻⁸` | 100.0 | -50.0 | Penalización fuerte (excede 100%) |
 
 **Implicaciones para el MCMC:**
 
@@ -582,6 +600,7 @@ El MCMC busca maximizar `log L_total`, por lo que:
 - Naturalmente evita parámetros que hacen que el modelo exceda los upper limits (penalización cuadrática)
 - Si el modelo es consistente con todos los upper limits, estos no afectan el ajuste (contribución = 0)
 - La penalización suave permite cierta flexibilidad y mejor exploración del espacio de parámetros, especialmente cuando hay incertidumbre en los límites o cuando el modelo necesita priorizar el ajuste a las detecciones normales
+- El factor de escala del 10% del flujo del límite normaliza la penalización, haciendo que sea relativa al tamaño del límite y evitando que límites muy brillantes o muy débiles dominen el ajuste
 
 **Visualización:**
 

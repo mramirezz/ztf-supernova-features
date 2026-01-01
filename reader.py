@@ -75,6 +75,123 @@ def parse_photometry_file(filepath: str) -> Dict[str, pd.DataFrame]:
     
     return filters_data, sn_name
 
+def apply_time_window_filter(df_normal: pd.DataFrame, window_hours: float = 8.0) -> pd.DataFrame:
+    """
+    Aplicar filtro de ventana temporal: agrupar puntos dentro de una ventana de tiempo
+    y reemplazarlos por la mediana de la ventana.
+    
+    Parameters:
+    -----------
+    df_normal : pd.DataFrame
+        DataFrame con columnas MJD, MAG, MAGERR (solo detecciones normales, sin upper limits)
+    window_hours : float
+        Tamaño de la ventana en horas (default: 8 horas)
+    
+    Returns:
+    --------
+    pd.DataFrame con columnas MJD, MAG, MAGERR (datos agrupados por ventana)
+    """
+    if len(df_normal) == 0:
+        return df_normal.copy()
+    
+    # Convertir ventana de horas a días (MJD está en días)
+    window_days = window_hours / 24.0
+    
+    # Ordenar por MJD y resetear índices
+    df_sorted = df_normal.sort_values('MJD').copy().reset_index(drop=True)
+    
+    # Calcular flujo y error de flujo para propagación de errores
+    mag_sorted = df_sorted['MAG'].values
+    mag_err_sorted = df_sorted['MAGERR'].values
+    flux_sorted = 10**(-mag_sorted / 2.5)
+    flux_err_sorted = (mag_err_sorted * flux_sorted) / 1.086
+    
+    # Agrupar puntos en ventanas de tiempo
+    grouped_data = []
+    i = 0
+    
+    while i < len(df_sorted):
+        # Inicio de la ventana
+        window_start = df_sorted.iloc[i]['MJD']
+        window_end = window_start + window_days
+        
+        # Encontrar todos los puntos dentro de esta ventana (usando índices del DataFrame ordenado)
+        mask = (df_sorted['MJD'] >= window_start) & (df_sorted['MJD'] < window_end)
+        window_indices = np.where(mask)[0]  # Índices numéricos (0, 1, 2, ...)
+        
+        if len(window_indices) == 0:
+            i += 1
+            continue
+        
+        # Si hay un solo punto, mantenerlo tal cual
+        if len(window_indices) == 1:
+            idx = window_indices[0]
+            grouped_data.append({
+                'MJD': df_sorted.iloc[idx]['MJD'],
+                'MAG': df_sorted.iloc[idx]['MAG'],
+                'MAGERR': df_sorted.iloc[idx]['MAGERR']
+            })
+        else:
+            # Múltiples puntos en la ventana: calcular mediana
+            flux_window = flux_sorted[window_indices]
+            mjd_window = df_sorted.iloc[window_indices]['MJD'].values
+            
+            # Calcular mediana de flujo
+            median_flux = np.median(flux_window)
+            
+            # Calcular error de la mediana: 1.253 × σ/√n
+            # σ es la desviación estándar de los flujos en la ventana
+            n = len(flux_window)
+            if n > 1:
+                std_flux = np.std(flux_window, ddof=1)  # ddof=1 para muestra (n-1)
+                median_flux_err = 1.253 * std_flux / np.sqrt(n)
+                # Proteger contra errores muy pequeños o cero
+                # Si std_flux es 0 (todos los puntos iguales), usar el error promedio de los puntos
+                if median_flux_err <= 0 or not np.isfinite(median_flux_err):
+                    median_flux_err = np.mean(flux_err_sorted[window_indices])
+            else:
+                median_flux_err = flux_err_sorted[window_indices[0]]
+            
+            # Asegurar que el error sea finito y positivo
+            if not np.isfinite(median_flux_err) or median_flux_err <= 0:
+                median_flux_err = np.mean(flux_err_sorted[window_indices])
+                if median_flux_err <= 0:
+                    # Fallback: usar 2% del flujo como error mínimo
+                    median_flux_err = median_flux * 0.02
+            
+            # Convertir flujo mediano y su error de vuelta a magnitud
+            median_mag = -2.5 * np.log10(median_flux)
+            # Propagación de errores inversa: σ_m = (1.086 * σ_F) / F
+            median_mag_err = (1.086 * median_flux_err) / median_flux
+            
+            # Asegurar que el error de magnitud sea finito y positivo
+            if not np.isfinite(median_mag_err) or median_mag_err <= 0:
+                # Fallback: usar el error promedio de magnitud de los puntos en la ventana
+                median_mag_err = np.mean(mag_err_sorted[window_indices])
+                if median_mag_err <= 0:
+                    median_mag_err = 0.01  # Error mínimo de 0.01 mag
+            
+            # Usar el MJD del punto mediano (o el centro de la ventana si hay empate)
+            median_mjd = np.median(mjd_window)
+            
+            grouped_data.append({
+                'MJD': median_mjd,
+                'MAG': median_mag,
+                'MAGERR': median_mag_err
+            })
+        
+        # Avanzar al siguiente punto fuera de esta ventana
+        i = window_indices.max() + 1
+        if i >= len(df_sorted):
+            break
+    
+    # Crear DataFrame con los datos agrupados
+    if len(grouped_data) == 0:
+        return pd.DataFrame(columns=df_normal.columns)
+    
+    df_grouped = pd.DataFrame(grouped_data)
+    return df_grouped
+
 def mjd_to_phase(mjd: np.ndarray, reference_mjd: Optional[float] = None) -> np.ndarray:
     """
     Convertir MJD a fase relativa
@@ -114,9 +231,14 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     df_normal = df[~df['Upperlimit']].copy()
     df_ul = df[df['Upperlimit']].copy()
     
+    # PRIMER FILTRO: Aplicar ventana temporal de 8 horas a detecciones normales
+    # Esto agrupa puntos muy cercanos en el tiempo y los reemplaza por la mediana
+    df_normal = apply_time_window_filter(df_normal, window_hours=8.0)
+    
     # El modelo tiene 6 parámetros (A, f, t0, t_rise, t_fall, gamma)
-    # Necesitamos al menos 6 detecciones para tener un sistema determinado
-    if len(df_normal) < 6:
+    # Necesitamos al menos 7 detecciones para tener un sistema determinado (n > p)
+    # Esta verificación se hace DESPUÉS del filtro de ventana
+    if len(df_normal) < 7:
         return None
     
     # Convertir MJD a fase (relativa al mínimo MJD de datos normales)

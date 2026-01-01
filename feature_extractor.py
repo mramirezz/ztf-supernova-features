@@ -37,7 +37,29 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
     
     if not np.all(valid_mask):
         n_invalid = np.sum(~valid_mask)
-        print(f"  [ADVERTENCIA] {n_invalid} puntos inválidos (NaN/Inf) serán excluidos del cálculo de métricas")
+        # Diagnosticar qué tipo de valores inválidos hay
+        n_nan_residuals = np.sum(~np.isfinite(residuals))
+        n_nan_flux = np.sum(~np.isfinite(flux))
+        n_nan_flux_model = np.sum(~np.isfinite(flux_model))
+        n_nan_flux_err = np.sum(~np.isfinite(flux_err))
+        n_zero_flux_err = np.sum((flux_err <= 0) & np.isfinite(flux_err))
+        
+        # Solo mostrar warning si hay valores inválidos significativos
+        if n_invalid > 0:
+            details = []
+            if n_nan_residuals > 0:
+                details.append(f"{n_nan_residuals} residuales inválidos")
+            if n_nan_flux > 0:
+                details.append(f"{n_nan_flux} flujos observados inválidos")
+            if n_nan_flux_model > 0:
+                details.append(f"{n_nan_flux_model} flujos del modelo inválidos")
+            if n_nan_flux_err > 0:
+                details.append(f"{n_nan_flux_err} errores de flujo inválidos")
+            if n_zero_flux_err > 0:
+                details.append(f"{n_zero_flux_err} errores de flujo <= 0")
+            
+            detail_str = ", ".join(details) if details else "valores inválidos"
+            print(f"  [ADVERTENCIA] {n_invalid} puntos inválidos ({detail_str}) serán excluidos del cálculo de métricas")
     
     residuals_valid = residuals[valid_mask]
     flux_valid = flux[valid_mask]
