@@ -331,6 +331,10 @@ El código está optimizado para procesar miles de supernovas sin quedarse sin m
 
 **Para generar PDFs de inspección visual con múltiples supernovas:**
 
+El modo debug genera PDFs con fit plots y corner plots para inspección visual rápida de múltiples supernovas. Puede procesar supernovas aleatoriamente o desde un CSV.
+
+**Uso básico (selección aleatoria):**
+
 ```bash
 # Generar PDF con 200 supernovas tipo Ia (por defecto para SN Ia)
 python main.py "SN Ia" --debug-pdf
@@ -348,6 +352,41 @@ python main.py "SN Ia-91T-like" --debug-pdf
 # Reanudar desde checkpoint (añade páginas al PDF existente)
 python main.py "SN Ia" 200 --debug-pdf --resume
 ```
+
+**Uso con CSV (--from-csv):**
+
+Procesa supernovas específicas desde un archivo CSV:
+
+```bash
+# Procesar todas las supernovas del CSV
+python main.py "SN II" all --debug-pdf --from-csv outputs/debug_pdfs/SN_II_successful.csv
+
+# Sobrescribir PDF y CSV existentes (--overwrite)
+python main.py "SN II" all --debug-pdf --from-csv outputs/debug_pdfs/SN_II_successful.csv --overwrite
+
+# Reanudar desde checkpoint (añade páginas al PDF existente)
+python main.py "SN II" all --debug-pdf --from-csv outputs/debug_pdfs/SN_II_successful.csv --resume
+```
+
+**Formato del CSV:**
+
+El CSV debe tener una columna llamada `supernova_name` con los nombres de las supernovas (sin extensión `.dat`):
+
+```csv
+supernova_name
+ZTF18aaaibml
+ZTF22aaevwec
+ZTF23abbtkrv
+...
+```
+
+**Parámetros del modo CSV:**
+
+- `--from-csv <ruta>`: Archivo CSV con lista de supernovas a procesar
+- `--overwrite`: Sobrescribe el PDF y CSV de features existentes (solo tiene efecto con `--from-csv`)
+- `--resume`: Reanuda desde checkpoint y añade páginas al PDF existente (no sobrescribe)
+- Si usas `--from-csv`, el parámetro `n_supernovas` se ignora (procesa todas las del CSV)
+- Si usas `--from-csv`, el filtro de año se ignora (procesa todas las del CSV)
 
 **Características del Modo Debug:**
 
@@ -370,9 +409,17 @@ python main.py "SN Ia" 200 --debug-pdf --resume
 
 **Archivos generados:**
 
+**Modo normal (selección aleatoria):**
 - **PDF**: `outputs/debug_pdfs/{sn_type}_debug.pdf`
 - **CSV**: `outputs/debug_pdfs/{sn_type}_successful.csv` (lista de supernovas exitosas)
 - **Checkpoint**: `outputs/checkpoints/debug_checkpoint_{sn_type}.json` (para reanudar)
+
+**Modo CSV (--from-csv):**
+- **PDF**: `outputs/debug_pdfs/{sn_type}_debug_from_csv.pdf`
+- **CSV de exitosas**: `outputs/debug_pdfs/{sn_type}_successful_from_csv.csv` (lista de supernovas procesadas exitosamente)
+- **CSV de features**: `outputs/features/features_{sn_type}_debug_from_csv.csv` (features extraídas, incluyendo `_moc`)
+- **CSV de fallidas**: `outputs/debug_pdfs/{sn_type}_failed_from_csv.csv` (lista de supernovas que fallaron con razones)
+- **Checkpoint**: `outputs/checkpoints/debug_checkpoint_{sn_type}_from_csv.json` (para reanudar)
 
 **Valores por defecto según tipo:**
 
@@ -394,15 +441,18 @@ El sistema:
 2. Añade nuevas páginas al PDF existente (requiere PyPDF2: `pip install PyPDF2`)
 3. Continúa desde donde se quedó
 
-**Notas:**
+**Notas importantes:**
 
-- El modo debug NO guarda features en el CSV principal (solo genera PDFs)
-- El modo debug usa checkpoint para reanudar procesamiento (usa `--resume` para reanudar)
-- El modo debug guarda cada página inmediatamente (no espera al final)
-- Si usas `--resume`, el PDF existente se actualiza añadiendo nuevas páginas (requiere PyPDF2)
-- Si no usas `--resume` y existe un PDF, se sobrescribirá
-- **Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal**
-- **Tanto el modo normal como el modo debug usan las mismas 200 mejores curvas por log-likelihood** para calcular median of parameters, median of curves, corner plot y features, garantizando consistencia completa entre ambos modos
+- **Features en modo CSV**: Cuando usas `--from-csv`, el modo debug SÍ guarda features en un CSV separado (`features_{sn_type}_debug_from_csv.csv`), incluyendo ambas features (sin sufijo y `_moc`)
+- **Features en modo normal**: Sin `--from-csv`, el modo debug NO guarda features en el CSV principal (solo genera PDFs)
+- **Checkpoint**: El modo debug usa checkpoint para reanudar procesamiento (usa `--resume` para reanudar)
+- **Guardado incremental**: El modo debug guarda cada página inmediatamente (no espera al final)
+- **--resume vs --overwrite**:
+  - `--resume`: Añade nuevas páginas al PDF existente (requiere PyPDF2), no sobrescribe
+  - `--overwrite`: Sobrescribe el PDF y CSV existentes (solo funciona con `--from-csv`)
+  - Sin ninguno: Si existe un PDF, se sobrescribirá automáticamente
+- **Consistencia**: Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal
+- **Método de análisis**: Tanto el modo normal como el modo debug usan las mismas 200 mejores curvas por log-likelihood para calcular median of parameters, median of curves, corner plot y features, garantizando consistencia completa entre ambos modos
 
 ## Exploración Interactiva (streamlit_app.py)
 

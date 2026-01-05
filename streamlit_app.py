@@ -459,9 +459,16 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Resultados
         st.subheader(f"MCMC Fit Results - Filter {filter_name}")
-        st.caption(f"Estos valores son las **medianas de cada parámetro** calculadas por separado de los {n_total_samples:,} samples del MCMC. "
-                   f"Se calculan como: mediana_A, mediana_f, mediana_t0, etc. "
-                   f"Luego se evalúa el modelo con estos parámetros medianos para obtener la curva 'MCMC Median'.")
+        n_best_curves = len(mcmc_results.get('samples_best_200', []))
+        if n_best_curves > 0:
+            st.caption(f"Estos valores son las **medianas de cada parámetro** calculadas por separado de las **{n_best_curves:,} mejores curvas** (seleccionadas por log-likelihood de ~2000 candidatas). "
+                       f"Se calculan como: mediana_A, mediana_f, mediana_t0, etc. "
+                       f"Luego se evalúa el modelo con estos parámetros medianos para obtener la curva 'MCMC Median'. "
+                       f"Estos valores coinciden exactamente con los mostrados en el corner plot.")
+        else:
+            st.caption(f"Estos valores son las **medianas de cada parámetro** calculadas por separado de los {n_total_samples:,} samples del MCMC. "
+                       f"Se calculan como: mediana_A, mediana_f, mediana_t0, etc. "
+                       f"Luego se evalúa el modelo con estos parámetros medianos para obtener la curva 'MCMC Median'.")
         
         param_info = {
             'A': 'Amplitud del flujo máximo (normalización)',
@@ -509,29 +516,35 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
                 corner_save_path = None
         
         # Convertir modelo a MJD para plotting (igual que en modo debug)
+        # Usar las 200 mejores curvas (consistente con param_medians)
+        samples_to_use = mcmc_results.get('samples_best_200', mcmc_results.get('samples_valid', mcmc_results['samples']))
+        
         if mjd is not None and reference_mjd is not None:
             # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
             from model import alerce_model
-            samples_mjd = mcmc_results['samples'].copy()
+            samples_mjd = samples_to_use.copy()
             samples_mjd[:, 2] = samples_mjd[:, 2] + reference_mjd  # t0 en MJD absoluto
             
-            # Recalcular modelo mediano en MJD
-            param_medians_mjd = np.median(samples_mjd, axis=0)
+            # Usar param_medians ya calculado (de las 200 mejores) y solo convertir t0 a MJD
+            param_medians_mjd = mcmc_results['params'].copy()
+            param_medians_mjd[2] = param_medians_mjd[2] + reference_mjd  # t0 a MJD
             flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
             flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
-            mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
+            mag_model_for_plot = flux_to_mag(flux_model_points_mjd)
             
             # Usar MJD y samples ajustados para el plot
             phase_for_plot = mjd
-            mag_model_for_plot = mag_model_points_mjd
             flux_model_for_plot = flux_model_points_mjd
             samples_for_plot = samples_mjd
+            param_medians_for_plot = param_medians_mjd
         else:
             # Fallback: usar fase original
             phase_for_plot = phase
-            mag_model_for_plot = mag_model
+            from model import flux_to_mag
             flux_model_for_plot = mcmc_results['model_flux']
-            samples_for_plot = mcmc_results['samples']
+            mag_model_for_plot = flux_to_mag(np.clip(flux_model_for_plot, 1e-10, None))
+            samples_for_plot = samples_to_use
+            param_medians_for_plot = mcmc_results['params']
         
         # Los upper limits que se usaron en el fit ya están incluidos en phase, mag, flux con is_upper_limit=True
         # No necesitamos pasar upper limits adicionales al plot, solo los que ya están en los datos del fit
@@ -541,7 +554,8 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         t0_plot = time.time()
         # No pasar save_path aquí para que siempre retorne la figura
         # Guardaremos manualmente después si es necesario
-        fig = plot_fit_with_uncertainty(
+        # plot_fit_with_uncertainty retorna (fig, sample_indices, central_curve_idx)
+        result = plot_fit_with_uncertainty(
             phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
             samples_for_plot, n_samples_to_show,
             sn_name, filter_name, save_path=None,  # No guardar aquí, guardar después
@@ -549,9 +563,18 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
             mag_ul=None,
             flux_ul=None,
             is_upper_limit=is_upper_limit, flux_err=flux_err,
-            had_upper_limits=had_upper_limits
+            had_upper_limits=had_upper_limits,
+            param_medians_phase_relative=mcmc_results['params'],  # Para conversión MJD/fase relativa
+            param_medians=param_medians_for_plot if 'param_medians_for_plot' in locals() else mcmc_results['params'],
+            dynamic_bounds=mcmc_results.get('dynamic_bounds', None)  # Bounds dinámicos del ajuste
         )
         t_plot = time.time() - t0_plot
+        
+        # Desempaquetar el resultado (fig, sample_indices, central_curve_idx)
+        if result is not None:
+            fig, sample_indices, central_curve_idx = result
+        else:
+            fig = None
         
         # Mostrar en Streamlit pasando la figura explícitamente
         if fig is not None:
@@ -572,11 +595,19 @@ def _process_single_filter(filters_data, sn_name, filter_name, selected_type,
         
         # Corner plot
         st.subheader("Corner Plot")
-        n_samples_corner = len(mcmc_results['samples'])
-        st.caption(f"Este corner plot muestra la distribución de los **parámetros** de **{n_samples_corner:,} samples** del MCMC (después de burn-in). Cada sample es un conjunto de 6 parámetros (A, f, t0, t_rise, t_fall, gamma).")
+        # Usar las 200 mejores curvas (consistente con param_medians)
+        samples_for_corner = mcmc_results.get('samples_best_200', mcmc_results.get('samples_valid', mcmc_results['samples']))
+        n_samples_corner = len(samples_for_corner)
+        st.caption(f"Este corner plot muestra la distribución de los **parámetros** de las **{n_samples_corner:,} mejores curvas** (seleccionadas por log-likelihood de ~2000 candidatas). Los valores en los títulos corresponden a las medianas de estas {n_samples_corner:,} curvas.")
         t0_corner = time.time()
         # No pasar save_path aquí para que siempre retorne la figura
-        corner_fig = plot_corner(mcmc_results['samples'], save_path=None)
+        # Pasar param_medians y param_percentiles para que los títulos muestren los valores correctos
+        corner_fig = plot_corner(
+            samples_for_corner, 
+            save_path=None,
+            param_medians=mcmc_results['params'],
+            param_percentiles=mcmc_results['params_percentiles']
+        )
         t_corner = time.time() - t0_corner
         
         if corner_fig is None:
