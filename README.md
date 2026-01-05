@@ -471,14 +471,17 @@ streamlit run streamlit_app.py
    - Permite retomar desde checkpoint con `--resume`
    - Libera memoria después de cada supernova
 
-## Features Extraídas (25 totales)
+## Features Extraídas (31 totales)
 
-- **Parámetros principales** (6): A, f, t0, t_rise, t_fall, gamma
+- **Parámetros principales - Median of Parameters** (6): A, f, t0, t_rise, t_fall, gamma
+- **Parámetros - Median of Curves** (6): A_moc, f_moc, t0_moc, t_rise_moc, t_fall_moc, gamma_moc
 - **Errores formales** (6): A_err, f_err, t0_err, t_rise_err, t_fall_err, gamma_err
 - **Errores MCMC** (6): A_mc_std, f_mc_std, t0_mc_std, t_rise_mc_std, t_fall_mc_std, gamma_mc_std
 - **Métricas de ajuste** (3): rms, mad, median_relative_error_pct
 - **Características de curva** (2): n_points, time_span
 - **Metadatos** (2): sn_name, filter_band
+
+**Nota**: Los parámetros `_moc` (Median of Curves) provienen de la curva más representativa entre las 500 con mejor log-likelihood. Pueden diferir de los parámetros sin sufijo (Median of Parameters) especialmente cuando hay correlaciones fuertes entre parámetros.
 
 ## Configuración
 
@@ -879,20 +882,27 @@ Luego se evalúa el modelo con estos parámetros: $F_{\text{azul}}(t) = F_{\text
 
 **2. Median of Curves / Most Central Curve (Línea Verde Sólida)**
 
-Se calcula evaluando el modelo para muchos samples del MCMC y seleccionando la curva más representativa:
+Se calcula seleccionando las **mejores curvas según su log-likelihood** y luego encontrando la más representativa:
 
-1. Se seleccionan ~500 samples del MCMC usando muestreo sistemático (cada N-ésimo sample)
-2. Para cada sample $\theta_k$, se evalúa el modelo: $F_k(t) = F_{\text{modelo}}(t; \theta_k)$
-3. Se calcula la **mediana punto a punto** de todas las curvas: $F_{\text{p50}}(t) = \text{percentil}_{50}(\{F_1(t), F_2(t), ..., F_{500}(t)\})$
-4. Se identifica cuál de las 500 curvas reales está **más cerca** de la mediana punto a punto:
+1. Se evalúan ~2000 samples candidatos del MCMC
+2. Para cada candidato $\theta_k$, se calcula su **log-likelihood gaussiano**:
+   $$\log L_k = -\frac{1}{2} \sum_i \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i; \theta_k)}{\sigma_i}\right)^2$$
+3. Se seleccionan las **500 curvas con mayor log-likelihood** (mejor ajuste a los datos)
+4. Para estas 500 mejores curvas, se calcula la **mediana punto a punto**: $F_{\text{p50}}(t) = \text{percentil}_{50}(\{F_1(t), ..., F_{500}(t)\})$
+5. Se identifica cuál de las 500 curvas reales está **más cerca** de la mediana:
    $$k^* = \arg\min_k \sum_t (F_k(t) - F_{\text{p50}}(t))^2$$
-5. La curva verde es $F_{\text{verde}}(t) = F_{k^*}(t)$
+6. La curva verde es $F_{\text{verde}}(t) = F_{k^*}(t)$
 
 - **Ventajas**: 
   - La curva resultante es **físicamente realizable** (corresponde a un conjunto real de parámetros del MCMC)
-  - Es más representativa del "centro" del ensemble de curvas cuando hay correlaciones
-  - Evita discontinuidades no físicas que podrían surgir de una mediana punto a punto pura
+  - Al usar log-likelihood, solo considera curvas que **ajustan bien los datos observados**
+  - Evita incluir curvas de regiones del espacio de parámetros que no ajustan bien
+  - Es más representativa del "centro" del ensemble de **buenos ajustes**
 - **Desventajas**: No corresponde directamente a un conjunto único de parámetros "medianos"
+
+**Parámetros de la Curva Central (MoC):**
+
+Los 6 parámetros de la curva central se guardan en el CSV con sufijo `_moc` (e.g., `A_moc`, `f_moc`, `t0_moc`, etc.), permitiendo comparar con los parámetros de la mediana tradicional.
 
 **¿Cuándo Difieren Significativamente?**
 

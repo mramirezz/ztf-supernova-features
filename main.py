@@ -244,27 +244,37 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         # Calcular número total de samples usados para la mediana
         n_total_samples = len(mcmc_results['samples'])
         print(f"    [INFO] Samples totales para mediana: {n_total_samples:,} (de {MCMC_CONFIG['n_walkers']} walkers × {MCMC_CONFIG['n_steps'] - MCMC_CONFIG['burn_in']} pasos)")
-        # plot_fit_with_uncertainty ahora retorna (fig, sample_indices)
+        # plot_fit_with_uncertainty ahora retorna (fig, sample_indices, central_curve_sample_idx)
         # Usar param_medians_mjd si existe (cuando el eje X está en MJD)
+        # También convertir params_median_of_curves a MJD para consistencia
         if reference_mjd is not None and len(mjd) > 0:
             param_medians_for_plot = param_medians_mjd
+            # Convertir params_median_of_curves a MJD
+            params_moc = mcmc_results.get('params_median_of_curves', None)
+            if params_moc is not None:
+                params_moc_mjd = params_moc.copy()
+                params_moc_mjd[2] = params_moc_mjd[2] + reference_mjd  # t0 a MJD
+            else:
+                params_moc_mjd = None
         else:
             param_medians_for_plot = mcmc_results['params']
+            params_moc_mjd = mcmc_results.get('params_median_of_curves', None)
         
-        _, sample_indices = plot_fit_with_uncertainty(
+        _, sample_indices, central_curve_idx = plot_fit_with_uncertainty(
             phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
             samples_for_plot, n_samples_to_show=100,  # Valor por defecto: 100 realizaciones para visualización
             sn_name=sn_name, filter_name=filter_name, save_path=str(plot_path),
             is_upper_limit=is_upper_limit, flux_err=flux_err,
             had_upper_limits=had_upper_limits,
             param_medians_phase_relative=mcmc_results['params'],  # Para debug
-            param_medians=param_medians_for_plot  # Mediana real para la línea azul
+            param_medians=param_medians_for_plot,  # Mediana real para la línea azul
+            params_median_of_curves=params_moc_mjd  # Curva central (verde)
         )
         t_plot = time.time() - t0_plot
         print(f"    [OK] Gráfico guardado en {t_plot:.2f} segundos: {plot_path}")
         
         # Modelo extendido (figura separada)
-        # Reutilizamos sample_indices de plot_fit_with_uncertainty (Opción C)
+        # Usamos el mismo sample de la curva central que en el plot normal
         from plotter import plot_extended_model
         extended_filename = f"{sn_name}_{filter_name}_extended.png"
         extended_path = sn_plots_dir / extended_filename
@@ -275,7 +285,8 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
             flux_err=flux_err,
             sn_name=sn_name, filter_name=filter_name, save_path=str(extended_path),
             samples=samples_for_plot,
-            precalculated_sample_indices=sample_indices  # Reutilizar índices (Opción C)
+            precalculated_sample_indices=sample_indices,
+            central_curve_sample_idx=central_curve_idx  # Mismo sample que en plot normal
         )
         t_extended = time.time() - t0_extended
         print(f"    [OK] Modelo extendido guardado en {t_extended:.2f} segundos: {extended_path}")
@@ -989,6 +1000,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     failed_count = 0
     attempted_count = 0
     successful_supernovas = list(processed_supernovas)  # Empezar con las ya procesadas
+    failed_supernovas = []  # Lista de tuplas: (sn_name, reason)
     
     # NO usar PdfPages con contexto - abriremos y cerraremos después de cada supernova
     # para evitar acumular páginas en memoria
@@ -1024,6 +1036,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 if not filters_data:
                     print(f"  [SKIP] No se pudieron extraer datos")
                     failed_count += 1
+                    failed_supernovas.append((sn_name_test, "No se pudieron extraer datos del archivo"))
                     del filters_data
                     gc.collect()  # Liberar memoria inmediatamente en caso de error
                     continue
@@ -1113,6 +1126,14 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
                             mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
                             
+                            # Convertir params_median_of_curves a MJD también
+                            params_moc = mcmc_results.get('params_median_of_curves', None)
+                            if params_moc is not None:
+                                params_moc_mjd = params_moc.copy()
+                                params_moc_mjd[2] = params_moc_mjd[2] + filter_reference_mjd  # t0 a MJD
+                            else:
+                                params_moc_mjd = None
+                            
                             # Usar MJD y samples ajustados para el plot
                             phase_for_plot = mjd
                             mag_model_for_plot = mag_model_points_mjd
@@ -1126,6 +1147,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             flux_model_for_plot = mcmc_results['model_flux']
                             samples_for_plot = samples_to_use_debug
                             param_medians_mjd = None  # No hay conversión a MJD
+                            params_moc_mjd = mcmc_results.get('params_median_of_curves', None)
                         
                         # Guardar datos para calcular rango común si hay múltiples filtros
                         # IMPORTANTE: Guardar solo lo necesario, no todo mcmc_results
@@ -1145,6 +1167,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             'mcmc_samples': mcmc_results.get('samples_valid', mcmc_results['samples']),  # Samples válidos para corner plot (mismos que param_medians)
                             'mcmc_results': mcmc_results,  # Guardar mcmc_results completo para plot_extended_model
                             'param_medians_mjd': param_medians_mjd if filter_reference_mjd is not None else None,  # Parámetros en MJD si aplica
+                            'params_moc_mjd': params_moc_mjd,  # Params Median of Curves en MJD para curva verde
                             'filter_reference_mjd': filter_reference_mjd  # MJD de referencia para conversión
                         }
                         
@@ -1179,7 +1202,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 
                 # Generar figuras con rango común si aplica
                 for filter_name, data in filter_data_dict.items():
-                    # plot_fit_with_uncertainty ahora retorna (fig, sample_indices)
+                    # plot_fit_with_uncertainty ahora retorna (fig, sample_indices, central_curve_idx)
                     # Usar param_medians_mjd si existe, sino mcmc_results['params']
                     # Esto asegura que la línea azul use EXACTAMENTE los mismos valores que el corner plot
                     if data.get('param_medians_mjd') is not None:
@@ -1187,7 +1210,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     else:
                         param_medians_for_plot = data['mcmc_results']['params']
                     
-                    fit_fig, sample_indices = plot_fit_with_uncertainty(
+                    fit_fig, sample_indices, central_curve_idx = plot_fit_with_uncertainty(
                         data['phase_for_plot'], data['mag'], data['mag_err'], 
                         data['mag_model_for_plot'], data['flux'], data['flux_model_for_plot'],
                         data['samples_for_plot'], n_samples_to_show=100,
@@ -1197,7 +1220,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         had_upper_limits=data['had_upper_limits'],
                         xlim=common_xlim,
                         param_medians_phase_relative=data['mcmc_results']['params'],  # Para debug
-                        param_medians=param_medians_for_plot  # Mediana real para la línea azul
+                        param_medians=param_medians_for_plot,  # Mediana real para la línea azul
+                        params_median_of_curves=data.get('params_moc_mjd')  # Curva central (verde)
                     )
                     
                     # Generar corner plot (sin guardar, solo obtener la figura)
@@ -1210,8 +1234,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     )
                     
                     # Generar modelo extendido (sin guardar, solo obtener la figura)
-                    # Reutilizamos sample_indices de plot_fit_with_uncertainty (Opción C)
-                    # Necesitamos usar los parámetros en la misma escala que phase_for_plot
+                    # Usamos el mismo sample de la curva central que en el plot normal
                     if data.get('param_medians_mjd') is not None:
                         params_for_extended = data['param_medians_mjd']
                     else:
@@ -1223,7 +1246,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         flux_err=data.get('flux_err', None),
                         sn_name=sn_name, filter_name=filter_name, save_path=None,
                         samples=data['samples_for_plot'],
-                        precalculated_sample_indices=sample_indices  # Reutilizar índices (Opción C)
+                        precalculated_sample_indices=sample_indices,
+                        central_curve_sample_idx=central_curve_idx  # Mismo sample que en plot normal
                     )
                     
                     filter_figs[filter_name] = (fit_fig, corner_fig, extended_fig)
@@ -1236,6 +1260,9 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     for reason in skip_reasons:
                         print(f"    - {reason}")
                     failed_count += 1
+                    # Combinar todas las razones de skip en una sola cadena
+                    combined_reason = "; ".join(skip_reasons) if skip_reasons else "Ningún filtro pudo ser procesado"
+                    failed_supernovas.append((sn_name, combined_reason))
                     # Liberar memoria antes de continuar
                     try:
                         del filter_figs, filter_data_dict
@@ -1495,6 +1522,9 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 import traceback
                 traceback.print_exc()
                 failed_count += 1
+                # Capturar la razón del error
+                error_reason = f"Error: {type(e).__name__}: {str(e)}"
+                failed_supernovas.append((sn_name if 'sn_name' in locals() else sn_name_test, error_reason))
                 # Liberar memoria en caso de error
                 try:
                     del filter_figs, filter_data_dict
@@ -1529,18 +1559,68 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     df_successful = pd.DataFrame({'supernova_name': successful_supernovas})
     df_successful.to_csv(csv_path, index=False)
     
-    print(f"\n{'='*80}")
-    print(f"[OK] PDF generado: {pdf_path}")
-    print(f"[OK] CSV con supernovas exitosas: {csv_path}")
-    if n_supernovas is None:
-        print(f"[OK] Supernovas exitosas procesadas: {processed_count} (todas disponibles)")
+    # Guardar CSV con supernovas fallidas y sus razones
+    if supernovas_from_csv and csv_file_path:
+        failed_csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_failed_from_csv.csv'
     else:
-        print(f"[OK] Supernovas exitosas procesadas: {processed_count}/{n_supernovas}")
-    print(f"[INFO] Intentos totales: {attempted_count}")
-    if failed_count > 0:
-        print(f"[INFO] Supernovas fallidas/saltadas: {failed_count}")
+        failed_csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_failed.csv'
+    failed_csv_path = DEBUG_PDF_DIR / failed_csv_filename
+    
+    # Si se usa --overwrite, borrar el CSV de fallidas existente
+    if overwrite_pdf and failed_csv_path.exists():
+        try:
+            failed_csv_path.unlink()
+        except Exception as e:
+            print(f"[WARNING] No se pudo eliminar el CSV de fallidas existente: {e}")
+    
+    if failed_supernovas:
+        df_failed = pd.DataFrame(failed_supernovas, columns=['supernova_name', 'reason'])
+        df_failed.to_csv(failed_csv_path, index=False)
+    
+    # Calcular estadísticas por tipo de fallo
+    fail_stats = {}
+    for sn_name, reason in failed_supernovas:
+        # Categorizar la razón
+        if "detecciones" in reason.lower() or "mínimo" in reason.lower():
+            category = "Pocos datos (<7 detecciones)"
+        elif "fit no físico" in reason.lower():
+            category = "Fit no físico"
+        elif "no disponible" in reason.lower():
+            category = "Filtro no disponible"
+        elif "extraer datos" in reason.lower():
+            category = "Error leyendo archivo"
+        elif "error:" in reason.lower():
+            category = "Error de procesamiento"
+        else:
+            category = "Otros"
+        fail_stats[category] = fail_stats.get(category, 0) + 1
+    
+    # Mostrar resumen
+    print(f"\n{'='*80}")
+    print(f"RESUMEN DE PROCESAMIENTO")
+    print(f"{'='*80}")
+    total_attempted = processed_count + failed_count
+    success_rate = (processed_count / total_attempted * 100) if total_attempted > 0 else 0
+    fail_rate = (failed_count / total_attempted * 100) if total_attempted > 0 else 0
+    
+    print(f"Total intentadas: {total_attempted}")
+    print(f"Exitosas: {processed_count} ({success_rate:.1f}%)")
+    print(f"Fallidas: {failed_count} ({fail_rate:.1f}%)")
+    
+    if fail_stats:
+        print(f"\nRazones de fallo:")
+        for category, count in sorted(fail_stats.items(), key=lambda x: -x[1]):
+            pct = (count / failed_count * 100) if failed_count > 0 else 0
+            print(f"  - {category}: {count} ({pct:.1f}%)")
+    
+    print(f"\nArchivos generados:")
+    print(f"  - PDF: {pdf_path}")
+    print(f"  - Exitosas: {csv_path}")
+    if failed_supernovas:
+        print(f"  - Fallidas: {failed_csv_path}")
+    
     if n_supernovas is not None and processed_count < n_supernovas:
-        print(f"[WARNING] Solo se procesaron {processed_count} de {n_supernovas} supernovas solicitadas")
+        print(f"\n[WARNING] Solo se procesaron {processed_count} de {n_supernovas} supernovas solicitadas")
     print(f"{'='*80}")
 
 

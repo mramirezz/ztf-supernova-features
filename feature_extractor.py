@@ -113,12 +113,12 @@ def calculate_fit_statistics(phase, flux, flux_err, flux_model):
 
 def extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name):
     """
-    Extraer las 25 features del modelo de Villar
+    Extraer las 25+ features del modelo de Villar
     
     Parameters:
     -----------
     mcmc_results : dict
-        Resultados del ajuste MCMC (debe incluir 'model_flux')
+        Resultados del ajuste MCMC (debe incluir 'model_flux' y 'params_median_of_curves')
     phase, flux, flux_err : arrays
         Datos observados en flujo
     sn_name, filter_name : str
@@ -126,13 +126,16 @@ def extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name):
         
     Returns:
     --------
-    dict con todas las features
+    dict con todas las features, incluyendo:
+        - Parámetros de Median of Params (sin sufijo): A, f, t0, etc.
+        - Parámetros de Median of Curves (sufijo _moc): A_moc, f_moc, t0_moc, etc.
     """
-    params = mcmc_results['params']
+    params = mcmc_results['params']  # Median of Params
     params_err = mcmc_results['params_err']
     flux_model = mcmc_results['model_flux']
+    params_moc = mcmc_results.get('params_median_of_curves', None)  # Median of Curves
     
-    # Parámetros principales
+    # Parámetros principales (Median of Params - línea azul punteada)
     features = {
         'sn_name': sn_name,
         'filter_band': filter_name,
@@ -143,6 +146,28 @@ def extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name):
         't_fall': params[4],
         'gamma': params[5],
     }
+    
+    # Parámetros de Median of Curves (línea verde sólida)
+    # Estos capturan mejor las correlaciones entre parámetros
+    if params_moc is not None:
+        features.update({
+            'A_moc': params_moc[0],
+            'f_moc': params_moc[1],
+            't0_moc': params_moc[2],
+            't_rise_moc': params_moc[3],
+            't_fall_moc': params_moc[4],
+            'gamma_moc': params_moc[5],
+        })
+    else:
+        # Si no hay curva central, usar NaN
+        features.update({
+            'A_moc': np.nan,
+            'f_moc': np.nan,
+            't0_moc': np.nan,
+            't_rise_moc': np.nan,
+            't_fall_moc': np.nan,
+            'gamma_moc': np.nan,
+        })
     
     # Errores formales (usamos std de MCMC)
     features.update({

@@ -112,7 +112,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                               phase_ul=None, mag_ul=None, flux_ul=None,
                               is_upper_limit=None, flux_err=None, had_upper_limits=None,
                               xlim=None, param_medians_phase_relative=None,
-                              param_medians=None):
+                              param_medians=None, params_median_of_curves=None):
     """
     Generar gráfico de ajuste mostrando la mediana de parámetros con bandas de confianza
     
@@ -208,14 +208,58 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     mag_band_1sigma = None
     mag_band_2sigma = None
     sample_indices = None  # Inicializar para retornar después
+    best_sample_global_idx = None  # Índice del sample de la curva central (para plot_extended_model)
+    flux_curves_to_plot = None  # Curvas individuales para plotear como líneas rojas
+    mag_curves_to_plot = None
     
     if samples is not None and len(samples) > 0:
-        # Usar muestreo sistemático (cada N samples) para representatividad
-        n_samples_for_bands = min(500, len(samples))
-        step = max(1, len(samples) // n_samples_for_bands)
-        sample_indices = np.arange(0, len(samples), step)[:n_samples_for_bands]
+        # PASO 1: Evaluar curvas candidatas y calcular su log-likelihood
+        # Luego seleccionar las 500 con MAYOR likelihood (mejor ajuste)
+        n_candidates = min(2000, len(samples))  # Evaluar hasta 2000 candidatas
+        step = max(1, len(samples) // n_candidates)
+        candidate_indices = np.arange(0, len(samples), step)[:n_candidates]
         
-        # Evaluar modelo para cada sample seleccionado
+        # Calcular log-likelihood de cada curva (chi2 simplificado)
+        candidate_loglik = []
+        valid_indices = []
+        
+        # Usar flux_err si está disponible, sino asumir error constante
+        if flux_err is not None and len(flux_err) == len(flux):
+            sigma = flux_err
+            # Reemplazar errores <= 0 con un valor pequeño
+            sigma = np.where(sigma > 0, sigma, np.nanmedian(sigma[sigma > 0]) if np.any(sigma > 0) else 1e-10)
+        else:
+            sigma = np.ones_like(flux) * np.std(flux) * 0.1  # 10% del std como error
+        
+        for idx in candidate_indices:
+            try:
+                # Evaluar en los puntos de datos
+                flux_model = alerce_model(phase, *samples[idx])
+                flux_model = np.clip(flux_model, 1e-10, None)
+                
+                if np.all(np.isfinite(flux_model)) and np.all(flux_model > 0):
+                    # Log-likelihood gaussiano: -0.5 * sum((obs - model)^2 / sigma^2)
+                    chi2 = np.sum(((flux - flux_model) / sigma)**2)
+                    log_lik = -0.5 * chi2
+                    candidate_loglik.append(log_lik)
+                    valid_indices.append(idx)
+            except:
+                continue
+        
+        # PASO 2: Seleccionar las 500 con MAYOR log-likelihood
+        n_samples_for_bands = min(500, len(valid_indices))
+        if len(candidate_loglik) > 0:
+            # Ordenar de mayor a menor log-likelihood
+            sorted_idx = np.argsort(candidate_loglik)[::-1][:n_samples_for_bands]
+            sample_indices = np.array(valid_indices)[sorted_idx]
+            best_loglik = candidate_loglik[sorted_idx[0]]
+            worst_loglik = candidate_loglik[sorted_idx[-1]] if len(sorted_idx) > 1 else best_loglik
+            print(f"    [DEBUG] Seleccionadas {len(sample_indices)} curvas con mejor likelihood de {len(valid_indices)} candidatas")
+            print(f"    [DEBUG] Log-likelihood: mejor={best_loglik:.1f}, peor seleccionada={worst_loglik:.1f}")
+        else:
+            sample_indices = np.array([])
+        
+        # PASO 3: Evaluar las curvas seleccionadas en phase_smooth para plotear
         all_flux_curves = []
         for idx in sample_indices:
             try:
@@ -245,17 +289,27 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             mag_band_1sigma = (flux_to_mag(flux_p84), flux_to_mag(flux_p16))  # Invertido porque mag inversa
             mag_band_2sigma = (flux_to_mag(flux_p97_5), flux_to_mag(flux_p2_5))
             
-            # Encontrar la curva REAL más cercana a la mediana punto a punto
-            # Esto garantiza que sea una curva físicamente realizable (de un set real de parámetros)
+            # Calcular curva central (Median of Curves) usando las MISMAS curvas que ploteamos
+            # Esto garantiza que la curva verde esté dentro de las curvas rojas
+            # NO usar params_median_of_curves precalculado porque puede ser de samples diferentes
             distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
-            best_curve_idx = np.argmin(distances)
-            flux_model_curves = all_flux_curves[best_curve_idx]
+            best_curve_idx_local = np.argmin(distances)  # Índice dentro de all_flux_curves
+            flux_model_curves = all_flux_curves[best_curve_idx_local]
             mag_model_curves = flux_to_mag(flux_model_curves)
             
-            print(f"    [DEBUG] Bandas de confianza calculadas con {len(all_flux_curves)} curvas válidas")
-            print(f"    [DEBUG] Curva central: índice {best_curve_idx} (distancia mínima a mediana)")
+            # Guardar el índice GLOBAL del sample (para reutilizar en plot_extended_model)
+            best_sample_global_idx = sample_indices[best_curve_idx_local]
+            print(f"    [DEBUG] Curva central: índice local {best_curve_idx_local}, sample global {best_sample_global_idx}")
             
-            # Liberar memoria del array grande
+            # Convertir todas las curvas a magnitud para plotear líneas individuales
+            # Plotear todas las 500 curvas
+            flux_curves_to_plot = all_flux_curves
+            mag_curves_to_plot = np.array([flux_to_mag(fc) for fc in flux_curves_to_plot])
+            
+            print(f"    [DEBUG] Bandas de confianza calculadas con {len(all_flux_curves)} curvas válidas")
+            print(f"    [DEBUG] Ploteando {len(flux_curves_to_plot)} curvas individuales")
+            
+            # Liberar memoria del array grande (pero guardar las curvas para plotear)
             del all_flux_curves
     
     # ==========================================================================
@@ -282,12 +336,13 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     # PLOT DE MAGNITUD
     # ==========================================================================
     
-    # Banda de confianza 1-sigma (68%)
-    if mag_band_1sigma is not None:
-        lower_1s, upper_1s = mag_band_1sigma
-        if np.all(np.isfinite(lower_1s)) and np.all(np.isfinite(upper_1s)):
-            axes[0].fill_between(phase_smooth, lower_1s, upper_1s, 
-                                color='#CD5C5C', alpha=0.3, zorder=2, label='68% CI')
+    # Curvas individuales (líneas rojas semitransparentes) - plotear primero (zorder bajo)
+    if mag_curves_to_plot is not None and len(mag_curves_to_plot) > 0:
+        for i, mag_curve in enumerate(mag_curves_to_plot):
+            if np.all(np.isfinite(mag_curve)):
+                label = 'MCMC samples' if i == 0 else None
+                axes[0].plot(phase_smooth, mag_curve, '-', linewidth=0.5, 
+                            color='#CD5C5C', alpha=0.15, zorder=1, label=label)
     
     # Mediana de curvas (línea verde SÓLIDA) - siempre en el centro del CI
     if mag_model_curves is not None:
@@ -368,12 +423,13 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         phase_ul_fit_flux = np.array([])
         flux_ul_fit = np.array([])
     
-    # Banda de confianza 1-sigma (68%)
-    if flux_band_1sigma is not None:
-        lower_1s, upper_1s = flux_band_1sigma
-        if np.all(np.isfinite(lower_1s)) and np.all(np.isfinite(upper_1s)):
-            axes[1].fill_between(phase_smooth, lower_1s, upper_1s, 
-                                color='#CD5C5C', alpha=0.3, zorder=2, label='68% CI')
+    # Curvas individuales (líneas rojas semitransparentes) - plotear primero (zorder bajo)
+    if flux_curves_to_plot is not None and len(flux_curves_to_plot) > 0:
+        for i, flux_curve in enumerate(flux_curves_to_plot):
+            if np.all(np.isfinite(flux_curve)):
+                label = 'MCMC samples' if i == 0 else None
+                axes[1].plot(phase_smooth, flux_curve, '-', linewidth=0.5, 
+                            color='#CD5C5C', alpha=0.15, zorder=1, label=label)
     
     # Mediana de curvas (línea verde SÓLIDA) - siempre en el centro del CI
     if flux_model_curves is not None:
@@ -450,18 +506,19 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     
     plt.tight_layout()
     
-    # Retornar los sample_indices usados para reutilizarlos en plot_extended_model
+    # Retornar los sample_indices usados y el índice del sample de la curva central
+    # para reutilizarlos en plot_extended_model
     if save_path:
         plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
         plt.close(fig)  # Liberar memoria de la figura
-        return None, sample_indices
+        return None, sample_indices, best_sample_global_idx
     else:
-        return fig, sample_indices
+        return fig, sample_indices, best_sample_global_idx
 
 def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
                        flux_err=None, sn_name=None, filter_name=None, save_path=None,
                        early_time_offset=-500, late_time_offset=500, samples=None,
-                       precalculated_sample_indices=None):
+                       precalculated_sample_indices=None, central_curve_sample_idx=None):
     """
     Generar gráfico del modelo extendido para validación física
     
@@ -485,6 +542,9 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
         Días después de la última detección para evaluar (default: +500)
     samples : array, optional
         Samples del MCMC para calcular mediana de curvas (consistente con fit principal)
+    central_curve_sample_idx : int, optional
+        Índice del sample que corresponde a la curva central (del plot_fit_with_uncertainty)
+        Si se proporciona, se usa directamente en vez de recalcular
     """
     from model import alerce_model
     
@@ -511,40 +571,53 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
         flux_model_params = alerce_model(phase_extended, *param_medians)
         flux_model_params = np.clip(flux_model_params, 1e-10, None)
         
-        # Calcular mediana de curvas (si hay samples)
-        # REUTILIZAR los sample_indices precalculados si se proporcionan (Opción C)
+        # Calcular mediana de curvas (curva verde)
+        # IMPORTANTE: Usar EXACTAMENTE el mismo sample que en plot_fit_with_uncertainty
         flux_model_curves = None
         if samples is not None and len(samples) > 0:
-            # Usar índices precalculados si están disponibles, sino calcular nuevos
-            if precalculated_sample_indices is not None:
-                # Tomar solo cada 10° índice para reducir a ~50 curvas (ahorro de memoria)
-                sample_indices = precalculated_sample_indices[::10]
-                print(f"    [DEBUG] Modelo extendido: usando {len(sample_indices)} de {len(precalculated_sample_indices)} sample_indices")
-            else:
-                # Calcular nuevos índices (fallback) - usar pocos para ahorrar memoria
-                n_samples_for_median = min(50, len(samples))
-                step = max(1, len(samples) // n_samples_for_median)
-                sample_indices = np.arange(0, len(samples), step)[:n_samples_for_median]
-            
-            all_flux_curves = []
-            for idx in sample_indices:
+            # Si tenemos el índice del sample de la curva central, usarlo directamente
+            if central_curve_sample_idx is not None:
                 try:
-                    flux_curve = alerce_model(phase_extended, *samples[idx])
-                    flux_curve = np.clip(flux_curve, 1e-10, None)
-                    if np.all(np.isfinite(flux_curve)) and np.all(flux_curve > 0) and np.all(flux_curve < 1e10):
-                        all_flux_curves.append(flux_curve)
-                except:
-                    continue
+                    flux_model_curves = alerce_model(phase_extended, *samples[central_curve_sample_idx])
+                    flux_model_curves = np.clip(flux_model_curves, 1e-10, None)
+                    if not (np.all(np.isfinite(flux_model_curves)) and np.all(flux_model_curves > 0)):
+                        flux_model_curves = None
+                        print(f"    [DEBUG] Modelo extendido: curva central inválida, usando fallback")
+                    else:
+                        print(f"    [DEBUG] Modelo extendido: usando curva central del plot normal (sample idx={central_curve_sample_idx})")
+                except Exception as e:
+                    print(f"    [DEBUG] Modelo extendido: error con curva central, usando fallback: {e}")
+                    flux_model_curves = None
             
-            if len(all_flux_curves) >= 10:
-                all_flux_curves = np.array(all_flux_curves)
-                # Encontrar la curva REAL más cercana a la mediana punto a punto
-                flux_p50 = np.percentile(all_flux_curves, 50, axis=0)
-                distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
-                best_curve_idx = np.argmin(distances)
-                flux_model_curves = all_flux_curves[best_curve_idx]
-                print(f"    [DEBUG] Modelo extendido: {len(all_flux_curves)} curvas válidas, curva central idx={best_curve_idx}")
-                del all_flux_curves  # Liberar memoria
+            # Fallback: recalcular si no tenemos el índice o falló
+            if flux_model_curves is None:
+                # Usar índices precalculados si están disponibles
+                if precalculated_sample_indices is not None:
+                    sample_indices = precalculated_sample_indices[::10]
+                    print(f"    [DEBUG] Modelo extendido (fallback): usando {len(sample_indices)} sample_indices")
+                else:
+                    n_samples_for_median = min(50, len(samples))
+                    step = max(1, len(samples) // n_samples_for_median)
+                    sample_indices = np.arange(0, len(samples), step)[:n_samples_for_median]
+                
+                all_flux_curves = []
+                for idx in sample_indices:
+                    try:
+                        flux_curve = alerce_model(phase_extended, *samples[idx])
+                        flux_curve = np.clip(flux_curve, 1e-10, None)
+                        if np.all(np.isfinite(flux_curve)) and np.all(flux_curve > 0) and np.all(flux_curve < 1e10):
+                            all_flux_curves.append(flux_curve)
+                    except:
+                        continue
+                
+                if len(all_flux_curves) >= 10:
+                    all_flux_curves = np.array(all_flux_curves)
+                    flux_p50 = np.percentile(all_flux_curves, 50, axis=0)
+                    distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
+                    best_curve_idx = np.argmin(distances)
+                    flux_model_curves = all_flux_curves[best_curve_idx]
+                    print(f"    [DEBUG] Modelo extendido (fallback): {len(all_flux_curves)} curvas válidas")
+                    del all_flux_curves
         
         # Crear figura separada
         fig, ax = plt.subplots(1, 1, figsize=(PLOT_CONFIG["figsize"][0], PLOT_CONFIG["figsize"][1] * 0.55))
