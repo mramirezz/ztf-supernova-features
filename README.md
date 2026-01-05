@@ -511,102 +511,404 @@ Si después del filtro quedan menos de 6 puntos de detección normal (excluyendo
 
 ### Tratamiento de Upper Limits
 
-Los upper limits son observaciones donde la supernova no fue detectada, pero se conoce un límite superior de brillo (magnitud más débil que cierto valor). Estos datos requieren un tratamiento especial en el ajuste MCMC.
+#### ¿Qué son los Upper Limits?
 
-**Inclusión de Upper Limits:**
+Un **upper limit** (límite superior) es una observación donde la supernova **no fue detectada** por el telescopio, pero sabemos que si hubiera sido más brillante que cierto valor, **sí la habríamos detectado**. En otras palabras, es una medida de "no detección" que nos dice que el flujo verdadero de la supernova en ese momento era **menor o igual** a cierto valor límite.
 
-El código incluye automáticamente los últimos 3 upper limits que ocurren antes de la primera detección normal, siempre que estén dentro del rango configurado en `DATA_FILTER_CONFIG["max_days_before_first_obs"]` (por defecto: 20 días antes de la primera observación). Estos upper limits proporcionan información valiosa sobre el flujo antes de la explosión, ayudando a constreñir mejor el modelo en la fase temprana de la curva de luz. Los upper limits después de la primera detección no se incluyen en el ajuste MCMC, ya que el modelo ya está bien constreñido por las detecciones normales.
+**Ejemplo práctico:**
+- Si observamos una supernova en magnitud 22.0 y no la detectamos, pero sabemos que el telescopio puede detectar objetos hasta magnitud 21.5, entonces tenemos un upper limit de magnitud 21.5
+- Esto significa que el flujo verdadero era **menor** que el flujo correspondiente a magnitud 21.5
+- En términos de flujo: si $F_{21.5}$ es el flujo correspondiente a magnitud 21.5, entonces $F_{\text{verdadero}} \leq F_{21.5}$
 
-**Tratamiento en el Ajuste MCMC:**
+#### ¿Por qué son Datos Censurados?
 
-El MCMC evalúa qué tan bien se ajusta el modelo mediante el log-likelihood total, que combina contribuciones de detecciones normales y upper limits:
+Los upper limits son un tipo especial de dato llamado **dato censurado** porque:
 
-```
-log L_total = Σ log L_normal + Σ log L_ul
-```
+1. **Sabemos que la fuente existe**: Intentamos observarla en un tiempo específico (la supernova existe)
+2. **No conocemos su valor exacto**: No la detectamos, por lo que no sabemos su flujo verdadero
+3. **Conocemos una restricción**: Sabemos que el flujo verdadero está **por debajo** del límite observado
 
-**Detecciones Normales:**
+**Diferencia entre Datos Censurados y Truncados:**
+- **Datos censurados** (nuestro caso): La fuente existe pero no conocemos su valor exacto, solo que está por debajo/encima de un límite. Intentamos observarla pero no la detectamos.
+- **Datos truncados**: No sabemos si la fuente existe fuera del rango observable (no se intentó observar fuera del rango, así que no sabemos si existe o no).
 
-Cada detección normal contribuye con chi-cuadrado estándar:
-```
-log L_normal = -0.5 × χ²
-donde χ² = ((flux_obs - flux_model) / flux_err)²
-```
+#### ¿Por qué Requieren Tratamiento Especial en MCMC?
 
-**Upper Limits:**
+Los upper limits requieren un tratamiento especial en el ajuste MCMC porque **no podemos usar el mismo likelihood que para detecciones normales**:
 
-Cada upper limit se evalúa mediante una penalización cuadrática suave basada en el exceso del modelo sobre el límite:
+- **Detecciones normales**: Tenemos un valor medido con su error, y podemos calcular $\chi^2 = \left(\frac{F_{\text{obs}} - F_{\text{modelo}}}{\sigma}\right)^2$
+- **Upper limits**: No tenemos un valor medido, solo sabemos que $F_{\text{verdadero}} \leq F_{\text{ul}}$. No podemos calcular un $\chi^2$ estándar.
 
-```
-excess = max(0, flux_model - flux_ul)  # Solo si el modelo excede el límite
-scale = flux_ul × 0.1  # 10% del flujo del límite como escala
-penalty = (excess / scale)²
-log L_ul = -0.5 × penalty  (solo si excess > 0)
-```
+Por lo tanto, necesitamos un método estadísticamente riguroso para incorporar esta información en el ajuste MCMC.
 
-Este método de penalización cuadrática suave es una implementación práctica del enfoque de penalización en funciones objetivo para estimación con restricciones, adaptado para el contexto de datos censurados (upper limits) en ajustes bayesianos con MCMC. La penalización solo se aplica cuando el modelo excede el límite superior, permitiendo que el modelo explore libremente valores por debajo del límite.
+#### Inclusión de Upper Limits en el Ajuste
+
+El código incluye automáticamente los **últimos 3 upper limits** que ocurren **antes de la primera detección normal**, siempre que estén dentro del rango configurado en `DATA_FILTER_CONFIG["max_days_before_first_obs"]` (por defecto: 20 días antes de la primera observación).
+
+**¿Por qué solo los primeros?**
+- Estos upper limits proporcionan información valiosa sobre el flujo **antes de la explosión**, ayudando a constreñir mejor el modelo en la fase temprana de la curva de luz
+- Los upper limits después de la primera detección no se incluyen en el ajuste MCMC, ya que el modelo ya está bien constreñido por las detecciones normales
+- Incluir todos los upper limits podría sobre-constreñir el modelo y hacer el ajuste menos robusto
+
+#### Tratamiento en el Ajuste MCMC: Método CDF para Datos Censurados
+
+El MCMC evalúa qué tan bien se ajusta el modelo mediante el **log-posterior**, que combina el **prior** y el **likelihood**. El likelihood a su vez combina contribuciones de detecciones normales y upper limits.
+
+**Estructura General del Ajuste:**
+
+El log-posterior se calcula como:
+
+$$\log P(\theta | \text{datos}) = \log P(\theta) + \log L(\theta | \text{datos})$$
+
+donde:
+- $\theta = (A, f, t_0, t_{\text{rise}}, t_{\text{fall}}, \gamma)$ son los parámetros del modelo ALERCE
+- $\log P(\theta)$ es el log-prior (con restricciones de upper limits)
+- $\log L(\theta | \text{datos})$ es el log-likelihood (con método CDF para upper limits)
+
+**Likelihood para Detecciones Normales:**
+
+Cada detección normal contribuye con chi-cuadrado estándar. Para una detección en tiempo $t_i$ con flujo observado $F_{\text{obs},i}$ y error $\sigma_i$:
+
+$$\chi^2_i = \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)^2$$
+
+El log-likelihood para todas las detecciones normales es:
+
+$$\log L_{\text{normal}} = -\frac{1}{2} \sum_{i \in \text{normales}} \chi^2_i = -\frac{1}{2} \sum_{i \in \text{normales}} \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)^2$$
+
+**Likelihood para Upper Limits: Método CDF (Función de Distribución Acumulada)**
+
+El código implementa el método estadísticamente riguroso basado en la **función de distribución acumulada (CDF)** para datos censurados, siguiendo la metodología descrita en Ivezić et al. (2014), Capítulo 4.2.7.
+
+**Fundamento Teórico:**
+
+Para un upper limit, no sabemos el flujo verdadero $F_{\text{verdadero}}(t_i)$, solo sabemos que $F_{\text{verdadero}}(t_i) \leq F_{\text{ul},i}$. El likelihood correcto es la **probabilidad acumulada** de que el flujo verdadero esté por debajo del límite, dado el modelo:
+
+$$P(F_{\text{verdadero}}(t_i) \leq F_{\text{ul},i} | \text{modelo}) = \Phi\left(\frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)$$
+
+donde:
+- $F_{\text{modelo}}(t_i)$ es el flujo predicho por el modelo en tiempo $t_i$
+- $F_{\text{ul},i}$ es el valor del upper limit en tiempo $t_i$
+- $\sigma_i$ es la incertidumbre asociada al upper limit
+- $\Phi(z)$ es la función de distribución acumulada (CDF) de la distribución normal estándar
+
+**Interpretación:**
+
+- Si el modelo predice un flujo **muy por debajo** del límite: $F_{\text{modelo}} \ll F_{\text{ul}}$, entonces $\Phi(z) \to 1$ y $\log L_{\text{ul}} \to 0$ (alta probabilidad, no penaliza)
+- Si el modelo predice un flujo **cerca** del límite: $F_{\text{modelo}} \approx F_{\text{ul}}$, entonces $\Phi(z) \approx 0.5$ y $\log L_{\text{ul}} \approx -0.69$ (probabilidad moderada)
+- Si el modelo predice un flujo que **excede** el límite: $F_{\text{modelo}} > F_{\text{ul}}$, entonces $\Phi(z) \to 0$ y $\log L_{\text{ul}} \to -\infty$ (probabilidad muy baja, fuerte penalización)
+
+**Cálculo del Log-Likelihood para Upper Limits:**
+
+Para cada upper limit individual en tiempo $t_i$:
+
+$$z_i = \frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}$$
+
+$$\log L_{\text{ul},i} = \ln\left[\Phi(z_i)\right] = \ln\left[\Phi\left(\frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)\right]$$
+
+El log-likelihood total para todos los upper limits es:
+
+$$\log L_{\text{ul}} = \sum_{i \in \text{upper limits}} \log L_{\text{ul},i} = \sum_{i \in \text{upper limits}} \ln\left[\Phi\left(\frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)\right]$$
+
+**Estimación de $\sigma_i$:**
+
+Si no tenemos una incertidumbre específica para cada upper limit (que es el caso típico), se estima como:
+
+$$\sigma_i = \begin{cases}
+\sigma_{\text{err},i} & \text{si está disponible y es finito} \\
+0.05 \times F_{\text{ul},i} & \text{en caso contrario (5\% del límite)}
+\end{cases}$$
+
+El factor del 5% (más estricto que el 10% original) hace que la penalización sea más fuerte cuando el modelo excede el límite, ya que hace que $z_i$ sea más negativo.
+
+**Protecciones Numéricas:**
+
+Para evitar problemas numéricos:
+- $z_i$ se limita al rango $[-20, 10]$ (en lugar de $[-10, 10]$) para permitir penalizaciones más extremas
+- $\Phi(z_i)$ tiene un mínimo de $10^{-15}$ (equivalente a ~8$\sigma$) para evitar $\log(0) = -\infty$
+
+**Log-Likelihood Total:**
+
+El log-likelihood total combina las contribuciones de detecciones normales y upper limits:
+
+$$\log L(\theta | \text{datos}) = \log L_{\text{normal}} + \log L_{\text{ul}}$$
+
+$$\log L(\theta | \text{datos}) = -\frac{1}{2} \sum_{i \in \text{normales}} \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)^2 + \sum_{i \in \text{upper limits}} \ln\left[\Phi\left(\frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)\right]$$
 
 **Referencia Bibliográfica:**
 
-El tratamiento de upper limits mediante penalización en la función de verosimilitud se basa conceptualmente en métodos de estimación con restricciones usando penalización y MCMC. Aunque el paper de referencia no trata específicamente sobre upper limits en datos astronómicos, proporciona la base metodológica para el uso de penalizaciones en funciones objetivo dentro de ajustes bayesianos con MCMC.
+- **Ivezić, Ž., Connolly, A. J., VanderPlas, J. T., & Gray, A. (2014).** *Statistics, Data Mining, and Machine Learning in Astronomy: A Practical Python Guide for the Analysis of Survey Data*. Princeton University Press.
+  - Capítulo 4.2.7: "The MLE in the Case of Truncated and Censored Data" (páginas 130-131)
+  - Capítulo 8.1: "Formulation of the Regression Problem" (páginas 322-324)
 
-- **Gallant, A. R., Hong, H., Leung, M. H., & Li, J. (2022).** "Constrained estimation using penalization and MCMC." *Journal of Econometrics*, 231(2), 374-400. 
-  - [PDF directo](https://people.ucsc.edu/~jeqli/penalizedbayescombined.pdf)
+**Ejemplo Numérico del Método CDF:**
 
-**Relación con nuestro método:**
+Consideremos un upper limit típico con $F_{\text{ul}} = 1.0 \times 10^{-8}$ y $\sigma = 0.05 \times F_{\text{ul}} = 5.0 \times 10^{-10}$:
 
-El paper discute el uso de penalizaciones adaptativas (Sección 3) en la función objetivo para manejar restricciones en parámetros durante la estimación con MCMC. Nuestro método adapta este concepto general al caso específico de datos censurados (upper limits): en lugar de penalizar restricciones en parámetros, penalizamos cuando el modelo predicho excede los límites superiores observados. La penalización cuadrática que implementamos (`penalty = (excess/scale)²`) es una forma específica de penalización suave que desalienta violaciones de los upper limits mientras permite flexibilidad en el ajuste.
+| $F_{\text{modelo}}$ | $z = \frac{F_{\text{ul}} - F_{\text{modelo}}}{\sigma}$ | $\Phi(z)$ | $\log L_{\text{ul}}$ | Interpretación |
+|---------------------|--------------------------------------------------------|-----------|----------------------|----------------|
+| $0.5 \times 10^{-8}$ | $10.0$ | $\approx 1.0$ | $\approx 0$ | No penaliza (modelo muy por debajo) |
+| $0.9 \times 10^{-8}$ | $2.0$ | $\approx 0.977$ | $\approx -0.023$ | Penalización muy leve |
+| $1.0 \times 10^{-8}$ | $0.0$ | $0.5$ | $-0.693$ | Probabilidad moderada |
+| $1.1 \times 10^{-8}$ | $-2.0$ | $\approx 0.023$ | $\approx -3.78$ | Penalización fuerte (excede 10%) |
+| $2.0 \times 10^{-8}$ | $-20.0$ | $\approx 10^{-15}$ | $\approx -34.5$ | Penalización extrema (excede 100%) |
 
-Este trabajo explora la inferencia de parámetros sujetos a restricciones no lineales mediante penalización en la función objetivo y uso de MCMC, proporcionando una base metodológica para el tratamiento de datos censurados y restricciones en ajustes bayesianos.
+**Prior Restrictivo para Upper Limits:**
 
-**Comportamiento:**
-- Si el modelo está por debajo del límite: `excess = 0` → `log L_ul = 0` (no contribuye, no penaliza)
-- Si el modelo excede el límite: `excess > 0` → `log L_ul < 0` (penaliza proporcionalmente al cuadrado del exceso relativo)
+Además de la penalización en el likelihood, el código implementa un **prior restrictivo** que penaliza fuertemente parámetros que hacen que el modelo exceda upper limits. Esto es más estricto que solo la penalización en el likelihood y ayuda a "cortar" el espacio de parámetros, como se describe en Ivezić et al. (2014), Capítulo 8.
 
-**Ejemplo Numérico con Valores Realistas:**
+El prior se define como:
 
-Consideremos un upper limit típico de una supernova en el filtro g, con un flujo límite de `flux_ul = 1.0 × 10⁻⁸` (correspondiente aproximadamente a magnitud ~22.5):
+$$P(\theta) = \begin{cases} 
+0 & \text{si } \theta \text{ está dentro de bounds y } \forall i: F_{\text{modelo}}(t_i) \leq F_{\text{ul},i} \\
+-\infty & \text{si } \theta \text{ está fuera de bounds o modelo inválido} \\
+-\alpha \sum_{i: F_{\text{modelo}}(t_i) > F_{\text{ul},i}} \left(\frac{F_{\text{modelo}}(t_i) - F_{\text{ul},i}}{F_{\text{ul},i}}\right)^2 & \text{si } \exists i: F_{\text{modelo}}(t_i) > F_{\text{ul},i}
+\end{cases}$$
 
-1. **Caso 1: Modelo predice `flux_model = 0.5 × 10⁻⁸`** (por debajo del límite)
-   - `excess = max(0, 0.5×10⁻⁸ - 1.0×10⁻⁸) = 0`
-   - `penalty = 0`
-   - `log L_ul = 0` (no penaliza, el modelo es consistente con el upper limit)
+donde:
+- $\theta = (A, f, t_0, t_{\text{rise}}, t_{\text{fall}}, \gamma)$ son los parámetros del modelo
+- $F_{\text{modelo}}(t_i)$ es el flujo predicho por el modelo en tiempo $t_i$ donde hay un upper limit
+- $F_{\text{ul},i}$ es el valor del upper limit en tiempo $t_i$
+- $\alpha = 10^{10}$ es un factor de penalización muy grande (pero finito para evitar problemas numéricos)
 
-2. **Caso 2: Modelo predice `flux_model = 1.2 × 10⁻⁸`** (excede el límite en 20%)
-   - `excess = max(0, 1.2×10⁻⁸ - 1.0×10⁻⁸) = 0.2×10⁻⁸`
-   - `scale = 1.0×10⁻⁸ × 0.1 = 0.1×10⁻⁸`
-   - `penalty = (0.2×10⁻⁸ / 0.1×10⁻⁸)² = (2.0)² = 4.0`
-   - `log L_ul = -0.5 × 4.0 = -2.0` (penalización moderada)
+En términos del log-prior:
 
-3. **Caso 3: Modelo predice `flux_model = 2.0 × 10⁻⁸`** (excede el límite en 100%)
-   - `excess = max(0, 2.0×10⁻⁸ - 1.0×10⁻⁸) = 1.0×10⁻⁸`
-   - `scale = 1.0×10⁻⁸ × 0.1 = 0.1×10⁻⁸`
-   - `penalty = (1.0×10⁻⁸ / 0.1×10⁻⁸)² = (10.0)² = 100.0`
-   - `log L_ul = -0.5 × 100.0 = -50.0` (penalización fuerte)
+$$\log P(\theta) = \begin{cases} 
+0 & \text{si modelo respeta todos los upper limits} \\
+-\alpha \sum_{i: \text{exceso}_i > 0} \left(\frac{\text{exceso}_i}{F_{\text{ul},i}}\right)^2 & \text{si modelo excede algún upper limit}
+\end{cases}$$
 
-**Resumen del Ejemplo Numérico:**
+donde $\text{exceso}_i = F_{\text{modelo}}(t_i) - F_{\text{ul},i}$ es el exceso del modelo sobre el upper limit.
 
-Para un upper limit con `flux_ul = 1.0 × 10⁻⁸`:
+**Ventajas del Prior Restrictivo:**
 
-| `flux_model` | Exceso | Penalización | `log L_ul` | Interpretación |
-|--------------|--------|--------------|------------|----------------|
-| `0.5 × 10⁻⁸` | 0 | 0 | 0 | No penaliza (modelo por debajo) |
-| `1.2 × 10⁻⁸` | `0.2 × 10⁻⁸` | 4.0 | -2.0 | Penalización moderada (excede 20%) |
-| `2.0 × 10⁻⁸` | `1.0 × 10⁻⁸` | 100.0 | -50.0 | Penalización fuerte (excede 100%) |
+1. **Más estricto que solo el likelihood**: El prior rechaza explícitamente (con penalización muy fuerte) parámetros que exceden upper limits, no solo los penaliza suavemente
+2. **Independiente de la escala**: La penalización es relativa al exceso normalizado $\left(\frac{\text{exceso}}{F_{\text{ul}}}\right)^2$, por lo que funciona igual para flujos de cualquier escala (típicamente ~$10^{-8}$ para supernovas)
+3. **Robusto numéricamente**: Usa una penalización finita ($-10^{10}$) en lugar de $-\infty$ para evitar problemas numéricos en `emcee` cuando muchos walkers tienen `log_prob = -∞`
+4. **Corta el espacio de parámetros**: Similar a los "half planes" descritos en Ivezić et al. (2014), el prior efectivamente corta el espacio de parámetros, restringiendo la exploración MCMC a regiones válidas
+
+**Ejemplo Numérico del Prior:**
+
+Para un upper limit con $F_{\text{ul}} = 1.0 \times 10^{-8}$:
+
+| $F_{\text{modelo}}$ | Exceso Relativo | Penalización del Prior | Interpretación |
+|---------------------|-----------------|------------------------|----------------|
+| $0.5 \times 10^{-8}$ | 0 | 0 | No penaliza (modelo por debajo) |
+| $1.1 \times 10^{-8}$ | 0.1 | $-10^{10} \times 0.01 = -10^8$ | Penalización muy fuerte (excede 10%) |
+| $2.0 \times 10^{-8}$ | 1.0 | $-10^{10} \times 1.0 = -10^{10}$ | Penalización extrema (excede 100%) |
+
+**¿Por qué Penalización Cuadrática del Exceso Relativo?**
+
+La penalización cuadrática del exceso relativo $\left(\frac{\text{exceso}}{F_{\text{ul}}}\right)^2$ tiene propiedades importantes que la hacen ideal para este propósito:
+
+1. **Normalización Relativa**: Al dividir el exceso absoluto por el valor del upper limit, obtenemos un exceso **relativo** (adimensional). Esto significa que un exceso del 10% siempre da la misma penalización relativa, independientemente de si el upper limit es $10^{-8}$ o $10^{-6}$. Esto hace que el método sea **independiente de la escala** de los flujos.
+
+2. **Penalización Cuadrática**: El cuadrado del exceso relativo hace que la penalización crezca **rápidamente** con el exceso. Por ejemplo:
+   - Exceso del 10%: $(0.1)^2 = 0.01$ → penalización proporcional a $0.01$
+   - Exceso del 20%: $(0.2)^2 = 0.04$ → penalización proporcional a $0.04$ (4 veces mayor)
+   - Exceso del 50%: $(0.5)^2 = 0.25$ → penalización proporcional a $0.25$ (25 veces mayor)
+   
+   Esto significa que **pequeños excesos son tolerables, pero excesos grandes son severamente penalizados**, lo cual es físicamente razonable: un modelo que excede un upper limit en un 5% es menos problemático que uno que lo excede en un 50%.
+
+3. **Combinación con Factor de Escala**: El factor $\alpha = 10^{10}$ multiplica la penalización cuadrática, asegurando que **cualquier exceso, por pequeño que sea, resulte en una penalización extremadamente fuerte**. Esto hace que el prior efectivamente "corte" el espacio de parámetros, rechazando prácticamente cualquier conjunto de parámetros que cause que el modelo exceda un upper limit.
+
+**Ejemplo Detallado del Cálculo:**
+
+Consideremos un caso donde el modelo excede un upper limit:
+
+- Upper limit: $F_{\text{ul}} = 1.0 \times 10^{-8}$
+- Flujo del modelo: $F_{\text{modelo}} = 1.2 \times 10^{-8}$ (excede 20%)
+
+El cálculo de la penalización es:
+
+1. **Exceso absoluto**: $\text{exceso} = F_{\text{modelo}} - F_{\text{ul}} = 1.2 \times 10^{-8} - 1.0 \times 10^{-8} = 0.2 \times 10^{-8}$
+
+2. **Exceso relativo**: $\frac{\text{exceso}}{F_{\text{ul}}} = \frac{0.2 \times 10^{-8}}{1.0 \times 10^{-8}} = 0.2$ (20%)
+
+3. **Exceso relativo al cuadrado**: $\left(\frac{\text{exceso}}{F_{\text{ul}}}\right)^2 = (0.2)^2 = 0.04$
+
+4. **Penalización final**: $\text{penalización} = -\alpha \times 0.04 = -10^{10} \times 0.04 = -4 \times 10^8$
+
+Esta penalización de $-4 \times 10^8$ es **muchísimo más fuerte** que cualquier contribución del likelihood (que típicamente está en el rango de $-100$ a $-10$), por lo que el MCMC prácticamente rechazará este conjunto de parámetros.
+
+**Comparación con el Likelihood CDF:**
+
+Es importante notar que el prior cuadrático y el likelihood CDF trabajan de manera complementaria:
+
+- **Likelihood CDF**: Proporciona una penalización **suave y continua** que incorpora la incertidumbre estadística. Es estadísticamente riguroso y da información incluso cuando el modelo está cerca del límite pero no lo excede.
+
+- **Prior Cuadrático**: Proporciona una penalización **abrupta y extrema** que actúa como un "muro" en el espacio de parámetros. Solo se activa cuando el modelo excede el límite, pero cuando lo hace, la penalización es tan fuerte que prácticamente rechaza esos parámetros.
+
+La combinación de ambos asegura que:
+1. El modelo sea guiado suavemente por el likelihood cuando está cerca del límite
+2. El modelo sea rechazado fuertemente por el prior cuando excede el límite
+3. El espacio de parámetros válido esté bien definido y restringido
+
+#### Posterior Completo
+
+El **log-posterior** combina el prior y el likelihood según el teorema de Bayes:
+
+$$\log P(\theta | \text{datos}) = \log P(\theta) + \log L(\theta | \text{datos}) + \text{constante}$$
+
+donde la constante (evidencia) no depende de $\theta$ y puede ignorarse en el MCMC.
+
+**Desarrollo Completo:**
+
+$$\log P(\theta | \text{datos}) = \log P(\theta) + \log L_{\text{normal}} + \log L_{\text{ul}}$$
+
+Sustituyendo las expresiones:
+
+$$\log P(\theta | \text{datos}) = \log P(\theta) - \frac{1}{2} \sum_{i \in \text{normales}} \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)^2 + \sum_{i \in \text{upper limits}} \ln\left[\Phi\left(\frac{F_{\text{ul},i} - F_{\text{modelo}}(t_i)}{\sigma_i}\right)\right]$$
+
+donde:
+- $\log P(\theta)$ es el log-prior (con restricción de upper limits, ver sección siguiente)
+- El segundo término es el log-likelihood de detecciones normales (chi-cuadrado)
+- El tercer término es el log-likelihood de upper limits (método CDF)
 
 **Implicaciones para el MCMC:**
 
-El MCMC busca maximizar `log L_total`, por lo que:
-- Naturalmente evita parámetros que hacen que el modelo exceda los upper limits (penalización cuadrática)
-- Si el modelo es consistente con todos los upper limits, estos no afectan el ajuste (contribución = 0)
-- La penalización suave permite cierta flexibilidad y mejor exploración del espacio de parámetros, especialmente cuando hay incertidumbre en los límites o cuando el modelo necesita priorizar el ajuste a las detecciones normales
-- El factor de escala del 10% del flujo del límite normaliza la penalización, haciendo que sea relativa al tamaño del límite y evitando que límites muy brillantes o muy débiles dominen el ajuste
+El MCMC busca maximizar el log-posterior, por lo que:
+- El prior restrictivo evita que el MCMC explore regiones del espacio de parámetros donde el modelo excede upper limits
+- La combinación de prior restrictivo + likelihood CDF asegura que el modelo respete los upper limits tanto en la exploración como en las estadísticas finales
+- Si el modelo es consistente con todos los upper limits, estos no afectan el ajuste (contribución = 0 en ambos, prior y likelihood)
+- El filtrado adicional de samples inválidos (después del MCMC) asegura que la mediana/promedio de parámetros respete los upper limits, incluso si algunos samples individuales los exceden debido a correlaciones entre parámetros
 
 **Visualización:**
 
 En los gráficos, los upper limits se muestran como triángulos invertidos:
 - **Triángulos verdes**: Upper limits incluidos en el ajuste MCMC (los 3 últimos antes de la primera detección)
 - **Triángulos naranjas**: Otros upper limits mostrados para contexto visual pero no usados en el ajuste
+
+### Configuración de Priors (Bounds de Parámetros)
+
+El MCMC utiliza **priors uniformes** (flat priors) dentro de los bounds definidos. Los bounds determinan el espacio de parámetros que el MCMC puede explorar:
+
+```python
+MODEL_CONFIG = {
+    "param_names": ["A", "f", "t0", "t_rise", "t_fall", "gamma"],
+    "bounds": {
+        "A": (1e-10, 1e-5),      # Amplitud típica de supernovas
+        "f": (0.0, 1.0),          # Fracción de plateau (0 a 1)
+        "t0": (-200.0, 50.0),     # Tiempo de referencia: -200 a +50 días
+        "t_rise": (1.0, 100.0),   # Tiempo de subida: 1-100 días
+        "t_fall": (1.0, 200.0),   # Tiempo de caída: 1-200 días
+        "gamma": (0.5, 100.0)     # Gamma: 0.5-100 días
+    }
+}
+```
+
+**Significado de cada bound:**
+
+| Parámetro | Rango | Justificación Física |
+|-----------|-------|----------------------|
+| $A$ | $[10^{-10}, 10^{-5}]$ | Amplitud típica del flujo de supernovas en unidades normalizadas |
+| $f$ | $[0, 1]$ | Fracción del plateau, por definición entre 0 y 1 |
+| $t_0$ | $[-200, 50]$ días | Tiempo de explosión relativo, desde -200 a +50 días de la primera detección |
+| $t_{\text{rise}}$ | $[1, 100]$ días | Tiempo de subida: desde explosiones rápidas (1 día) hasta lentas (100 días) |
+| $t_{\text{fall}}$ | $[1, 200]$ días | Tiempo de caída: desde decaimiento rápido hasta lento |
+| $\gamma$ | $[0.5, 100]$ días | Escala temporal del plateau |
+
+**Importancia de los bounds:**
+- **Bounds muy amplios** → Mayor incertidumbre en el fit (bandas de confianza anchas)
+- **Bounds muy estrechos** → Menor incertidumbre pero riesgo de sesgo si los bounds son incorrectos
+- Los valores actuales son un balance basado en el comportamiento físico típico de supernovas tipo II
+
+### Bandas de Confianza (Intervalos de Credibilidad)
+
+Los gráficos muestran **bandas de confianza** que representan la incertidumbre del modelo MCMC. Estas se calculan a partir de los **percentiles de las curvas** generadas por los samples del MCMC.
+
+**Cálculo de las Bandas:**
+
+1. Se seleccionan 1000 samples aleatorios del MCMC (después del burn-in)
+2. Para cada sample $\theta_k$, se evalúa el modelo completo: $F_k(t) = F_{\text{modelo}}(t; \theta_k)$
+3. Para cada tiempo $t$, se calculan los percentiles de los flujos $\{F_1(t), F_2(t), ..., F_{1000}(t)\}$
+
+**Definición Matemática:**
+
+Para un tiempo $t$ dado, si tenemos $N$ curvas de flujo $\{F_1(t), F_2(t), ..., F_N(t)\}$:
+
+- **Banda 68% CI (1σ)**: $[\text{percentil}_{16}(F), \text{percentil}_{84}(F)]$
+- **Banda 95% CI (2σ)**: $[\text{percentil}_{2.5}(F), \text{percentil}_{97.5}(F)]$
+
+**¿Por qué estos percentiles?**
+
+Los intervalos del 68% y 95% corresponden a ±1σ y ±2σ de una distribución gaussiana:
+
+| Intervalo | Percentiles | Equivalente Gaussiano | Probabilidad |
+|-----------|-------------|----------------------|--------------|
+| **68% CI** | 16% - 84% | ±1σ | 68.27% |
+| **95% CI** | 2.5% - 97.5% | ±2σ | 95.45% |
+
+**Interpretación Bayesiana:**
+
+En el contexto de MCMC bayesiano, estos son **intervalos de credibilidad** (credible intervals), no intervalos de confianza frecuentistas. La interpretación es directa:
+
+> "Hay un 68% de probabilidad de que la curva verdadera esté dentro de la banda roja oscura"
+
+Esto es más intuitivo que la interpretación frecuentista tradicional.
+
+**¿Por qué usamos 68% como estándar?**
+
+El intervalo del 68% (±1σ) es la convención estándar en física y astronomía porque:
+1. Es suficientemente estrecho para ser informativo
+2. No es tan estrecho que excluya demasiada incertidumbre
+3. Corresponde a la "barra de error" típica reportada en papers científicos
+
+Cuando se reporta un parámetro como $A = 1.15 \times 10^{-7} \pm 0.3 \times 10^{-7}$, el error corresponde al intervalo del 68%.
+
+**Visualización en los Gráficos:**
+
+- **Línea verde sólida**: Curva más central del ensemble ("Median of Curves")
+- **Línea azul punteada**: Curva calculada con la mediana de cada parámetro ("Median of Parameters")
+- **Banda roja oscura (68% CI)**: Región donde está el 68% de las curvas posibles
+- **Banda roja clara (95% CI)**: Región donde está el 95% de las curvas posibles
+
+### Dos Métodos para la Curva Central: Median of Parameters vs Median of Curves
+
+Los gráficos muestran **dos líneas** que representan diferentes formas de calcular la "curva central" del ajuste MCMC:
+
+**1. Median of Parameters (Línea Azul Punteada)**
+
+Se calcula tomando la **mediana de cada parámetro independientemente**:
+
+$$\theta_{\text{mediana}} = (\text{median}(A), \text{median}(f), \text{median}(t_0), \text{median}(t_{\text{rise}}), \text{median}(t_{\text{fall}}), \text{median}(\gamma))$$
+
+Luego se evalúa el modelo con estos parámetros: $F_{\text{azul}}(t) = F_{\text{modelo}}(t; \theta_{\text{mediana}})$
+
+- **Ventajas**: Es el método matemáticamente estándar y es lo que se reporta en publicaciones científicas. Los valores de los parámetros coinciden exactamente con los mostrados en el corner plot.
+- **Desventajas**: Cuando hay **alta correlación entre parámetros** o **alta incertidumbre** en las distribuciones, la combinación de medianas independientes puede no representar una curva "típica" del ensemble de curvas MCMC. En casos extremos, la mediana de parámetros puede producir una curva que ningún sample individual del MCMC produciría.
+
+**2. Median of Curves / Most Central Curve (Línea Verde Sólida)**
+
+Se calcula evaluando el modelo para muchos samples del MCMC y seleccionando la curva más representativa:
+
+1. Se seleccionan ~500 samples del MCMC usando muestreo sistemático (cada N-ésimo sample)
+2. Para cada sample $\theta_k$, se evalúa el modelo: $F_k(t) = F_{\text{modelo}}(t; \theta_k)$
+3. Se calcula la **mediana punto a punto** de todas las curvas: $F_{\text{p50}}(t) = \text{percentil}_{50}(\{F_1(t), F_2(t), ..., F_{500}(t)\})$
+4. Se identifica cuál de las 500 curvas reales está **más cerca** de la mediana punto a punto:
+   $$k^* = \arg\min_k \sum_t (F_k(t) - F_{\text{p50}}(t))^2$$
+5. La curva verde es $F_{\text{verde}}(t) = F_{k^*}(t)$
+
+- **Ventajas**: 
+  - La curva resultante es **físicamente realizable** (corresponde a un conjunto real de parámetros del MCMC)
+  - Es más representativa del "centro" del ensemble de curvas cuando hay correlaciones
+  - Evita discontinuidades no físicas que podrían surgir de una mediana punto a punto pura
+- **Desventajas**: No corresponde directamente a un conjunto único de parámetros "medianos"
+
+**¿Cuándo Difieren Significativamente?**
+
+Las dos curvas son muy similares cuando:
+- Las distribuciones de parámetros son aproximadamente gaussianas
+- No hay correlaciones fuertes entre parámetros
+- La incertidumbre es baja
+
+Las dos curvas pueden diferir significativamente cuando:
+- Hay **correlaciones fuertes** entre parámetros (especialmente $t_0$, $t_{\text{rise}}$, $\gamma$)
+- Las distribuciones son **asimétricas o multimodales**
+- La **incertidumbre es alta** (bandas de confianza anchas)
+
+**Recomendación:**
+
+Para publicaciones científicas, se recomienda reportar los **parámetros de la mediana** (línea azul) ya que son interpretables y corresponden a lo mostrado en el corner plot. Sin embargo, la línea verde proporciona una mejor representación visual de la "curva típica" cuando hay alta incertidumbre o correlaciones.
 
 ## Guardar Resultados
 

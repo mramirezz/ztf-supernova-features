@@ -35,20 +35,20 @@ MCMC_CONFIG = {
 MODEL_CONFIG = {
     "param_names": ["A", "f", "t0", "t_rise", "t_fall", "gamma"],
     "bounds": {
-        "A": (1e-10, 1e-5),
+        "A": (1e-10, 1e-5),      # Amplitud típica de supernovas
         "f": (0.0, 1.0),
-        "t0": (-50.0, 50.0),
-        "t_rise": (1.0, 100.0),
-        "t_fall": (1.0, 100.0),
-        "gamma": (1.0, 100.0)
+        "t0": (-200.0, 50.0),    # Tiempo de referencia: -200 a +50 días
+        "t_rise": (1.0, 100.0),  # Tiempo de subida: 1-100 días
+        "t_fall": (1.0, 200.0),  # Tiempo de caída: 1-200 días
+        "gamma": (1.0, 150.0)    # Gamma: 1-150 días (duración del plateau)
     }
 }
 
-# Configuración de gráficos
+# Configuración de gráficos (estilo A&A)
 PLOT_CONFIG = {
-    "dpi": 300,
+    "dpi": 150,
     "format": "png",
-    "figsize": (10, 6)
+    "figsize": (6, 5),  # Proporción casi cuadrada estilo A&A column width
 }
 
 # Filtros a procesar (lista de filtros a extraer features)

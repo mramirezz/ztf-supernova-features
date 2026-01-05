@@ -3,20 +3,57 @@ Generación de gráficos para visualización de ajustes
 """
 import matplotlib.pyplot as plt
 import matplotlib
-# Configuración de estilo para papers científicos (sans-serif)
-matplotlib.rcParams['font.family'] = 'sans-serif'
-matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Liberation Sans', 'Arial', 'Helvetica', 'sans-serif']
-matplotlib.rcParams['font.size'] = 11
-matplotlib.rcParams['axes.labelsize'] = 11
-matplotlib.rcParams['axes.titlesize'] = 12
-matplotlib.rcParams['xtick.labelsize'] = 10
-matplotlib.rcParams['ytick.labelsize'] = 10
-matplotlib.rcParams['legend.fontsize'] = 9
-matplotlib.rcParams['figure.titlesize'] = 13
-matplotlib.rcParams['axes.linewidth'] = 1.0
-matplotlib.rcParams['grid.linewidth'] = 0.7
+
+# =============================================================================
+# ESTILO A&A (Astronomy & Astrophysics) - Computer Modern / LaTeX style
+# =============================================================================
+
+# Usar estilo LaTeX (Computer Modern fonts)
+matplotlib.rcParams['text.usetex'] = False  # True requiere LaTeX instalado
+matplotlib.rcParams['font.family'] = 'serif'
+matplotlib.rcParams['font.serif'] = ['cmr10', 'Computer Modern Roman', 'DejaVu Serif']
+matplotlib.rcParams['mathtext.fontset'] = 'cm'  # Computer Modern para math
+matplotlib.rcParams['axes.unicode_minus'] = False  # Usar guión ASCII para signo menos
+
+# Tamaños de fuente estilo A&A (compactos)
+matplotlib.rcParams['font.size'] = 8
+matplotlib.rcParams['axes.labelsize'] = 9
+matplotlib.rcParams['axes.titlesize'] = 9
+matplotlib.rcParams['xtick.labelsize'] = 7
+matplotlib.rcParams['ytick.labelsize'] = 7
+matplotlib.rcParams['legend.fontsize'] = 6
+matplotlib.rcParams['figure.titlesize'] = 10
+
+# Líneas finas estilo journal
+matplotlib.rcParams['axes.linewidth'] = 0.6
+matplotlib.rcParams['grid.linewidth'] = 0.3
+matplotlib.rcParams['grid.alpha'] = 0.4
+matplotlib.rcParams['lines.linewidth'] = 1.2
+matplotlib.rcParams['lines.markersize'] = 4
+
+# Spines - todos visibles para A&A
 matplotlib.rcParams['axes.spines.top'] = True
 matplotlib.rcParams['axes.spines.right'] = True
+
+# Leyenda muy compacta
+matplotlib.rcParams['legend.frameon'] = True
+matplotlib.rcParams['legend.framealpha'] = 0.95
+matplotlib.rcParams['legend.edgecolor'] = '0.7'
+matplotlib.rcParams['legend.borderpad'] = 0.2
+matplotlib.rcParams['legend.handlelength'] = 1.0
+matplotlib.rcParams['legend.handletextpad'] = 0.4
+matplotlib.rcParams['legend.labelspacing'] = 0.2
+
+# Ticks hacia adentro (estilo A&A)
+matplotlib.rcParams['xtick.direction'] = 'in'
+matplotlib.rcParams['ytick.direction'] = 'in'
+matplotlib.rcParams['xtick.top'] = True
+matplotlib.rcParams['ytick.right'] = True
+
+# Padding mínimo
+matplotlib.rcParams['axes.titlepad'] = 3
+matplotlib.rcParams['axes.labelpad'] = 2
+
 import numpy as np
 from typing import Dict
 from config import PLOT_CONFIG
@@ -39,26 +76,26 @@ def plot_fit(phase, mag, mag_err, mag_model, flux, flux_model,
     """
     fig, axes = plt.subplots(2, 1, figsize=PLOT_CONFIG["figsize"])
     
-    # Plot en magnitud
+    # Magnitude plot
     axes[0].errorbar(phase, mag, yerr=mag_err, fmt='o', alpha=0.6, 
-                     label='Observaciones', markersize=4)
-    axes[0].plot(phase, mag_model, 'r-', linewidth=2, label='Modelo MCMC')
-    axes[0].set_xlabel('Fase (días)')
-    axes[0].set_ylabel('Magnitud')
-    axes[0].set_title(f'{sn_name} - Filtro {filter_name} (Magnitud)')
+                     label='Observations', markersize=4)
+    axes[0].plot(phase, mag_model, 'r-', linewidth=2, label='MCMC Model')
+    axes[0].set_xlabel('Phase (days)')
+    axes[0].set_ylabel('Magnitude')
+    axes[0].set_title(f'{sn_name} - Filter {filter_name} (Magnitude)')
     axes[0].legend()
-    axes[0].grid(True, alpha=0.3)
+    axes[0].grid(False)  # A&A style: no background grid
     axes[0].invert_yaxis()
     
-    # Plot en flujo
+    # Flux plot
     axes[1].errorbar(phase, flux, yerr=None, fmt='o', alpha=0.6,
-                     label='Observaciones', markersize=4)
-    axes[1].plot(phase, flux_model, 'r-', linewidth=2, label='Modelo MCMC')
-    axes[1].set_xlabel('Fase (días)')
-    axes[1].set_ylabel('Flujo')
-    axes[1].set_title(f'{sn_name} - Filtro {filter_name} (Flujo)')
+                     label='Observations', markersize=4)
+    axes[1].plot(phase, flux_model, 'r-', linewidth=2, label='MCMC Model')
+    axes[1].set_xlabel('Phase (days)')
+    axes[1].set_ylabel(r'Flux (erg s$^{-1}$ cm$^{-2}$)')
+    axes[1].set_title(f'{sn_name} - Filter {filter_name} (Flux)')
     axes[1].legend()
-    axes[1].grid(True, alpha=0.3)
+    axes[1].grid(False)  # A&A style: no background grid
     
     plt.tight_layout()
     
@@ -74,9 +111,10 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                               sn_name=None, filter_name=None, save_path=None,
                               phase_ul=None, mag_ul=None, flux_ul=None,
                               is_upper_limit=None, flux_err=None, had_upper_limits=None,
-                              xlim=None):
+                              xlim=None, param_medians_phase_relative=None,
+                              param_medians=None):
     """
-    Generar gráfico de ajuste mostrando múltiples realizaciones del MCMC
+    Generar gráfico de ajuste mostrando la mediana de parámetros con bandas de confianza
     
     Parameters:
     -----------
@@ -85,9 +123,9 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     mag_model, flux_model : arrays
         Modelo ajustado (mediana) evaluado en los puntos observados
     samples : array (n_samples, n_params)
-        TODOS los samples del MCMC (para mediana se usan todos)
+        TODOS los samples del MCMC (para calcular bandas de confianza)
     n_samples_to_show : int
-        Número de realizaciones a mostrar para visualización (0 = solo mediana)
+        No usado (mantenido por compatibilidad)
     phase_ul, mag_ul, flux_ul : arrays, optional
         Upper limits para mostrar en el gráfico (NO usados en fit)
     is_upper_limit : array of bool, optional
@@ -104,12 +142,10 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     from model import alerce_model, flux_to_mag
     
     fig, axes = plt.subplots(2, 1, figsize=PLOT_CONFIG["figsize"], sharex=True)
-    fig.subplots_adjust(hspace=0.0, top=0.95, bottom=0.1, left=0.12, right=0.95)  # Márgenes compactos
-    fig.suptitle(f'{sn_name} - Filter {filter_name}', fontsize=13, fontweight='bold', y=0.98)
+    fig.subplots_adjust(hspace=0.05, top=0.92, bottom=0.12, left=0.12, right=0.97)
+    fig.suptitle(f'{sn_name} - Filter {filter_name}', fontsize=10, fontweight='bold', y=0.97)
     
     # Crear array de fase denso para curvas suaves
-    # Si había upper limits ANTES de combinarlos (aunque se filtraron después), solo extender 5 días antes
-    # Si no había upper limits, extender 10 días antes para contexto
     phase_min = phase.min()
     phase_max = phase.max()
     
@@ -117,7 +153,6 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     if had_upper_limits is not None:
         has_ul = had_upper_limits
     else:
-        # Fallback: verificar is_upper_limit (pero puede estar vacío si se filtraron)
         has_ul = (is_upper_limit is not None and np.any(is_upper_limit))
     
     # Extensión antes del mínimo: 5 días si había upper limits, 10 días si no
@@ -126,179 +161,106 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     
     phase_smooth = np.arange(phase_min - extension_before, phase_max + extension_after + 0.5, 1.0)
     
-    # Filtrar y seleccionar samples representativos para visualización
-    selected_samples = None
-    model_fluxes_smooth = []  # Modelos evaluados en fase suave
+    # ==========================================================================
+    # CALCULAR AMBAS MEDIANAS Y BANDAS DE CONFIANZA
+    # ==========================================================================
+    # 1. Mediana de parámetros: curva(median(A), median(f), ...) - línea punteada
+    # 2. Mediana de curvas: percentil 50 de todas las curvas - línea sólida
+    # Las bandas muestran los percentiles de las curvas de todos los samples válidos
+    # ==========================================================================
     
-    if n_samples_to_show > 0 and samples is not None:
-        # PRIMERO: Filtrar samples que están dentro de los bounds válidos
-        from config import MODEL_CONFIG
-        bounds = MODEL_CONFIG["bounds"]
-        param_names = ['A', 'f', 't0', 't_rise', 't_fall', 'gamma']
+    # Usar param_medians pasado como parámetro (viene de mcmc_results['params'])
+    # Si no se pasa, calcular desde samples (fallback)
+    if param_medians is None and samples is not None:
+        param_medians = np.median(samples, axis=0)
+    param_names = ['A', 'f', 't0', 't_rise', 't_fall', 'gamma']
+    
+    # Calcular curva de la mediana de parámetros
+    flux_model_params = None  # Curva de mediana de parámetros
+    mag_model_params = None
+    
+    if param_medians is not None:
+        try:
+            flux_model_params = alerce_model(phase_smooth, *param_medians)
+            flux_model_params = np.clip(flux_model_params, 1e-10, None)
+            mag_model_params = flux_to_mag(flux_model_params)
+        except:
+            pass
         
-        valid_bounds_mask = np.ones(len(samples), dtype=bool)
-        for i, param_name in enumerate(param_names):
-            bound_min, bound_max = bounds[param_name]
-            param_values = samples[:, i]
-            valid_bounds_mask &= (param_values > bound_min) & (param_values < bound_max)
+        # DEBUG: Mostrar parámetros de la mediana
+        is_param_medians_mjd = param_medians[2] > 50000
+        print(f"    [DEBUG] Parámetros MEDIANA - {'EN MJD' if is_param_medians_mjd else 'EN FASE RELATIVA'}:")
+        for i, name in enumerate(param_names):
+            print(f"      {name} = {param_medians[i]:.6e}")
         
-        samples_in_bounds = samples[valid_bounds_mask]
+        if param_medians_phase_relative is not None:
+            print(f"    [DEBUG] Parámetros MEDIANA (fase relativa, referencia):")
+            for i, name in enumerate(param_names):
+                print(f"      {name} = {param_medians_phase_relative[i]:.6e}")
+    
+    # Inicializar mediana de curvas (se calculará abajo si hay suficientes samples)
+    flux_model_curves = None  # Mediana de curvas (percentil 50)
+    mag_model_curves = None
+    
+    # Calcular bandas de confianza (percentiles de las curvas de samples)
+    flux_band_1sigma = None  # (lower_16, upper_84)
+    flux_band_2sigma = None  # (lower_2.5, upper_97.5)
+    mag_band_1sigma = None
+    mag_band_2sigma = None
+    sample_indices = None  # Inicializar para retornar después
+    
+    if samples is not None and len(samples) > 0:
+        # Usar muestreo sistemático (cada N samples) para representatividad
+        n_samples_for_bands = min(500, len(samples))
+        step = max(1, len(samples) // n_samples_for_bands)
+        sample_indices = np.arange(0, len(samples), step)[:n_samples_for_bands]
         
-        if len(samples_in_bounds) == 0:
-            # Si no hay samples válidos, usar todos pero con advertencia
-            samples_in_bounds = samples
-        
-        # SEGUNDO: Filtrar samples que generan modelos válidos
-        valid_model_samples = []
-        valid_model_indices = []
-        
-        for idx, params in enumerate(samples_in_bounds):
+        # Evaluar modelo para cada sample seleccionado
+        all_flux_curves = []
+        for idx in sample_indices:
             try:
-                # Probar evaluar el modelo en un rango pequeño primero
-                test_phase = np.linspace(phase_smooth.min(), phase_smooth.max(), 10)
-                test_flux = alerce_model(test_phase, *params)
-                
-                # Verificar que el modelo sea válido
-                if (np.all(np.isfinite(test_flux)) and 
-                    np.all(test_flux > 0) and 
-                    np.all(test_flux < 1e10)):  # Límite superior razonable
-                    valid_model_samples.append(params)
-                    valid_model_indices.append(idx)
+                flux_curve = alerce_model(phase_smooth, *samples[idx])
+                flux_curve = np.clip(flux_curve, 1e-10, None)
+                if np.all(np.isfinite(flux_curve)) and np.all(flux_curve > 0) and np.all(flux_curve < 1e10):
+                    all_flux_curves.append(flux_curve)
             except:
                 continue
         
-        if len(valid_model_samples) == 0:
-            # Si no hay samples válidos, usar la mediana solamente
-            valid_model_samples = []
-        else:
-            valid_model_samples = np.array(valid_model_samples)
-        
-        # TERCERO: De los samples válidos, seleccionar representativos del intervalo de confianza
-        if len(valid_model_samples) > 0:
-            # Calcular estadísticas de la distribución
-            param_medians = np.median(valid_model_samples, axis=0)
-            param_percentiles_16 = np.percentile(valid_model_samples, 16, axis=0)
-            param_percentiles_84 = np.percentile(valid_model_samples, 84, axis=0)
+        if len(all_flux_curves) >= 10:  # Necesitamos suficientes curvas para percentiles
+            all_flux_curves = np.array(all_flux_curves)
             
-            # Filtrar samples que están dentro del intervalo de confianza razonable (3 sigmas)
-            param_stds = np.std(valid_model_samples, axis=0)
-            z_scores = np.abs((valid_model_samples - param_medians) / (param_stds + 1e-10))
-            valid_mask = np.all(z_scores <= 3, axis=1)  # 3 sigmas para incluir más incertidumbre
-            valid_samples = valid_model_samples[valid_mask]
+            # Calcular percentiles para bandas de confianza
+            # 1-sigma: 68% del intervalo (percentiles 16-84)
+            flux_p16 = np.percentile(all_flux_curves, 16, axis=0)
+            flux_p50 = np.percentile(all_flux_curves, 50, axis=0)  # Mediana de curvas
+            flux_p84 = np.percentile(all_flux_curves, 84, axis=0)
+            flux_band_1sigma = (flux_p16, flux_p84)
             
-            if len(valid_samples) == 0:
-                valid_samples = valid_model_samples  # Usar todos si el filtro es muy estricto
+            # 2-sigma: 95% del intervalo (percentiles 2.5-97.5)
+            flux_p2_5 = np.percentile(all_flux_curves, 2.5, axis=0)
+            flux_p97_5 = np.percentile(all_flux_curves, 97.5, axis=0)
+            flux_band_2sigma = (flux_p2_5, flux_p97_5)
             
-            # Seleccionar samples que representen el intervalo de confianza
-            # ESTRATEGIA MEJORADA: Priorizar samples cercanos a mediana y promedio
-            # para que las curvas rojas sean consistentes con las líneas verde y azul
-            n_samples = min(n_samples_to_show, len(valid_samples))
+            # Convertir a magnitud
+            mag_band_1sigma = (flux_to_mag(flux_p84), flux_to_mag(flux_p16))  # Invertido porque mag inversa
+            mag_band_2sigma = (flux_to_mag(flux_p97_5), flux_to_mag(flux_p2_5))
             
-            if n_samples < len(valid_samples):
-                selected_indices = []
-                
-                # Calcular distancias normalizadas a mediana y promedio
-                # Normalizar por la desviación estándar de cada parámetro para que todos tengan el mismo peso
-                param_stds = np.std(valid_samples, axis=0)
-                param_stds = np.where(param_stds < 1e-10, 1.0, param_stds)  # Evitar división por cero
-                
-                # Distancias normalizadas a la mediana
-                distances_to_median = np.sqrt(np.sum(((valid_samples - param_medians) / param_stds)**2, axis=1))
-                
-                # Calcular promedio también
-                param_means = np.mean(valid_samples, axis=0)
-                distances_to_mean = np.sqrt(np.sum(((valid_samples - param_means) / param_stds)**2, axis=1))
-                
-                # Ordenar samples por cercanía a mediana (más cercanos primero)
-                sorted_by_median = np.argsort(distances_to_median)
-                
-                # Estrategia de selección:
-                # 1. Los primeros 20% más cercanos a la mediana (representan el centro de la distribución)
-                # 2. Algunos cercanos al promedio (para cubrir esa región también)
-                # 3. El resto distribuidos en anillos alrededor de la mediana
-                
-                n_center = max(1, int(n_samples * 0.2))  # 20% del centro
-                n_mean = max(1, int(n_samples * 0.1))    # 10% cercanos al promedio
-                n_rest = n_samples - n_center - n_mean    # Resto distribuido
-                
-                # 1. Seleccionar los más cercanos a la mediana
-                for idx in sorted_by_median[:n_center]:
-                    if idx not in selected_indices:
-                        selected_indices.append(idx)
-                
-                # 2. Seleccionar algunos cercanos al promedio
-                sorted_by_mean = np.argsort(distances_to_mean)
-                mean_count = 0
-                for idx in sorted_by_mean:
-                    if idx not in selected_indices and mean_count < n_mean:
-                        selected_indices.append(idx)
-                        mean_count += 1
-                
-                # 3. Distribuir el resto en anillos alrededor de la mediana
-                # Dividir el rango de distancias en cuantiles y seleccionar uno de cada
-                if n_rest > 0 and len(selected_indices) < n_samples:
-                    remaining_indices = [i for i in range(len(valid_samples)) if i not in selected_indices]
-                    if len(remaining_indices) > 0:
-                        # Ordenar los restantes por distancia a mediana
-                        remaining_distances = distances_to_median[remaining_indices]
-                        remaining_sorted = np.argsort(remaining_distances)
-                        
-                        # Seleccionar distribuidos en el rango de distancias
-                        if n_rest <= len(remaining_sorted):
-                            # Dividir en n_rest grupos y tomar uno de cada grupo
-                            step = max(1, len(remaining_sorted) // n_rest)
-                            for i in range(0, len(remaining_sorted), step):
-                                if len(selected_indices) < n_samples:
-                                    idx = remaining_indices[remaining_sorted[i]]
-                                    selected_indices.append(idx)
-                        else:
-                            # Si necesitamos más, tomar todos los restantes ordenados
-                            for i in remaining_sorted:
-                                if len(selected_indices) < n_samples:
-                                    idx = remaining_indices[i]
-                                    selected_indices.append(idx)
-                
-                # Asegurar que tenemos exactamente n_samples
-                selected_indices = selected_indices[:n_samples]
-            else:
-                selected_indices = np.arange(len(valid_samples))
+            # Encontrar la curva REAL más cercana a la mediana punto a punto
+            # Esto garantiza que sea una curva físicamente realizable (de un set real de parámetros)
+            distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
+            best_curve_idx = np.argmin(distances)
+            flux_model_curves = all_flux_curves[best_curve_idx]
+            mag_model_curves = flux_to_mag(flux_model_curves)
             
-            selected_samples = valid_samples[selected_indices]
+            print(f"    [DEBUG] Bandas de confianza calculadas con {len(all_flux_curves)} curvas válidas")
+            print(f"    [DEBUG] Curva central: índice {best_curve_idx} (distancia mínima a mediana)")
             
-            # CUARTO: Pre-calcular todos los modelos en fase suave (más eficiente)
-            for params in selected_samples:
-                try:
-                    model_flux_smooth = alerce_model(phase_smooth, *params)
-                    model_flux_smooth = np.clip(model_flux_smooth, 1e-10, None)
-                    
-                    # Verificación más estricta
-                    if (np.all(np.isfinite(model_flux_smooth)) and 
-                        np.all(model_flux_smooth > 0) and
-                        np.all(model_flux_smooth < 1e10) and
-                        np.all(np.isfinite(flux_to_mag(model_flux_smooth)))):
-                        model_fluxes_smooth.append(model_flux_smooth)
-                except:
-                    continue
+            # Liberar memoria del array grande
+            del all_flux_curves
     
-    # Evaluar modelo mediano y promedio en fase suave también
-    param_medians = np.median(samples, axis=0) if samples is not None else None
-    param_means = np.mean(samples, axis=0) if samples is not None else None
-    
-    if param_medians is not None:
-        mag_model_smooth = flux_to_mag(np.clip(alerce_model(phase_smooth, *param_medians), 1e-10, None))
-        flux_model_smooth = alerce_model(phase_smooth, *param_medians)
-    
-    if param_means is not None:
-        mag_model_smooth_mean = flux_to_mag(np.clip(alerce_model(phase_smooth, *param_means), 1e-10, None))
-        flux_model_smooth_mean = alerce_model(phase_smooth, *param_means)
-    
-    # Plotear todas las curvas de magnitud en fase suave (primero, para que queden atrás)
-    for model_flux_smooth in model_fluxes_smooth:
-        mag_model_smooth_sample = flux_to_mag(model_flux_smooth)
-        if not (np.any(np.isnan(mag_model_smooth_sample)) or np.any(np.isinf(mag_model_smooth_sample))):
-            axes[0].plot(phase_smooth, mag_model_smooth_sample, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
-    
-    # Separar observaciones normales de upper limits usados en el fit (para magnitud)
+    # ==========================================================================
+    # SEPARAR OBSERVACIONES NORMALES DE UPPER LIMITS
+    # ==========================================================================
     if is_upper_limit is not None and np.any(is_upper_limit):
         mask_normal = ~is_upper_limit
         mask_ul_fit = is_upper_limit
@@ -316,31 +278,28 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         phase_ul_fit_mag = np.array([])
         mag_ul_fit = np.array([])
     
-    # Plotear todas las curvas de magnitud en fase suave (primero, para que queden atrás)
-    for model_flux_smooth in model_fluxes_smooth:
-        mag_model_smooth_sample = flux_to_mag(model_flux_smooth)
-        if not (np.any(np.isnan(mag_model_smooth_sample)) or np.any(np.isinf(mag_model_smooth_sample))):
-            axes[0].plot(phase_smooth, mag_model_smooth_sample, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
+    # ==========================================================================
+    # PLOT DE MAGNITUD
+    # ==========================================================================
     
-    # Separar observaciones normales de upper limits usados en el fit (para magnitud)
-    if is_upper_limit is not None and np.any(is_upper_limit):
-        mask_normal = ~is_upper_limit
-        mask_ul_fit = is_upper_limit
-        
-        phase_normal_mag = phase[mask_normal]
-        mag_normal = mag[mask_normal]
-        mag_err_normal = mag_err[mask_normal] if mag_err is not None and len(mag_err) == len(mag) else None
-        
-        phase_ul_fit_mag = phase[mask_ul_fit]
-        mag_ul_fit = mag[mask_ul_fit]
-    else:
-        phase_normal_mag = phase
-        mag_normal = mag
-        mag_err_normal = mag_err if (mag_err is not None and len(mag_err) == len(mag)) else None
-        phase_ul_fit_mag = np.array([])
-        mag_ul_fit = np.array([])
+    # Banda de confianza 1-sigma (68%)
+    if mag_band_1sigma is not None:
+        lower_1s, upper_1s = mag_band_1sigma
+        if np.all(np.isfinite(lower_1s)) and np.all(np.isfinite(upper_1s)):
+            axes[0].fill_between(phase_smooth, lower_1s, upper_1s, 
+                                color='#CD5C5C', alpha=0.3, zorder=2, label='68% CI')
     
-    # Plot en magnitud - observaciones normales
+    # Mediana de curvas (línea verde SÓLIDA) - siempre en el centro del CI
+    if mag_model_curves is not None:
+        axes[0].plot(phase_smooth, mag_model_curves, '-', linewidth=2.5, 
+                    label='Median of Curves', zorder=5, color='#1B4332')
+    
+    # Mediana de parámetros (línea azul PUNTEADA) - puede diferir por correlaciones
+    if mag_model_params is not None:
+        axes[0].plot(phase_smooth, mag_model_params, '--', linewidth=2.0, 
+                    label='Median of Params', zorder=4, color='#4169E1')
+    
+    # 4. Observaciones normales
     if len(phase_normal_mag) > 0:
         if mag_err_normal is not None and not np.all(np.isnan(mag_err_normal)):
             axes[0].errorbar(phase_normal_mag, mag_normal, yerr=mag_err_normal, fmt='o', alpha=0.7,
@@ -350,7 +309,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[0].errorbar(phase_normal_mag, mag_normal, yerr=None, fmt='o', alpha=0.7,
                              label='Observations', markersize=5, zorder=10, color='#2E86AB')
     
-    # Plot upper limits usados en el fit (símbolo diferente: triángulo verde)
+    # 5. Upper limits usados en el fit
     if len(phase_ul_fit_mag) > 0:
         axes[0].scatter(phase_ul_fit_mag, mag_ul_fit, marker='^', color='green', alpha=0.8, 
                        s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
@@ -358,7 +317,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
                             arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
     
-    # Plot upper limits NO usados en el fit (solo para visualización)
+    # 6. Upper limits NO usados en el fit
     if phase_ul is not None and mag_ul is not None and len(phase_ul) > 0:
         axes[0].scatter(phase_ul, mag_ul, marker='v', color='orange', alpha=0.7, 
                        s=60, label='Upper limits (not in fit)', zorder=8)
@@ -366,55 +325,39 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
                             arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
     
-    # Modelo mediano en fase suave (más visible)
-    if param_medians is not None:
-        axes[0].plot(phase_smooth, mag_model_smooth, '-', linewidth=2.5, 
-                    label='MCMC Median', zorder=5, color='#1B4332')
-    
-    # Modelo promedio en fase suave
-    if param_means is not None:
-        axes[0].plot(phase_smooth, mag_model_smooth_mean, '--', linewidth=2, 
-                    label='MCMC Mean', zorder=5, color='#40916C', dashes=(5, 3))
-    
-    # Calcular ylim basado en datos observados, mediana y promedio (no en líneas rojas)
+    # Configurar eje de magnitud
     mag_all = [mag]
-    if param_medians is not None:
-        mag_all.append(mag_model_smooth)
-    if param_means is not None:
-        mag_all.append(mag_model_smooth_mean)
+    if mag_model_curves is not None:
+        mag_all.append(mag_model_curves)
+    if mag_model_params is not None:
+        mag_all.append(mag_model_params)
     
     mag_combined = np.concatenate([m for m in mag_all if len(m) > 0])
     if len(mag_combined) > 0:
-        mag_min = np.nanmin(mag_combined)  # Valor más pequeño = más brillante
-        mag_max = np.nanmax(mag_combined)  # Valor más grande = más débil
+        mag_min = np.nanmin(mag_combined)
+        mag_max = np.nanmax(mag_combined)
         mag_range = mag_max - mag_min
-        # Agregar margen del 10% arriba y abajo
-        # Con invert_yaxis(), queremos que arriba esté el valor más pequeño (más brillante)
-        # y abajo el valor más grande (más débil)
         axes[0].set_ylim(mag_min - 0.1 * mag_range, mag_max + 0.1 * mag_range)
     
-    axes[0].set_ylabel('Magnitude', fontsize=12)
+    axes[0].set_ylabel('Magnitude', fontsize=10)
     axes[0].legend(loc='best', frameon=True, fancybox=True, shadow=True)
-    axes[0].grid(True, alpha=0.3, linestyle='--', linewidth=0.8)
+    axes[0].grid(False)  # A&A style: no background grid
     axes[0].tick_params(direction='in', which='both', top=True, right=True)
-    axes[0].tick_params(axis='x', labelbottom=True)  # Forzar mostrar labels del eje X
-    axes[0].invert_yaxis()  # Invertir: valores más pequeños (más brillantes) arriba
+    axes[0].tick_params(axis='x', labelbottom=True)
+    axes[0].invert_yaxis()
     
-    # Usar los mismos modelos ya calculados para flujo (sin recalcular) - primero
-    for model_flux_smooth in model_fluxes_smooth:
-        axes[1].plot(phase_smooth, model_flux_smooth, 'r-', alpha=0.1, linewidth=0.5, zorder=1)
+    # ==========================================================================
+    # PLOT DE FLUJO
+    # ==========================================================================
     
-    # Separar observaciones normales de upper limits usados en el fit (para flujo)
+    # Separar observaciones normales de upper limits (para flujo)
     if is_upper_limit is not None and np.any(is_upper_limit):
         mask_normal = ~is_upper_limit
         mask_ul_fit = is_upper_limit
         
         phase_normal_flux = phase[mask_normal]
         flux_normal = flux[mask_normal]
-        if flux_err is not None and len(flux_err) == len(flux):
-            flux_err_normal = flux_err[mask_normal]
-        else:
-            flux_err_normal = None
+        flux_err_normal = flux_err[mask_normal] if flux_err is not None and len(flux_err) == len(flux) else None
         
         phase_ul_fit_flux = phase[mask_ul_fit]
         flux_ul_fit = flux[mask_ul_fit]
@@ -425,28 +368,24 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         phase_ul_fit_flux = np.array([])
         flux_ul_fit = np.array([])
     
-    # Separar observaciones normales de upper limits usados en el fit (para flujo)
-    if is_upper_limit is not None and np.any(is_upper_limit):
-        mask_normal = ~is_upper_limit
-        mask_ul_fit = is_upper_limit
-        
-        phase_normal_flux = phase[mask_normal]
-        flux_normal = flux[mask_normal]
-        if flux_err is not None and len(flux_err) == len(flux):
-            flux_err_normal = flux_err[mask_normal]
-        else:
-            flux_err_normal = None
-        
-        phase_ul_fit_flux = phase[mask_ul_fit]
-        flux_ul_fit = flux[mask_ul_fit]
-    else:
-        phase_normal_flux = phase
-        flux_normal = flux
-        flux_err_normal = flux_err if (flux_err is not None and len(flux_err) == len(flux)) else None
-        phase_ul_fit_flux = np.array([])
-        flux_ul_fit = np.array([])
+    # Banda de confianza 1-sigma (68%)
+    if flux_band_1sigma is not None:
+        lower_1s, upper_1s = flux_band_1sigma
+        if np.all(np.isfinite(lower_1s)) and np.all(np.isfinite(upper_1s)):
+            axes[1].fill_between(phase_smooth, lower_1s, upper_1s, 
+                                color='#CD5C5C', alpha=0.3, zorder=2, label='68% CI')
     
-    # Plot en flujo - observaciones normales
+    # Mediana de curvas (línea verde SÓLIDA) - siempre en el centro del CI
+    if flux_model_curves is not None:
+        axes[1].plot(phase_smooth, flux_model_curves, '-', linewidth=2.5, 
+                    label='Median of Curves', zorder=5, color='#1B4332')
+    
+    # Mediana de parámetros (línea azul PUNTEADA) - puede diferir por correlaciones
+    if flux_model_params is not None:
+        axes[1].plot(phase_smooth, flux_model_params, '--', linewidth=2.0, 
+                    label='Median of Params', zorder=4, color='#4169E1')
+    
+    # 4. Observaciones normales
     if len(phase_normal_flux) > 0:
         if flux_err_normal is not None and not np.all(np.isnan(flux_err_normal)):
             axes[1].errorbar(phase_normal_flux, flux_normal, yerr=flux_err_normal, fmt='o', alpha=0.7,
@@ -456,7 +395,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[1].errorbar(phase_normal_flux, flux_normal, yerr=None, fmt='o', alpha=0.7,
                              label='Observations', markersize=5, zorder=10, color='#2E86AB')
     
-    # Plot upper limits usados en el fit (símbolo diferente: triángulo verde)
+    # 5. Upper limits usados en el fit
     if len(phase_ul_fit_flux) > 0:
         axes[1].scatter(phase_ul_fit_flux, flux_ul_fit, marker='^', color='green', alpha=0.8, 
                        s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
@@ -466,7 +405,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[1].annotate('', xy=(px, py), xytext=(px, py - arrow_length),
                             arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
     
-    # Plot upper limits NO usados en el fit (solo para visualización)
+    # 6. Upper limits NO usados en el fit
     if phase_ul is not None and flux_ul is not None and len(phase_ul) > 0:
         axes[1].scatter(phase_ul, flux_ul, marker='v', color='orange', alpha=0.7, 
                        s=60, label='Upper limits (not in fit)', zorder=8)
@@ -476,47 +415,32 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             axes[1].annotate('', xy=(px, py), xytext=(px, py - arrow_length),
                             arrowprops=dict(arrowstyle='->', color='orange', alpha=0.7, lw=1.5))
     
-    # Modelo mediano en fase suave (más visible)
-    if param_medians is not None:
-        axes[1].plot(phase_smooth, flux_model_smooth, '-', linewidth=2.5, 
-                    label='MCMC Median', zorder=5, color='#1B4332')
+    # Detectar si phase es MJD o fase relativa
+    is_mjd = len(phase) > 0 and phase.min() > 50000
+    xlabel = 'MJD' if is_mjd else 'Phase (days)'
     
-    # Modelo promedio en fase suave
-    if param_means is not None:
-        axes[1].plot(phase_smooth, flux_model_smooth_mean, '--', linewidth=2, 
-                    label='MCMC Mean', zorder=5, color='#40916C', dashes=(5, 3))
-    
-    # Calcular ylim basado en datos observados, mediana y promedio (no en líneas rojas)
+    # Configurar eje de flujo
     flux_all = [flux]
-    if param_medians is not None:
-        flux_all.append(flux_model_smooth)
-    if param_means is not None:
-        flux_all.append(flux_model_smooth_mean)
+    if flux_model_curves is not None:
+        flux_all.append(flux_model_curves)
+    if flux_model_params is not None:
+        flux_all.append(flux_model_params)
     
     flux_combined = np.concatenate([f for f in flux_all if len(f) > 0])
     if len(flux_combined) > 0:
         flux_min = np.nanmin(flux_combined)
         flux_max = np.nanmax(flux_combined)
         flux_range = flux_max - flux_min
-        # Agregar margen del 10% arriba y abajo
         axes[1].set_ylim(max(0, flux_min - 0.1 * flux_range), flux_max + 0.1 * flux_range)
     
-    # Detectar si phase es MJD (valores grandes > 50000) o fase relativa (valores pequeños)
-    # Si es MJD, usar label diferente
-    is_mjd = len(phase) > 0 and phase.min() > 50000
-    if is_mjd:
-        xlabel = 'MJD'
-    else:
-        xlabel = 'Phase (days)'
-    
-    # Actualizar labels de ambos subplots (comparten el eje X)
+    # Actualizar labels de los subplots (comparten el eje X)
     # Forzar mostrar ticks y labels en ambos subplots
     axes[0].tick_params(axis='x', labelbottom=True, bottom=True)
-    axes[0].set_xlabel(xlabel, fontsize=12)
-    axes[1].set_xlabel(xlabel, fontsize=12)
-    axes[1].set_ylabel('Flux', fontsize=12)
+    axes[0].set_xlabel(xlabel, fontsize=10)
+    axes[1].set_xlabel(xlabel, fontsize=10)
+    axes[1].set_ylabel(r'Flux (erg s$^{-1}$ cm$^{-2}$)', fontsize=9)
     axes[1].legend(loc='best', frameon=True, fancybox=True, shadow=True)
-    axes[1].grid(True, alpha=0.3, linestyle='--', linewidth=0.8)
+    axes[1].grid(False)  # A&A style: no background grid
     axes[1].tick_params(direction='in', which='both', top=True, right=True)
     
     # Aplicar límites comunes del eje X si se proporcionan
@@ -526,28 +450,216 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     
     plt.tight_layout()
     
+    # Retornar los sample_indices usados para reutilizarlos en plot_extended_model
     if save_path:
         plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
         plt.close(fig)  # Liberar memoria de la figura
-        return None
+        return None, sample_indices
     else:
-        return fig
+        return fig, sample_indices
 
-def plot_corner(samples, param_names=None, save_path=None):
+def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
+                       flux_err=None, sn_name=None, filter_name=None, save_path=None,
+                       early_time_offset=-500, late_time_offset=500, samples=None,
+                       precalculated_sample_indices=None):
+    """
+    Generar gráfico del modelo extendido para validación física
+    
+    Parameters:
+    -----------
+    phase : array
+        Fases (MJD o fase relativa) de las detecciones normales
+    flux : array
+        Flujos observados (solo para identificar primera y última detección)
+    param_medians : array
+        Parámetros medianos del modelo MCMC (fallback si no hay samples)
+    is_upper_limit : array of bool, optional
+        Máscara que indica qué puntos son upper limits
+    sn_name, filter_name : str
+        Identificadores
+    save_path : str, optional
+        Ruta para guardar figura
+    early_time_offset : float
+        Días antes de la primera detección para evaluar (default: -500)
+    late_time_offset : float
+        Días después de la última detección para evaluar (default: +500)
+    samples : array, optional
+        Samples del MCMC para calcular mediana de curvas (consistente con fit principal)
+    """
+    from model import alerce_model
+    
+    # Identificar primera y última detección normal
+    if is_upper_limit is not None and np.any(is_upper_limit):
+        mask_normal = ~is_upper_limit
+        phase_normal = phase[mask_normal]
+    else:
+        phase_normal = phase
+    
+    if len(phase_normal) == 0:
+        print(f"    [WARNING] No hay detecciones normales para generar modelo extendido")
+        return None
+    
+    first_phase = phase_normal.min()
+    last_phase = phase_normal.max()
+    
+    # Rango extendido: -500 días antes de primera detección, +500 días después de última
+    phase_extended = np.linspace(first_phase + early_time_offset, 
+                                 last_phase + late_time_offset, 500)
+    
+    try:
+        # Calcular mediana de parámetros (siempre)
+        flux_model_params = alerce_model(phase_extended, *param_medians)
+        flux_model_params = np.clip(flux_model_params, 1e-10, None)
+        
+        # Calcular mediana de curvas (si hay samples)
+        # REUTILIZAR los sample_indices precalculados si se proporcionan (Opción C)
+        flux_model_curves = None
+        if samples is not None and len(samples) > 0:
+            # Usar índices precalculados si están disponibles, sino calcular nuevos
+            if precalculated_sample_indices is not None:
+                # Tomar solo cada 10° índice para reducir a ~50 curvas (ahorro de memoria)
+                sample_indices = precalculated_sample_indices[::10]
+                print(f"    [DEBUG] Modelo extendido: usando {len(sample_indices)} de {len(precalculated_sample_indices)} sample_indices")
+            else:
+                # Calcular nuevos índices (fallback) - usar pocos para ahorrar memoria
+                n_samples_for_median = min(50, len(samples))
+                step = max(1, len(samples) // n_samples_for_median)
+                sample_indices = np.arange(0, len(samples), step)[:n_samples_for_median]
+            
+            all_flux_curves = []
+            for idx in sample_indices:
+                try:
+                    flux_curve = alerce_model(phase_extended, *samples[idx])
+                    flux_curve = np.clip(flux_curve, 1e-10, None)
+                    if np.all(np.isfinite(flux_curve)) and np.all(flux_curve > 0) and np.all(flux_curve < 1e10):
+                        all_flux_curves.append(flux_curve)
+                except:
+                    continue
+            
+            if len(all_flux_curves) >= 10:
+                all_flux_curves = np.array(all_flux_curves)
+                # Encontrar la curva REAL más cercana a la mediana punto a punto
+                flux_p50 = np.percentile(all_flux_curves, 50, axis=0)
+                distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
+                best_curve_idx = np.argmin(distances)
+                flux_model_curves = all_flux_curves[best_curve_idx]
+                print(f"    [DEBUG] Modelo extendido: {len(all_flux_curves)} curvas válidas, curva central idx={best_curve_idx}")
+                del all_flux_curves  # Liberar memoria
+        
+        # Crear figura separada
+        fig, ax = plt.subplots(1, 1, figsize=(PLOT_CONFIG["figsize"][0], PLOT_CONFIG["figsize"][1] * 0.55))
+        fig.subplots_adjust(top=0.88, bottom=0.15, left=0.12, right=0.97)
+        fig.suptitle(f'{sn_name} - {filter_name} - Extended', 
+                     fontsize=9, fontweight='bold', y=0.96)
+        
+        # Mediana de curvas (línea verde SÓLIDA)
+        if flux_model_curves is not None:
+            ax.plot(phase_extended, flux_model_curves, '-', linewidth=1.5, 
+                    color='#1B4332', alpha=0.9, label='Med. Curves', zorder=5)
+        
+        # Mediana de parámetros (línea azul PUNTEADA)
+        ax.plot(phase_extended, flux_model_params, '--', linewidth=1.2, 
+                color='#4169E1', alpha=0.9, label='Med. Params', zorder=4)
+        
+        # Plotear también los datos observados para que el ylim los incluya
+        # Usar la misma simbología que en los plots de fit (errorbar)
+        if len(flux) > 0:
+            # Separar datos normales de upper limits si aplica
+            if is_upper_limit is not None and np.any(is_upper_limit):
+                mask_normal = ~is_upper_limit
+                phase_normal = phase[mask_normal]
+                flux_normal = flux[mask_normal]
+                flux_err_normal = flux_err[mask_normal] if flux_err is not None else None
+            else:
+                phase_normal = phase
+                flux_normal = flux
+                flux_err_normal = flux_err
+            
+            # Plot observaciones normales con errorbar (misma simbología que plot normal)
+            if len(phase_normal) > 0:
+                if flux_err_normal is not None and not np.all(np.isnan(flux_err_normal)):
+                    ax.errorbar(phase_normal, flux_normal, yerr=flux_err_normal, fmt='o', alpha=0.7,
+                               label='Obs.', markersize=3, zorder=10, color='#2E86AB',
+                               capsize=1, capthick=0.5, elinewidth=0.8)
+                else:
+                    ax.errorbar(phase_normal, flux_normal, yerr=None, fmt='o', alpha=0.7,
+                               label='Obs.', markersize=3, zorder=10, color='#2E86AB')
+        
+        # Marcar rango observado con sombreado
+        ax.axvspan(first_phase, last_phase, alpha=0.15, color='green', 
+                   label='Obs. range', zorder=1)
+        
+        # Líneas verticales en primera y última detección
+        ax.axvline(first_phase, color='green', linestyle='--', linewidth=0.8, alpha=0.5, zorder=3)
+        ax.axvline(last_phase, color='green', linestyle='--', linewidth=0.8, alpha=0.5, zorder=3)
+        
+        # Marcar puntos de validación
+        flux_first = alerce_model(np.array([first_phase]), *param_medians)[0]
+        flux_early = alerce_model(np.array([first_phase + early_time_offset]), *param_medians)[0]
+        flux_last = alerce_model(np.array([last_phase]), *param_medians)[0]
+        flux_late = alerce_model(np.array([last_phase + late_time_offset]), *param_medians)[0]
+        
+        # Puntos de validación (sin labels para reducir leyenda)
+        ax.plot([first_phase + early_time_offset], [flux_early], 'ro', markersize=6, zorder=10)
+        ax.plot([first_phase], [flux_first], 'go', markersize=6, zorder=10)
+        ax.plot([last_phase], [flux_last], 'go', markersize=6, zorder=10)
+        ax.plot([last_phase + late_time_offset], [flux_late], 'ro', markersize=6, zorder=10)
+        
+        # Líneas de conexión para mostrar la validación
+        ax.plot([first_phase + early_time_offset, first_phase], [flux_early, flux_first], 
+                'r--', linewidth=0.8, alpha=0.4, zorder=4)
+        ax.plot([last_phase, last_phase + late_time_offset], [flux_last, flux_late], 
+                'r--', linewidth=0.8, alpha=0.4, zorder=4)
+        
+        # Detectar si phase es MJD (valores grandes > 50000) o fase relativa
+        is_mjd = len(phase) > 0 and phase.min() > 50000
+        xlabel = 'MJD' if is_mjd else 'Phase (days)'
+        
+        # Configurar el plot
+        ax.set_xlabel(xlabel, fontsize=8)
+        ax.set_ylabel(r'Flux (erg s$^{-1}$ cm$^{-2}$)', fontsize=8)
+        ax.grid(False)  # A&A style: no background grid
+        ax.legend(loc='upper right', fontsize=6, frameon=True, framealpha=0.9)
+        ax.tick_params(direction='in', which='both', top=True, right=True)
+        
+        # Dejar que matplotlib maneje el ylim automáticamente
+        # No ajustar manualmente para evitar problemas con valores pequeños (1e-8)
+        
+        # Ajustar xlim para mostrar todo el rango extendido
+        ax.set_xlim(first_phase + early_time_offset, last_phase + late_time_offset)
+        
+        plt.tight_layout()
+        
+        if save_path:
+            plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
+            plt.close(fig)
+            return None
+        else:
+            return fig
+            
+    except Exception as e:
+        print(f"    [ERROR] Error al generar modelo extendido: {str(e)}")
+        return None
+
+def plot_corner(samples, param_names=None, save_path=None, param_medians=None, param_percentiles=None):
     """
     Generar corner plot de los parámetros MCMC
     
-    NOTA: Este corner plot muestra TODOS los samples del MCMC, no solo los seleccionados
-    para visualización. Esto permite ver la distribución completa de parámetros.
+    NOTA: Usa un subconjunto de samples para DIBUJAR (por memoria), pero muestra
+    los valores de param_medians/param_percentiles (de TODOS los samples) en los títulos.
     
     Parameters:
     -----------
     samples : array (n_samples, n_params)
-        TODOS los samples del MCMC (después de burn-in)
+        Samples del MCMC (después de burn-in)
     param_names : list, optional
         Nombres de parámetros
     save_path : str, optional
         Ruta para guardar figura
+    param_medians : array, optional
+        Mediana de TODOS los samples (de mcmc_results['params'])
+    param_percentiles : array (3, n_params), optional
+        Percentiles [16, 50, 84] de TODOS los samples (de mcmc_results['params_percentiles'])
     """
     try:
         import corner
@@ -557,7 +669,17 @@ def plot_corner(samples, param_names=None, save_path=None):
         return None
     
     if param_names is None:
-        param_names = ['A', 'f', 't0', 't_rise', 't_fall', 'gamma']
+        # Nombres sin itálica: texto plano excepto gamma (símbolo griego)
+        param_names = ['A', 'f', r'$t_0$', r'$t_{rise}$', r'$t_{fall}$', r'$\gamma$']
+    
+    # Limitar número de samples para evitar problemas de memoria
+    max_samples_for_corner = 5000  # Máximo 5,000 samples
+    if len(samples) > max_samples_for_corner:
+        # Muestreo sistemático para representatividad (cada N samples)
+        step = len(samples) // max_samples_for_corner
+        indices = np.arange(0, len(samples), step)[:max_samples_for_corner]
+        samples = samples[indices]
+        print(f"    [DEBUG] Corner plot: usando {len(indices)} samples (muestreo sistemático cada {step})")
     
     # Verificar que hay suficientes samples
     if len(samples) < 10:
@@ -629,9 +751,19 @@ def plot_corner(samples, param_names=None, save_path=None):
                             decimals = 4 if abs_val < 1 else 2
                             return f"{val:.{decimals}f}"
                 
-                # Generar corner plot sin formato personalizado primero (evitar problemas con format specifier)
+                # Calcular rangos más amplios (0.5% - 99.5%) para no cortar distribuciones
+                ranges = []
+                for i in range(samples.shape[1]):
+                    p_low = np.percentile(samples[:, i], 0.5)
+                    p_high = np.percentile(samples[:, i], 99.5)
+                    margin = (p_high - p_low) * 0.1  # 10% de margen extra
+                    ranges.append((p_low - margin, p_high + margin))
+                
+                # Generar corner plot con tamaño reducido para evitar problemas de memoria
                 fig = corner.corner(samples, labels=param_names, show_titles=True,
-                                    title_kwargs={"fontsize": 10})
+                                    title_kwargs={"fontsize": 8},
+                                    range=ranges,
+                                    fig=plt.figure(figsize=(8, 8)))
                 
                 # Modificar los títulos después para mostrar números pequeños correctamente
                 axes = fig.get_axes()
@@ -644,13 +776,27 @@ def plot_corner(samples, param_names=None, save_path=None):
                     if ax_idx < len(axes):
                         ax = axes[ax_idx]
                         
-                        # Calcular quantiles manualmente
-                        param_samples = samples[:, i]
-                        median = np.median(param_samples)
-                        p16 = np.percentile(param_samples, 16)
-                        p84 = np.percentile(param_samples, 84)
+                        # Usar valores de TODOS los samples si están disponibles
+                        if param_medians is not None and param_percentiles is not None:
+                            # Usar valores precalculados de mcmc_results (TODOS los samples)
+                            median = param_medians[i]
+                            p16 = param_percentiles[0, i]  # percentil 16
+                            p84 = param_percentiles[2, i]  # percentil 84
+                        else:
+                            # Fallback: calcular desde el subconjunto de samples
+                            param_samples = samples[:, i]
+                            median = np.median(param_samples)
+                            p16 = np.percentile(param_samples, 16)
+                            p84 = np.percentile(param_samples, 84)
+                        
                         err_low = median - p16
                         err_high = p84 - median
+                        
+                        # DEBUG: Mostrar valores del corner plot
+                        if i == 0:  # Solo imprimir una vez al inicio
+                            source = "mcmc_results" if param_medians is not None else "subconjunto"
+                            print(f"    [DEBUG] Valores del CORNER PLOT (de {source}):")
+                        print(f"      {param_name} = {median:.6e} (p16={p16:.6e}, p84={p84:.6e})")
                         
                         # Formatear con nuestra función
                         val_str, err_low_str, err_high_str = format_small_number(median, err_low, err_high)
@@ -673,6 +819,189 @@ def plot_corner(samples, param_names=None, save_path=None):
     if save_path:
         plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
         plt.close(fig)  # Liberar memoria de la figura
+        return None
+    else:
+        return fig
+
+def plot_prior_likelihood_posterior(samples, times, flux, flux_err, is_upper_limit=None,
+                                     dynamic_bounds=None, sn_name=None, filter_name=None, 
+                                     save_path=None, n_samples_to_plot=2000):
+    """
+    Generar gráficos de contornos 2D del prior, likelihood y posterior en el espacio de parámetros
+    Similar a la Figura 8.1 de Ivezić et al. (2014), mostrando cómo el prior "corta" el espacio
+    
+    Parameters:
+    -----------
+    samples : array (n_samples, n_params)
+        Samples del MCMC
+    times, flux, flux_err : arrays
+        Datos usados en el ajuste
+    is_upper_limit : array of bool, optional
+        Máscara que indica qué puntos son upper limits
+    dynamic_bounds : dict, optional
+        Bounds dinámicos usados en el ajuste
+    sn_name, filter_name : str, optional
+        Identificadores
+    save_path : str, optional
+        Ruta para guardar figura
+    n_samples_to_plot : int
+        Número de samples a usar para el cálculo (para no sobrecargar)
+    """
+    from mcmc_fitter import log_prior, log_likelihood, log_posterior
+    from scipy.stats import gaussian_kde
+    
+    param_names = ['A', 'f', 't0', 't_rise', 't_fall', 'gamma']
+    
+    # Subsampling si hay muchos samples
+    if len(samples) > n_samples_to_plot:
+        indices = np.linspace(0, len(samples)-1, n_samples_to_plot, dtype=int)
+        samples_to_use = samples[indices]
+    else:
+        samples_to_use = samples
+    
+    # Calcular prior, likelihood y posterior para cada sample
+    priors = []
+    likelihoods = []
+    posteriors = []
+    
+    for sample in samples_to_use:
+        try:
+            lp = log_prior(sample, dynamic_bounds, times=times, flux=flux, is_upper_limit=is_upper_limit)
+            ll = log_likelihood(sample, times, flux, flux_err, dynamic_bounds, is_upper_limit)
+            post = log_posterior(sample, times, flux, flux_err, dynamic_bounds, is_upper_limit)
+            
+            priors.append(lp if np.isfinite(lp) else -np.inf)
+            likelihoods.append(ll if np.isfinite(ll) else -np.inf)
+            posteriors.append(post if np.isfinite(post) else -np.inf)
+        except:
+            priors.append(-np.inf)
+            likelihoods.append(-np.inf)
+            posteriors.append(-np.inf)
+    
+    priors = np.array(priors)
+    likelihoods = np.array(likelihoods)
+    posteriors = np.array(posteriors)
+    
+    # Filtrar samples válidos
+    valid_mask = np.isfinite(posteriors)
+    samples_valid = samples_to_use[valid_mask]
+    posteriors_valid = posteriors[valid_mask]
+    priors_valid = priors[valid_mask]
+    likelihoods_valid = likelihoods[valid_mask]
+    
+    if len(samples_valid) < 10:
+        # Si hay muy pocos samples válidos, usar histogramas simples
+        fig, axes = plt.subplots(3, 1, figsize=(10, 12))
+        axes[0].hist(priors[valid_mask], bins=30, alpha=0.7, color='blue', edgecolor='black')
+        axes[0].set_title('Prior (too few valid samples)')
+        axes[1].hist(likelihoods[valid_mask], bins=30, alpha=0.7, color='green', edgecolor='black')
+        axes[1].set_title('Likelihood (too few valid samples)')
+        axes[2].hist(posteriors_valid, bins=30, alpha=0.7, color='purple', edgecolor='black')
+        axes[2].set_title('Posterior (too few valid samples)')
+        plt.tight_layout()
+        if save_path:
+            plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
+            plt.close(fig)
+            return None
+        else:
+            return fig
+    
+    # Seleccionar pares de parámetros importantes para visualizar
+    # (A, t0) y (t_rise, t_fall) son los más informativos
+    param_pairs = [
+        (0, 2, 'A', 't0'),  # A vs t0
+        (3, 4, 't_rise', 't_fall'),  # t_rise vs t_fall
+    ]
+    
+    # Crear figura con subplots: una fila por cada par de parámetros, 3 columnas (prior, likelihood, posterior)
+    fig, axes = plt.subplots(len(param_pairs), 3, figsize=(15, 5 * len(param_pairs)))
+    if len(param_pairs) == 1:
+        axes = axes.reshape(1, -1)
+    
+    for row, (idx1, idx2, name1, name2) in enumerate(param_pairs):
+        param1_vals = samples_valid[:, idx1]
+        param2_vals = samples_valid[:, idx2]
+        
+        # Rango para los contornos
+        x_range = np.linspace(param1_vals.min(), param1_vals.max(), 50)
+        y_range = np.linspace(param2_vals.min(), param2_vals.max(), 50)
+        X, Y = np.meshgrid(x_range, y_range)
+        
+        # Prior contours - usar hexbin para eficiencia
+        ax_prior = axes[row, 0]
+        prior_valid = priors_valid > -1e6
+        if np.sum(prior_valid) > 10:
+            # Hexbin plot con colores según prior
+            hb_prior = ax_prior.hexbin(param1_vals[prior_valid], param2_vals[prior_valid], 
+                                       C=priors_valid[prior_valid], cmap='Blues', gridsize=20, mincnt=1)
+            ax_prior.scatter(param1_vals[~prior_valid], param2_vals[~prior_valid], 
+                           c='red', marker='x', s=20, alpha=0.5, label='Rejected (exceeds UL)')
+        else:
+            ax_prior.scatter(param1_vals, param2_vals, c=priors_valid, cmap='Blues', alpha=0.5, s=10)
+        ax_prior.set_xlabel(name1)
+        ax_prior.set_ylabel(name2)
+        ax_prior.set_title(f'Prior: {name1} vs {name2}')
+        ax_prior.grid(True, alpha=0.3)
+        if np.sum(~prior_valid) > 0:
+            ax_prior.legend(fontsize=8)
+        
+        # Likelihood contours
+        ax_likelihood = axes[row, 1]
+        likelihood_valid = likelihoods_valid > -1e6
+        if np.sum(likelihood_valid) > 10:
+            hb_likelihood = ax_likelihood.hexbin(param1_vals[likelihood_valid], param2_vals[likelihood_valid],
+                                                C=likelihoods_valid[likelihood_valid], cmap='Greens', gridsize=20, mincnt=1)
+        else:
+            ax_likelihood.scatter(param1_vals, param2_vals, c=likelihoods_valid, cmap='Greens', alpha=0.5, s=10)
+        ax_likelihood.set_xlabel(name1)
+        ax_likelihood.set_ylabel(name2)
+        ax_likelihood.set_title(f'Likelihood: {name1} vs {name2}')
+        ax_likelihood.grid(True, alpha=0.3)
+        
+        # Posterior contours (el más importante) - usar KDE para contornos suaves
+        ax_posterior = axes[row, 2]
+        posterior_valid = posteriors_valid > -1e6
+        if np.sum(posterior_valid) > 50:
+            try:
+                # Usar KDE para contornos suaves
+                kde_posterior = gaussian_kde(np.vstack([param1_vals[posterior_valid], param2_vals[posterior_valid]]))
+                # Evaluar en grilla más pequeña para eficiencia
+                x_grid = np.linspace(param1_vals.min(), param1_vals.max(), 30)
+                y_grid = np.linspace(param2_vals.min(), param2_vals.max(), 30)
+                X_grid, Y_grid = np.meshgrid(x_grid, y_grid)
+                positions = np.vstack([X_grid.ravel(), Y_grid.ravel()])
+                Z_posterior = kde_posterior(positions).reshape(X_grid.shape)
+                
+                # Contornos rellenos y líneas
+                ax_posterior.contourf(X_grid, Y_grid, Z_posterior, levels=8, cmap='Purples', alpha=0.6)
+                ax_posterior.contour(X_grid, Y_grid, Z_posterior, levels=5, colors='darkviolet', linewidths=1.5)
+            except:
+                # Fallback a hexbin
+                hb_posterior = ax_posterior.hexbin(param1_vals[posterior_valid], param2_vals[posterior_valid],
+                                                   C=posteriors_valid[posterior_valid], cmap='Purples', gridsize=20, mincnt=1)
+        else:
+            ax_posterior.scatter(param1_vals[posterior_valid], param2_vals[posterior_valid],
+                               c=posteriors_valid[posterior_valid], cmap='Purples', alpha=0.6, s=15)
+        ax_posterior.set_xlabel(name1)
+        ax_posterior.set_ylabel(name2)
+        ax_posterior.set_title(f'Posterior: {name1} vs {name2}')
+        ax_posterior.grid(True, alpha=0.3)
+        
+        # Si hay upper limits, mostrar cómo el prior "corta" el espacio
+        if is_upper_limit is not None and np.any(is_upper_limit):
+            # Marcar regiones donde el prior es muy negativo (excede upper limits)
+            # Esto se verá como una "cortada" en el espacio de parámetros
+            ax_posterior.text(0.02, 0.98, 'Upper limits activos\n(prior corta espacio)', 
+                            transform=ax_posterior.transAxes, verticalalignment='top',
+                            bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.7))
+    
+    plt.suptitle(f'Prior, Likelihood and Posterior in Parameter Space{(" - " + sn_name + " " + filter_name) if sn_name else ""}',
+                fontsize=14, fontweight='bold', y=0.995)
+    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    
+    if save_path:
+        plt.savefig(save_path, dpi=PLOT_CONFIG["dpi"], format=PLOT_CONFIG["format"])
+        plt.close(fig)
         return None
     else:
         return fig

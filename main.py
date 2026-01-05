@@ -16,10 +16,10 @@ import pandas as pd
 import numpy as np
 from pathlib import Path
 from reader import parse_photometry_file, prepare_lightcurve, load_supernovas_from_csv
-from mcmc_fitter import fit_mcmc
+from mcmc_fitter import fit_mcmc, validate_physical_fit
 from feature_extractor import extract_features
-from plotter import plot_corner, plot_fit_with_uncertainty
-from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, CHECKPOINT_DIR, LOG_DIR, OUTPUT_DIR, DEBUG_PDF_DIR, FILTERS_TO_PROCESS, MCMC_CONFIG, DATA_FILTER_CONFIG
+from plotter import plot_corner, plot_fit_with_uncertainty, plot_extended_model
+from config import BASE_DATA_PATH, PLOTS_DIR, FEATURES_DIR, CHECKPOINT_DIR, LOG_DIR, OUTPUT_DIR, DEBUG_PDF_DIR, FILTERS_TO_PROCESS, MCMC_CONFIG, DATA_FILTER_CONFIG, PLOT_CONFIG
 
 # Configurar logging
 def setup_logger(sn_type):
@@ -161,6 +161,15 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
             print(f"    [OK] MCMC completado en {t_mcmc:.2f} segundos")
             if logger:
                 logger.info(f"  [{sn_name} | {filter_name}] Paso 2/5: MCMC completado exitosamente en {t_mcmc:.2f}s")
+            
+            # Validar comportamiento físico del fit
+            is_valid, reason = validate_physical_fit(mcmc_results, phase, flux, is_upper_limit)
+            if not is_valid:
+                error_msg = f"Fit no físico: {reason}"
+                print(f"    [REJECT] {error_msg}")
+                if logger:
+                    logger.warning(f"  [{sn_name} | {filter_name}] Fit rechazado: {reason}")
+                raise ValueError(error_msg)
         except Exception as e:
             error_msg = f"Error en MCMC: {type(e).__name__}: {str(e)}"
             print(f"    [ERROR] {error_msg}")
@@ -193,14 +202,20 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
             raise
         
         # Convertir modelo a MJD para plotting (igual que en modo debug)
+        # Usar samples_valid si está disponible (samples que respetan upper limits)
+        # para calcular mediana/promedio, pero todos los samples para visualización
+        samples_to_use = mcmc_results.get('samples_valid', mcmc_results['samples'])
+        
         if mjd is not None and reference_mjd is not None:
             # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
             from model import alerce_model
-            samples_mjd = mcmc_results['samples'].copy()
+            samples_mjd = samples_to_use.copy()
             samples_mjd[:, 2] = samples_mjd[:, 2] + reference_mjd  # t0 en MJD absoluto
             
-            # Recalcular modelo mediano en MJD
-            param_medians_mjd = np.median(samples_mjd, axis=0)
+            # Usar EXACTAMENTE mcmc_results['params'] (la misma mediana que el corner plot)
+            # Solo convertir t0 a MJD para el eje X
+            param_medians_mjd = mcmc_results['params'].copy()
+            param_medians_mjd[2] = param_medians_mjd[2] + reference_mjd  # t0 a MJD
             flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
             flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
             mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
@@ -215,7 +230,7 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
             phase_for_plot = phase
             mag_model_for_plot = mag_model
             flux_model_for_plot = mcmc_results['model_flux']
-            samples_for_plot = mcmc_results['samples']
+            samples_for_plot = samples_to_use
         
         # Crear subcarpeta para esta supernova solo si vamos a guardar algo
         # Organizar por tipo de supernova: plots/SN Ia/ZTF20abc/
@@ -229,21 +244,49 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         # Calcular número total de samples usados para la mediana
         n_total_samples = len(mcmc_results['samples'])
         print(f"    [INFO] Samples totales para mediana: {n_total_samples:,} (de {MCMC_CONFIG['n_walkers']} walkers × {MCMC_CONFIG['n_steps'] - MCMC_CONFIG['burn_in']} pasos)")
-        plot_fit_with_uncertainty(
+        # plot_fit_with_uncertainty ahora retorna (fig, sample_indices)
+        # Usar param_medians_mjd si existe (cuando el eje X está en MJD)
+        if reference_mjd is not None and len(mjd) > 0:
+            param_medians_for_plot = param_medians_mjd
+        else:
+            param_medians_for_plot = mcmc_results['params']
+        
+        _, sample_indices = plot_fit_with_uncertainty(
             phase_for_plot, mag, mag_err, mag_model_for_plot, flux, flux_model_for_plot,
             samples_for_plot, n_samples_to_show=100,  # Valor por defecto: 100 realizaciones para visualización
             sn_name=sn_name, filter_name=filter_name, save_path=str(plot_path),
             is_upper_limit=is_upper_limit, flux_err=flux_err,
-            had_upper_limits=had_upper_limits
+            had_upper_limits=had_upper_limits,
+            param_medians_phase_relative=mcmc_results['params'],  # Para debug
+            param_medians=param_medians_for_plot  # Mediana real para la línea azul
         )
         t_plot = time.time() - t0_plot
         print(f"    [OK] Gráfico guardado en {t_plot:.2f} segundos: {plot_path}")
         
+        # Modelo extendido (figura separada)
+        # Reutilizamos sample_indices de plot_fit_with_uncertainty (Opción C)
+        from plotter import plot_extended_model
+        extended_filename = f"{sn_name}_{filter_name}_extended.png"
+        extended_path = sn_plots_dir / extended_filename
+        t0_extended = time.time()
+        plot_extended_model(
+            phase_for_plot, flux, mcmc_results['params'],
+            is_upper_limit=is_upper_limit,
+            flux_err=flux_err,
+            sn_name=sn_name, filter_name=filter_name, save_path=str(extended_path),
+            samples=samples_for_plot,
+            precalculated_sample_indices=sample_indices  # Reutilizar índices (Opción C)
+        )
+        t_extended = time.time() - t0_extended
+        print(f"    [OK] Modelo extendido guardado en {t_extended:.2f} segundos: {extended_path}")
+        
         # Corner plot
+        # IMPORTANTE: Usar samples originales en fase relativa (no convertidos a MJD)
+        # Los parámetros deben estar en fase relativa para consistencia entre supernovas
         corner_filename = f"{sn_name}_{filter_name}_corner.png"
         corner_path = sn_plots_dir / corner_filename
         t0_corner = time.time()
-        plot_corner(mcmc_results['samples'], save_path=str(corner_path))
+        plot_corner(mcmc_results['samples'], save_path=str(corner_path))  # Samples originales en fase relativa
         t_corner = time.time() - t0_corner
         print(f"    [OK] Corner plot guardado en {t_corner:.2f} segundos: {corner_path}")
         
@@ -611,20 +654,37 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
         Si True y el PDF existe, añade la página usando PyPDF2. Si False, crea nuevo PDF.
     """
     from matplotlib.backends.backend_pdf import PdfPages
+    import traceback
+    
+    print(f"  [DEBUG] _save_page_to_pdf llamado:")
+    print(f"    - pdf_path: {pdf_path}")
+    print(f"    - pdf_exists: {pdf_exists}")
+    print(f"    - pdf_path.exists(): {pdf_path.exists()}")
+    print(f"    - fig es None: {fig is None}")
+    
+    if fig is None:
+        print(f"  [ERROR] La figura es None, no se puede guardar")
+        return
+    
     try:
         from PyPDF2 import PdfReader, PdfWriter
         HAS_PYPDF2 = True
+        print(f"    - PyPDF2 disponible: True")
     except ImportError:
         HAS_PYPDF2 = False
+        print(f"    - PyPDF2 disponible: False")
     
     # Si el PDF existe y tenemos PyPDF2, usar append mode
     if pdf_exists and pdf_path.exists() and HAS_PYPDF2:
-        # Modo append: leer PDF existente, añadir nueva página, guardar
+        # Modo append: leer PDF original, añadir nueva página, guardar
+        print(f"  [DEBUG] Modo append: añadiendo página al PDF existente")
         try:
             # Guardar nueva página en PDF temporal
             temp_pdf = pdf_path.parent / f"{pdf_path.stem}_temp_page.pdf"
+            print(f"  [DEBUG] Guardando página temporal en: {temp_pdf}")
             with PdfPages(str(temp_pdf)) as temp_pdf_file:
                 temp_pdf_file.savefig(fig, bbox_inches='tight', dpi=200)
+            print(f"  [DEBUG] Página temporal guardada exitosamente")
             
             # Leer PDF original y PDF temporal
             reader_original = PdfReader(str(pdf_path))
@@ -641,22 +701,42 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
             writer.add_page(reader_temp.pages[0])
             
             # Guardar PDF combinado
+            print(f"  [DEBUG] Guardando PDF combinado en: {pdf_path}")
             with open(pdf_path, 'wb') as output_file:
                 writer.write(output_file)
+            print(f"  [DEBUG] PDF combinado guardado exitosamente")
             
             # Eliminar PDF temporal
             temp_pdf.unlink()
+            print(f"  [DEBUG] PDF temporal eliminado")
             
         except Exception as e:
-            print(f"  [WARNING] Error al añadir página al PDF existente: {e}")
+            print(f"  [ERROR] Error al añadir página al PDF existente: {e}")
+            print(f"  [ERROR] Traceback:")
+            traceback.print_exc()
             print(f"  [INFO] Guardando como nuevo PDF...")
             # Fallback: crear nuevo PDF
-            with PdfPages(str(pdf_path)) as pdf:
-                pdf.savefig(fig, bbox_inches='tight', dpi=200)
+            try:
+                with PdfPages(str(pdf_path)) as pdf:
+                    pdf.savefig(fig, bbox_inches='tight', dpi=200)
+                print(f"  [DEBUG] PDF creado exitosamente (fallback)")
+            except Exception as e2:
+                print(f"  [ERROR] Error al crear PDF (fallback): {e2}")
+                traceback.print_exc()
     else:
         # Modo normal: crear nuevo PDF (PdfPages sobrescribe si existe)
-        with PdfPages(str(pdf_path)) as pdf:
-            pdf.savefig(fig, bbox_inches='tight', dpi=200)
+        print(f"  [DEBUG] Modo normal: creando nuevo PDF")
+        try:
+            with PdfPages(str(pdf_path)) as pdf:
+                pdf.savefig(fig, bbox_inches='tight', dpi=200)
+            print(f"  [DEBUG] PDF creado exitosamente en: {pdf_path}")
+            print(f"  [DEBUG] PDF existe después de guardar: {pdf_path.exists()}")
+            if pdf_path.exists():
+                print(f"  [DEBUG] Tamaño del PDF: {pdf_path.stat().st_size} bytes")
+        except Exception as e:
+            print(f"  [ERROR] Error al crear PDF: {e}")
+            print(f"  [ERROR] Traceback:")
+            traceback.print_exc()
 
 def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, 
                        resume_from_checkpoint=False, supernovas_from_csv=None, csv_file_path=None,
@@ -790,6 +870,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         # Eliminar CSV de features existente (solo en modo debug)
         from config import FEATURES_DIR
         if supernovas_from_csv and csv_file_path:
+            # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
             features_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug_from_csv.csv"
         else:
             features_file = FEATURES_DIR / f"features_{sn_type.replace(' ', '_')}_debug.csv"
@@ -994,6 +1075,12 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         # Ajuste MCMC (usa fase relativa por filtro, que está bien)
                         mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
                         
+                        # Validar comportamiento físico del fit
+                        is_valid, reason = validate_physical_fit(mcmc_results, phase, flux, is_upper_limit)
+                        if not is_valid:
+                            skip_reasons.append(f"Filtro {filter_name}: Fit no físico - {reason}")
+                            continue
+                        
                         # Extraer features (igual que en modo normal)
                         features = extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name)
                         features['sn_type'] = sn_type
@@ -1013,11 +1100,15 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             # Ajustar samples: t0 está en fase relativa, convertirlo a MJD absoluto
                             from model import alerce_model
                             # Modificar in-place para evitar duplicar memoria (samples puede ser muy grande)
-                            samples_for_plot = mcmc_results['samples'].copy()  # Necesitamos copia para no modificar original
+                            # Usar samples_valid para mediana/promedio, pero todos los samples para visualización
+                            samples_to_use_debug = mcmc_results.get('samples_valid', mcmc_results['samples'])
+                            samples_for_plot = samples_to_use_debug.copy()  # Necesitamos copia para no modificar original
                             samples_for_plot[:, 2] = samples_for_plot[:, 2] + filter_reference_mjd  # t0 en MJD absoluto
                             
-                            # Recalcular modelo mediano en MJD
-                            param_medians_mjd = np.median(samples_for_plot, axis=0)
+                            # Usar EXACTAMENTE mcmc_results['params'] (la misma mediana que el corner plot)
+                            # Solo convertir t0 a MJD para el eje X
+                            param_medians_mjd = mcmc_results['params'].copy()
+                            param_medians_mjd[2] = param_medians_mjd[2] + filter_reference_mjd  # t0 a MJD
                             flux_model_points_mjd = alerce_model(mjd, *param_medians_mjd)
                             flux_model_points_mjd = np.clip(flux_model_points_mjd, 1e-10, None)
                             mag_model_points_mjd = flux_to_mag(flux_model_points_mjd)
@@ -1028,16 +1119,18 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             flux_model_for_plot = flux_model_points_mjd
                         else:
                             # Fallback: usar fase original
+                            # Usar samples_valid si está disponible para mediana/promedio
+                            samples_to_use_debug = mcmc_results.get('samples_valid', mcmc_results['samples'])
                             phase_for_plot = phase
                             mag_model_for_plot = mag_model
                             flux_model_for_plot = mcmc_results['model_flux']
-                            samples_for_plot = mcmc_results['samples']
+                            samples_for_plot = samples_to_use_debug
+                            param_medians_mjd = None  # No hay conversión a MJD
                         
                         # Guardar datos para calcular rango común si hay múltiples filtros
                         # IMPORTANTE: Guardar solo lo necesario, no todo mcmc_results
-                        # Para corner plot, usar samples originales (no samples_for_plot que puede ser copia)
-                        mcmc_samples_for_corner = mcmc_results['samples']
-                        
+                        # Para corner plot, usar samples originales en fase relativa (no convertidos a MJD)
+                        # Los parámetros deben estar en fase relativa para consistencia entre supernovas
                         filter_data_dict[filter_name] = {
                             'phase_for_plot': phase_for_plot,
                             'mag': mag,
@@ -1045,15 +1138,18 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             'mag_model_for_plot': mag_model_for_plot,
                             'flux': flux,
                             'flux_model_for_plot': flux_model_for_plot,
-                            'samples_for_plot': samples_for_plot,
+                            'samples_for_plot': samples_for_plot,  # Samples convertidos a MJD para el plot
                             'is_upper_limit': is_upper_limit,
                             'flux_err': flux_err,
                             'had_upper_limits': had_upper_limits,
-                            'mcmc_samples': mcmc_samples_for_corner  # Solo samples para corner plot
+                            'mcmc_samples': mcmc_results.get('samples_valid', mcmc_results['samples']),  # Samples válidos para corner plot (mismos que param_medians)
+                            'mcmc_results': mcmc_results,  # Guardar mcmc_results completo para plot_extended_model
+                            'param_medians_mjd': param_medians_mjd if filter_reference_mjd is not None else None,  # Parámetros en MJD si aplica
+                            'filter_reference_mjd': filter_reference_mjd  # MJD de referencia para conversión
                         }
                         
-                        # Liberar mcmc_results completo inmediatamente (ya guardamos lo necesario)
-                        del mcmc_results, mcmc_samples_for_corner
+                        # NO liberar mcmc_results todavía - se necesita para plot_extended_model
+                        # Se liberará después de generar todos los gráficos
                         # Liberar lc_data y otros datos intermedios inmediatamente
                         del lc_data, phase, mjd, flux, flux_err, mag, mag_err
                         if filter_reference_mjd is not None:
@@ -1083,7 +1179,15 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 
                 # Generar figuras con rango común si aplica
                 for filter_name, data in filter_data_dict.items():
-                    fit_fig = plot_fit_with_uncertainty(
+                    # plot_fit_with_uncertainty ahora retorna (fig, sample_indices)
+                    # Usar param_medians_mjd si existe, sino mcmc_results['params']
+                    # Esto asegura que la línea azul use EXACTAMENTE los mismos valores que el corner plot
+                    if data.get('param_medians_mjd') is not None:
+                        param_medians_for_plot = data['param_medians_mjd']
+                    else:
+                        param_medians_for_plot = data['mcmc_results']['params']
+                    
+                    fit_fig, sample_indices = plot_fit_with_uncertainty(
                         data['phase_for_plot'], data['mag'], data['mag_err'], 
                         data['mag_model_for_plot'], data['flux'], data['flux_model_for_plot'],
                         data['samples_for_plot'], n_samples_to_show=100,
@@ -1091,21 +1195,41 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         is_upper_limit=data['is_upper_limit'], 
                         flux_err=data['flux_err'],
                         had_upper_limits=data['had_upper_limits'],
-                        xlim=common_xlim
+                        xlim=common_xlim,
+                        param_medians_phase_relative=data['mcmc_results']['params'],  # Para debug
+                        param_medians=param_medians_for_plot  # Mediana real para la línea azul
                     )
                     
                     # Generar corner plot (sin guardar, solo obtener la figura)
-                    corner_fig = plot_corner(data['mcmc_samples'], save_path=None)
+                    # Pasar param_medians y param_percentiles para que muestre los valores de TODOS los samples
+                    corner_fig = plot_corner(
+                        data['mcmc_samples'], 
+                        save_path=None,
+                        param_medians=data['mcmc_results']['params'],
+                        param_percentiles=data['mcmc_results']['params_percentiles']
+                    )
                     
-                    filter_figs[filter_name] = (fit_fig, corner_fig)
+                    # Generar modelo extendido (sin guardar, solo obtener la figura)
+                    # Reutilizamos sample_indices de plot_fit_with_uncertainty (Opción C)
+                    # Necesitamos usar los parámetros en la misma escala que phase_for_plot
+                    if data.get('param_medians_mjd') is not None:
+                        params_for_extended = data['param_medians_mjd']
+                    else:
+                        params_for_extended = data['mcmc_results']['params']
                     
-                    # Liberar samples de memoria inmediatamente después de generar corner plot
-                    del data['mcmc_samples']
-                    del data['samples_for_plot']
-                    # Liberar otros datos grandes que ya no se necesitan
-                    del data['phase_for_plot'], data['mag'], data['mag_err']
-                    del data['mag_model_for_plot'], data['flux'], data['flux_model_for_plot']
-                    del data['flux_err']
+                    extended_fig = plot_extended_model(
+                        data['phase_for_plot'], data['flux'], params_for_extended,
+                        is_upper_limit=data['is_upper_limit'],
+                        flux_err=data.get('flux_err', None),
+                        sn_name=sn_name, filter_name=filter_name, save_path=None,
+                        samples=data['samples_for_plot'],
+                        precalculated_sample_indices=sample_indices  # Reutilizar índices (Opción C)
+                    )
+                    
+                    filter_figs[filter_name] = (fit_fig, corner_fig, extended_fig)
+                    
+                    # NO eliminar datos todavía - se necesitan para prior/likelihood/posterior
+                    # Se eliminarán después de generar todos los gráficos
                 
                 if not filter_figs:
                     print(f"  [SKIP] No se pudieron procesar filtros:")
@@ -1129,113 +1253,216 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 n_filters = len(filter_figs)
                 
                 if n_filters == 1:
-                    # Una página con fit arriba y corner abajo
+                    # Una sola página con: fit arriba, modelo extendido en medio, corner abajo
                     filter_name = list(filter_figs.keys())[0]
-                    fit_fig, corner_fig = filter_figs[filter_name]
+                    fit_fig, corner_fig, extended_fig = filter_figs[filter_name]
                     
-                    # Crear figura combinada con dimensiones que preserven aspect ratio
-                    # Fit plot es aproximadamente 10x6, corner es aproximadamente 8x8
-                    # Usar dimensiones que preserven las proporciones
-                    combined_fig = plt.figure(figsize=(10, 16))
-                    gs = combined_fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=0.05, 
-                                                   left=0.08, right=0.95, top=0.96, bottom=0.05)
+                    # Crear figura combinada con 3 subplots verticales
+                    if extended_fig is not None:
+                        combined_fig = plt.figure(figsize=(10, 20))
+                        gs = combined_fig.add_gridspec(3, 1, height_ratios=[1.3, 0.8, 1], hspace=0.05, 
+                                                       left=0.08, right=0.95, top=0.96, bottom=0.05)
+                    else:
+                        combined_fig = plt.figure(figsize=(10, 16))
+                        gs = combined_fig.add_gridspec(2, 1, height_ratios=[1.3, 1], hspace=0.05, 
+                                                       left=0.08, right=0.95, top=0.96, bottom=0.05)
                     
-                    # Copiar fit plot como imagen (preservar aspect ratio)
+                    # Copiar fit plot como imagen
                     ax1 = combined_fig.add_subplot(gs[0])
                     ax1.axis('off')
                     buf1 = io.BytesIO()
                     fit_fig.savefig(buf1, format='png', dpi=200, bbox_inches='tight')
                     buf1.seek(0)
                     img1 = mpimg.imread(buf1)
-                    # Preservar aspect ratio del fit plot
                     ax1.imshow(img1, aspect='auto', interpolation='bilinear')
                     
-                    # Copiar corner plot como imagen (preservar aspect ratio)
-                    ax2 = combined_fig.add_subplot(gs[1])
-                    ax2.axis('off')
-                    buf2 = io.BytesIO()
-                    corner_fig.savefig(buf2, format='png', dpi=200, bbox_inches='tight')
-                    buf2.seek(0)
-                    img2 = mpimg.imread(buf2)
-                    ax2.imshow(img2, aspect='auto', interpolation='bilinear')
+                    # Copiar modelo extendido como imagen (si existe)
+                    if extended_fig is not None:
+                        ax2 = combined_fig.add_subplot(gs[1])
+                        ax2.axis('off')
+                        buf2 = io.BytesIO()
+                        extended_fig.savefig(buf2, format='png', dpi=200, bbox_inches='tight')
+                        buf2.seek(0)
+                        img2 = mpimg.imread(buf2)
+                        ax2.imshow(img2, aspect='auto', interpolation='bilinear')
+                        corner_idx = 2
+                    else:
+                        corner_idx = 1
                     
-                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
-                    
-                    # Guardar página al PDF inmediatamente (abrir, escribir, cerrar)
-                    # Si el PDF existe (modo resume), usar append mode
-                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
-                    pdf_exists = True  # Ahora el PDF existe
-                    
-                    # Liberar memoria: cerrar figuras y buffers inmediatamente
-                    plt.close(combined_fig)
-                    plt.close(fit_fig)
-                    plt.close(corner_fig)
-                    del img1, img2
-                    buf1.close()
-                    buf2.close()
-                    del buf1, buf2
-                    # Forzar liberación de memoria de matplotlib
-                    plt.close('all')
-                    
-                elif n_filters == 2:
-                    # Una página con fit1, fit2 y corner
-                    filter_names = sorted(filter_figs.keys())
-                    fit_fig1, corner_fig1 = filter_figs[filter_names[0]]
-                    fit_fig2, _ = filter_figs[filter_names[1]]  # Usar corner del primer filtro
-                    
-                    # Dimensiones que preserven las proporciones de los plots
-                    combined_fig = plt.figure(figsize=(10, 20))
-                    gs = combined_fig.add_gridspec(3, 1, height_ratios=[1, 1, 1.2], hspace=0.05,
-                                                   left=0.08, right=0.95, top=0.98, bottom=0.04)
-                    
-                    # Fit 1
-                    ax1 = combined_fig.add_subplot(gs[0])
-                    ax1.axis('off')
-                    buf1 = io.BytesIO()
-                    fit_fig1.savefig(buf1, format='png', dpi=200, bbox_inches='tight')
-                    buf1.seek(0)
-                    img1 = mpimg.imread(buf1)
-                    ax1.imshow(img1, aspect='auto', interpolation='bilinear')
-                    
-                    # Fit 2
-                    ax2 = combined_fig.add_subplot(gs[1])
-                    ax2.axis('off')
-                    buf2 = io.BytesIO()
-                    fit_fig2.savefig(buf2, format='png', dpi=200, bbox_inches='tight')
-                    buf2.seek(0)
-                    img2 = mpimg.imread(buf2)
-                    ax2.imshow(img2, aspect='auto', interpolation='bilinear')
-                    
-                    # Corner
-                    ax3 = combined_fig.add_subplot(gs[2])
+                    # Copiar corner plot como imagen
+                    ax3 = combined_fig.add_subplot(gs[corner_idx])
                     ax3.axis('off')
                     buf3 = io.BytesIO()
-                    corner_fig1.savefig(buf3, format='png', dpi=200, bbox_inches='tight')
+                    corner_fig.savefig(buf3, format='png', dpi=200, bbox_inches='tight')
                     buf3.seek(0)
                     img3 = mpimg.imread(buf3)
                     ax3.imshow(img3, aspect='auto', interpolation='bilinear')
                     
+                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
+                    
+                    # Guardar página al PDF
+                    print(f"  [DEBUG] Guardando página al PDF para {sn_name} (1 filtro)")
+                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
+                    pdf_exists = True
+                    print(f"  [DEBUG] PDF existe después de guardar: {pdf_path.exists()}")
+                    
+                    # Liberar memoria
+                    plt.close(combined_fig)
+                    plt.close(fit_fig)
+                    if extended_fig is not None:
+                        plt.close(extended_fig)
+                    plt.close(corner_fig)
+                    del img1, img3
+                    buf1.close()
+                    buf3.close()
+                    del buf1, buf3
+                    if extended_fig is not None:
+                        del img2
+                        buf2.close()
+                        del buf2
+                    plt.close('all')
+                    
+                elif n_filters == 2:
+                    # Una sola página con: fit1, fit2, extended1, extended2, corner1, corner2
+                    filter_names = sorted(filter_figs.keys())
+                    fit_fig1, corner_fig1, extended_fig1 = filter_figs[filter_names[0]]
+                    fit_fig2, corner_fig2, extended_fig2 = filter_figs[filter_names[1]]
+                    
+                    # Determinar número de subplots según si hay modelos extendidos
+                    n_subplots = 4  # fit1, fit2, corner1, corner2
+                    if extended_fig1 is not None:
+                        n_subplots += 1
+                    if extended_fig2 is not None:
+                        n_subplots += 1
+                    
+                    # Crear figura combinada
+                    combined_fig = plt.figure(figsize=(10, 6 * n_subplots))
+                    
+                    # Definir height_ratios
+                    height_ratios = [1.3, 1.3]  # fit1, fit2
+                    if extended_fig1 is not None:
+                        height_ratios.append(0.8)  # extended1
+                    if extended_fig2 is not None:
+                        height_ratios.append(0.8)  # extended2
+                    height_ratios.extend([1, 1])  # corner1, corner2
+                    
+                    gs = combined_fig.add_gridspec(n_subplots, 1, height_ratios=height_ratios, hspace=0.05,
+                                                   left=0.08, right=0.95, top=0.98, bottom=0.04)
+                    
+                    idx = 0
+                    
+                    # Fit 1
+                    ax = combined_fig.add_subplot(gs[idx])
+                    ax.axis('off')
+                    buf = io.BytesIO()
+                    fit_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                    buf.seek(0)
+                    img = mpimg.imread(buf)
+                    ax.imshow(img, aspect='auto', interpolation='bilinear')
+                    buf.close()
+                    plt.close(fit_fig1)  # Liberar inmediatamente
+                    idx += 1
+                    
+                    # Fit 2
+                    ax = combined_fig.add_subplot(gs[idx])
+                    ax.axis('off')
+                    buf = io.BytesIO()
+                    fit_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                    buf.seek(0)
+                    img = mpimg.imread(buf)
+                    ax.imshow(img, aspect='auto', interpolation='bilinear')
+                    buf.close()
+                    plt.close(fit_fig2)  # Liberar inmediatamente
+                    idx += 1
+                    
+                    # Extended 1 (si existe)
+                    if extended_fig1 is not None:
+                        ax = combined_fig.add_subplot(gs[idx])
+                        ax.axis('off')
+                        buf = io.BytesIO()
+                        extended_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                        buf.seek(0)
+                        img = mpimg.imread(buf)
+                        ax.imshow(img, aspect='auto', interpolation='bilinear')
+                        buf.close()
+                        plt.close(extended_fig1)  # Liberar inmediatamente
+                        idx += 1
+                    
+                    # Extended 2 (si existe)
+                    if extended_fig2 is not None:
+                        ax = combined_fig.add_subplot(gs[idx])
+                        ax.axis('off')
+                        buf = io.BytesIO()
+                        extended_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                        buf.seek(0)
+                        img = mpimg.imread(buf)
+                        ax.imshow(img, aspect='auto', interpolation='bilinear')
+                        buf.close()
+                        plt.close(extended_fig2)  # Liberar inmediatamente
+                        idx += 1
+                    
+                    # Corner 1 (DPI bajo para ahorrar memoria)
+                    ax = combined_fig.add_subplot(gs[idx])
+                    ax.axis('off')
+                    buf = io.BytesIO()
+                    corner_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                    buf.seek(0)
+                    img = mpimg.imread(buf)
+                    ax.imshow(img, aspect='auto', interpolation='bilinear')
+                    buf.close()
+                    plt.close(corner_fig1)  # Liberar inmediatamente
+                    del corner_fig1  # Liberar referencia
+                    idx += 1
+                    
+                    # Corner 2 (DPI bajo para ahorrar memoria)
+                    ax = combined_fig.add_subplot(gs[idx])
+                    ax.axis('off')
+                    buf = io.BytesIO()
+                    corner_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
+                    buf.seek(0)
+                    img = mpimg.imread(buf)
+                    ax.imshow(img, aspect='auto', interpolation='bilinear')
+                    buf.close()
+                    plt.close(corner_fig2)  # Liberar inmediatamente
+                    del corner_fig2  # Liberar referencia
+                    
+                    # Forzar liberación de memoria antes de guardar
+                    gc.collect()
+                    
                     combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.99)
                     
-                    # Guardar página al PDF inmediatamente (abrir, escribir, cerrar)
-                    # Si el PDF existe (modo resume), usar append mode
+                    # Guardar página al PDF
+                    print(f"  [DEBUG] Guardando página al PDF para {sn_name} (2 filtros)")
                     _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
-                    pdf_exists = True  # Ahora el PDF existe
+                    pdf_exists = True
+                    print(f"  [DEBUG] PDF existe después de guardar: {pdf_path.exists()}")
                     
-                    # Liberar memoria: cerrar figuras y buffers inmediatamente
+                    # Liberar memoria
                     plt.close(combined_fig)
-                    plt.close(fit_fig1)
-                    plt.close(fit_fig2)
-                    plt.close(corner_fig1)
-                    del img1, img2, img3
-                    buf1.close()
-                    buf2.close()
-                    buf3.close()
-                    del buf1, buf2, buf3
-                    # Forzar liberación de memoria de matplotlib
                     plt.close('all')
+                    gc.collect()
                 
                 # Liberar memoria: eliminar datos grandes inmediatamente
+                # Primero liberar datos individuales de filter_data_dict
+                for filter_name in filter_data_dict:
+                    data = filter_data_dict[filter_name]
+                    if 'mcmc_samples' in data:
+                        del data['mcmc_samples']
+                    if 'samples_for_plot' in data:
+                        del data['samples_for_plot']
+                    if 'mcmc_results' in data:
+                        # Liberar samples dentro de mcmc_results si existe
+                        if isinstance(data['mcmc_results'], dict) and 'samples' in data['mcmc_results']:
+                            del data['mcmc_results']['samples']
+                        del data['mcmc_results']
+                    if 'phase_for_plot' in data:
+                        del data['phase_for_plot']
+                    if 'mag' in data:
+                        del data['mag'], data['mag_err']
+                    if 'mag_model_for_plot' in data:
+                        del data['mag_model_for_plot'], data['flux_model_for_plot']
+                    if 'flux_err' in data:
+                        del data['flux_err']
                 del filter_figs, filter_data_dict
                 # Limpiar referencias a datos de filtros
                 for filter_name in filters_to_process:
