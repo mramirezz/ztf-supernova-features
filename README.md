@@ -401,7 +401,8 @@ El sistema:
 - El modo debug guarda cada página inmediatamente (no espera al final)
 - Si usas `--resume`, el PDF existente se actualiza añadiendo nuevas páginas (requiere PyPDF2)
 - Si no usas `--resume` y existe un PDF, se sobrescribirá
-- Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal
+- **Los plots en el PDF usan el mismo estilo y funciones que el procesamiento normal**
+- **Tanto el modo normal como el modo debug usan las mismas 200 mejores curvas por log-likelihood** para calcular median of parameters, median of curves, corner plot y features, garantizando consistencia completa entre ambos modos
 
 ## Exploración Interactiva (streamlit_app.py)
 
@@ -481,7 +482,7 @@ streamlit run streamlit_app.py
 - **Características de curva** (2): n_points, time_span
 - **Metadatos** (2): sn_name, filter_band
 
-**Nota**: Los parámetros `_moc` (Median of Curves) provienen de la curva más representativa entre las 500 con mejor log-likelihood. Pueden diferir de los parámetros sin sufijo (Median of Parameters) especialmente cuando hay correlaciones fuertes entre parámetros.
+**Nota**: Los parámetros `_moc` (Median of Curves) provienen de la curva más representativa entre las 200 con mejor log-likelihood. Pueden diferir de los parámetros sin sufijo (Median of Parameters) especialmente cuando hay correlaciones fuertes entre parámetros.
 
 ## Configuración
 
@@ -817,13 +818,15 @@ MODEL_CONFIG = {
 
 ### Bandas de Confianza (Intervalos de Credibilidad)
 
-Los gráficos muestran **bandas de confianza** que representan la incertidumbre del modelo MCMC. Estas se calculan a partir de los **percentiles de las curvas** generadas por los samples del MCMC.
+Los gráficos muestran **bandas de confianza** que representan la incertidumbre del modelo MCMC. Estas se calculan a partir de los **percentiles de las curvas** generadas por las mejores samples del MCMC.
 
 **Cálculo de las Bandas:**
 
-1. Se seleccionan 1000 samples aleatorios del MCMC (después del burn-in)
-2. Para cada sample $\theta_k$, se evalúa el modelo completo: $F_k(t) = F_{\text{modelo}}(t; \theta_k)$
-3. Para cada tiempo $t$, se calculan los percentiles de los flujos $\{F_1(t), F_2(t), ..., F_{1000}(t)\}$
+1. Se seleccionan las **200 curvas con mejor log-likelihood** (de ~2000 candidatas evaluadas)
+2. Para cada sample $\theta_k$ de las 200 mejores, se evalúa el modelo completo: $F_k(t) = F_{\text{modelo}}(t; \theta_k)$
+3. Para cada tiempo $t$, se calculan los percentiles de los flujos $\{F_1(t), F_2(t), ..., F_{200}(t)\}$
+
+**Nota**: Al usar solo las 200 mejores curvas (en lugar de todas o una muestra aleatoria), las bandas de confianza representan la incertidumbre entre las soluciones de alta calidad, lo que proporciona una estimación más realista de la incertidumbre del modelo.
 
 **Definición Matemática:**
 
@@ -860,10 +863,11 @@ Cuando se reporta un parámetro como $A = 1.15 \times 10^{-7} \pm 0.3 \times 10^
 
 **Visualización en los Gráficos:**
 
-- **Línea verde sólida**: Curva más central del ensemble ("Median of Curves")
-- **Línea azul punteada**: Curva calculada con la mediana de cada parámetro ("Median of Parameters")
-- **Banda roja oscura (68% CI)**: Región donde está el 68% de las curvas posibles
-- **Banda roja clara (95% CI)**: Región donde está el 95% de las curvas posibles
+- **Línea verde sólida**: Curva más central del ensemble ("Median of Curves") - calculada de las 200 mejores curvas
+- **Línea azul punteada**: Curva calculada con la mediana de cada parámetro ("Median of Parameters") - calculada de las 200 mejores curvas
+- **Líneas rojas individuales**: Las 200 curvas con mejor log-likelihood ploteadas individualmente (con transparencia)
+- **Banda roja oscura (68% CI)**: Región donde está el 68% de las 200 mejores curvas
+- **Banda roja clara (95% CI)**: Región donde está el 95% de las 200 mejores curvas
 
 ### Dos Métodos para la Curva Central: Median of Parameters vs Median of Curves
 
@@ -871,13 +875,16 @@ Los gráficos muestran **dos líneas** que representan diferentes formas de calc
 
 **1. Median of Parameters (Línea Azul Punteada)**
 
-Se calcula tomando la **mediana de cada parámetro independientemente**:
+Se calcula seleccionando primero las **200 curvas con mejor log-likelihood** (de ~2000 candidatas evaluadas), y luego tomando la **mediana de cada parámetro independientemente** de esas 200 mejores:
 
 $$\theta_{\text{mediana}} = (\text{median}(A), \text{median}(f), \text{median}(t_0), \text{median}(t_{\text{rise}}), \text{median}(t_{\text{fall}}), \text{median}(\gamma))$$
 
 Luego se evalúa el modelo con estos parámetros: $F_{\text{azul}}(t) = F_{\text{modelo}}(t; \theta_{\text{mediana}})$
 
-- **Ventajas**: Es el método matemáticamente estándar y es lo que se reporta en publicaciones científicas. Los valores de los parámetros coinciden exactamente con los mostrados en el corner plot.
+- **Ventajas**: 
+  - Es el método matemáticamente estándar y es lo que se reporta en publicaciones científicas
+  - Los valores de los parámetros coinciden exactamente con los mostrados en el corner plot
+  - Al usar solo las 200 mejores curvas, se enfoca en soluciones que ajustan bien los datos
 - **Desventajas**: Cuando hay **alta correlación entre parámetros** o **alta incertidumbre** en las distribuciones, la combinación de medianas independientes puede no representar una curva "típica" del ensemble de curvas MCMC. En casos extremos, la mediana de parámetros puede producir una curva que ningún sample individual del MCMC produciría.
 
 **2. Median of Curves / Most Central Curve (Línea Verde Sólida)**
@@ -887,9 +894,9 @@ Se calcula seleccionando las **mejores curvas según su log-likelihood** y luego
 1. Se evalúan ~2000 samples candidatos del MCMC
 2. Para cada candidato $\theta_k$, se calcula su **log-likelihood gaussiano**:
    $$\log L_k = -\frac{1}{2} \sum_i \left(\frac{F_{\text{obs},i} - F_{\text{modelo}}(t_i; \theta_k)}{\sigma_i}\right)^2$$
-3. Se seleccionan las **500 curvas con mayor log-likelihood** (mejor ajuste a los datos)
-4. Para estas 500 mejores curvas, se calcula la **mediana punto a punto**: $F_{\text{p50}}(t) = \text{percentil}_{50}(\{F_1(t), ..., F_{500}(t)\})$
-5. Se identifica cuál de las 500 curvas reales está **más cerca** de la mediana:
+3. Se seleccionan las **200 curvas con mayor log-likelihood** (mejor ajuste a los datos)
+4. Para estas 200 mejores curvas, se calcula la **mediana punto a punto**: $F_{\text{p50}}(t) = \text{percentil}_{50}(\{F_1(t), ..., F_{200}(t)\})$
+5. Se identifica cuál de las 200 curvas reales está **más cerca** de la mediana:
    $$k^* = \arg\min_k \sum_t (F_k(t) - F_{\text{p50}}(t))^2$$
 6. La curva verde es $F_{\text{verde}}(t) = F_{k^*}(t)$
 
@@ -903,6 +910,16 @@ Se calcula seleccionando las **mejores curvas según su log-likelihood** y luego
 **Parámetros de la Curva Central (MoC):**
 
 Los 6 parámetros de la curva central se guardan en el CSV con sufijo `_moc` (e.g., `A_moc`, `f_moc`, `t0_moc`, etc.), permitiendo comparar con los parámetros de la mediana tradicional.
+
+**Consistencia en el Análisis:**
+
+**Importante**: Las mismas **200 mejores curvas** (seleccionadas por log-likelihood) se usan para calcular:
+- **Median of Parameters** (línea azul, features sin sufijo, corner plot)
+- **Median of Curves** (línea verde, features con sufijo `_moc`)
+- **Corner plot** (histogramas de las 200 mejores curvas)
+- **Líneas rojas individuales** (las 200 curvas ploteadas)
+
+Esto garantiza consistencia entre todas las visualizaciones y features extraídas. Ambos métodos (Median of Parameters y Median of Curves) se calculan a partir del mismo conjunto de 200 curvas de alta calidad, lo que permite una comparación justa entre ambos enfoques.
 
 **¿Cuándo Difieren Significativamente?**
 

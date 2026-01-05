@@ -268,7 +268,8 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
             had_upper_limits=had_upper_limits,
             param_medians_phase_relative=mcmc_results['params'],  # Para debug
             param_medians=param_medians_for_plot,  # Mediana real para la línea azul
-            params_median_of_curves=params_moc_mjd  # Curva central (verde)
+            params_median_of_curves=params_moc_mjd,  # Curva central (verde)
+            dynamic_bounds=mcmc_results.get('dynamic_bounds', None)  # Bounds dinámicos del ajuste
         )
         t_plot = time.time() - t0_plot
         print(f"    [OK] Gráfico guardado en {t_plot:.2f} segundos: {plot_path}")
@@ -297,7 +298,11 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         corner_filename = f"{sn_name}_{filter_name}_corner.png"
         corner_path = sn_plots_dir / corner_filename
         t0_corner = time.time()
-        plot_corner(mcmc_results['samples'], save_path=str(corner_path))  # Samples originales en fase relativa
+        # Usar las 200 mejores curvas para el corner plot (consistente con param_medians)
+        samples_for_corner = mcmc_results.get('samples_best_200', mcmc_results.get('samples_valid', mcmc_results['samples']))
+        plot_corner(samples_for_corner, save_path=str(corner_path), 
+                   param_medians=mcmc_results['params'],
+                   param_percentiles=mcmc_results['params_percentiles'])
         t_corner = time.time() - t0_corner
         print(f"    [OK] Corner plot guardado en {t_corner:.2f} segundos: {corner_path}")
         
@@ -1221,13 +1226,16 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         xlim=common_xlim,
                         param_medians_phase_relative=data['mcmc_results']['params'],  # Para debug
                         param_medians=param_medians_for_plot,  # Mediana real para la línea azul
-                        params_median_of_curves=data.get('params_moc_mjd')  # Curva central (verde)
+                        params_median_of_curves=data.get('params_moc_mjd'),  # Curva central (verde)
+                        dynamic_bounds=data['mcmc_results'].get('dynamic_bounds', None)  # Bounds dinámicos del ajuste
                     )
                     
                     # Generar corner plot (sin guardar, solo obtener la figura)
                     # Pasar param_medians y param_percentiles para que muestre los valores de TODOS los samples
+                    # Usar las 200 mejores curvas para el corner plot (consistente con param_medians)
+                    samples_for_corner = data['mcmc_results'].get('samples_best_200', data.get('mcmc_samples'))
                     corner_fig = plot_corner(
-                        data['mcmc_samples'], 
+                        samples_for_corner, 
                         save_path=None,
                         param_medians=data['mcmc_results']['params'],
                         param_percentiles=data['mcmc_results']['params_percentiles']

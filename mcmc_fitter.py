@@ -373,68 +373,55 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True, is_upper_limit=None):
     else:
         samples_valid = samples
     
-    # Calcular estadísticas usando solo samples válidos
-    # IMPORTANTE: param_medians calcula la mediana de CADA parámetro por separado
-    # Esto significa: mediana_A, mediana_f, mediana_t0, etc.
-    # Luego se evalúa el modelo con estos parámetros medianos: alerce_model(phase, mediana_A, mediana_f, ...)
-    # NOTA: Esto NO es lo mismo que calcular la mediana de las curvas completas.
-    # Si hay correlaciones entre parámetros, la combinación de medianas puede no estar
-    # en el centro de las curvas rojas (que son samples individuales de la distribución).
-    param_medians = np.median(samples_valid, axis=0)
-    param_std = np.std(samples_valid, axis=0)
-    param_percentiles = np.percentile(samples_valid, [16, 50, 84], axis=0)
-    
-    # Calcular modelo con parámetros medianos
-    # Este es el modelo que se muestra como "MCMC Median" en los gráficos
-    # y los valores que aparecen en "MCMC Fit Results"
-    model_flux = alerce_model(phase, *param_medians)
-    
     # ==========================================================================
-    # CALCULAR MEDIAN OF CURVES (curva central)
+    # SELECCIONAR LAS 200 MEJORES CURVAS POR LOG-LIKELIHOOD
     # ==========================================================================
-    # Seleccionar las 500 curvas con MEJOR LOG-LIKELIHOOD de 2000 candidatas
-    # Luego encontrar la curva más cercana a la mediana de esas 500
-    # Esto captura mejor las correlaciones y da curvas que ajustan bien los datos
+    # Primero seleccionamos las 200 mejores, luego usamos esas para TODO:
+    # - Median of Parameters (param_medians)
+    # - Median of Curves (params_median_of_curves)
+    # - Corner plot
+    # - Features
     
-    # PASO 1: Evaluar 2000 candidatas y calcular su log-likelihood
+    # PASO 1: Evaluar 2000 candidatas y calcular su log-likelihood usando la función oficial
     n_candidates = min(2000, len(samples_valid))
     step_candidates = max(1, len(samples_valid) // n_candidates)
     candidate_indices = np.arange(0, len(samples_valid), step_candidates)[:n_candidates]
-    
-    # Usar flux_err si está disponible
-    if flux_err is not None and len(flux_err) == len(flux):
-        sigma = flux_err.copy()
-        sigma = np.where(sigma > 0, sigma, np.nanmedian(sigma[sigma > 0]) if np.any(sigma > 0) else 1e-10)
-    else:
-        sigma = np.ones_like(flux) * np.std(flux) * 0.1
     
     candidate_loglik = []
     valid_candidate_indices = []
     for idx in candidate_indices:
         try:
-            flux_model_candidate = alerce_model(phase, *samples_valid[idx])
-            flux_model_candidate = np.clip(flux_model_candidate, 1e-10, None)
-            if np.all(np.isfinite(flux_model_candidate)) and np.all(flux_model_candidate > 0):
-                chi2 = np.sum(((flux - flux_model_candidate) / sigma)**2)
-                log_lik = -0.5 * chi2
+            # Usar la función log_likelihood oficial (incluye upper limits con método CDF)
+            log_lik = log_likelihood(
+                samples_valid[idx], 
+                phase, 
+                flux, 
+                flux_err, 
+                dynamic_bounds, 
+                is_upper_limit
+            )
+            # Solo considerar si es finito (no -inf)
+            if np.isfinite(log_lik):
                 candidate_loglik.append(log_lik)
                 valid_candidate_indices.append(idx)
         except:
             continue
     
-    # PASO 2: Seleccionar las 500 con mayor log-likelihood
+    # PASO 2: Seleccionar las 200 con mayor log-likelihood
+    samples_best_200 = None
     params_median_of_curves = None
     central_curve_idx = None
+    
     if len(candidate_loglik) >= 10:
-        n_samples_for_moc = min(500, len(valid_candidate_indices))
-        sorted_idx = np.argsort(candidate_loglik)[::-1][:n_samples_for_moc]
-        moc_indices = np.array(valid_candidate_indices)[sorted_idx]
-        samples_for_moc = samples_valid[moc_indices]
+        n_samples_best = min(200, len(valid_candidate_indices))
+        sorted_idx = np.argsort(candidate_loglik)[::-1][:n_samples_best]
+        best_indices = np.array(valid_candidate_indices)[sorted_idx]
+        samples_best_200 = samples_valid[best_indices]
         
-        # PASO 3: Evaluar las curvas seleccionadas y encontrar la más central
+        # PASO 3: Evaluar las curvas seleccionadas y encontrar la más central (Median of Curves)
         all_flux_curves = []
         valid_sample_indices = []
-        for i, sample in enumerate(samples_for_moc):
+        for i, sample in enumerate(samples_best_200):
             try:
                 flux_curve = alerce_model(phase, *sample)
                 flux_curve = np.clip(flux_curve, 1e-10, None)
@@ -450,21 +437,50 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True, is_upper_limit=None):
             distances = np.sum((all_flux_curves - flux_p50)**2, axis=1)
             best_idx_local = np.argmin(distances)
             original_idx = valid_sample_indices[best_idx_local]
-            params_median_of_curves = samples_for_moc[original_idx]
-            central_curve_idx = moc_indices[original_idx]
+            params_median_of_curves = samples_best_200[original_idx]
+            central_curve_idx = best_indices[original_idx]
+    
+    # ==========================================================================
+    # CALCULAR ESTADÍSTICAS USANDO LAS 200 MEJORES CURVAS
+    # ==========================================================================
+    # IMPORTANTE: param_medians calcula la mediana de CADA parámetro por separado
+    # Esto significa: mediana_A, mediana_f, mediana_t0, etc.
+    # Luego se evalúa el modelo con estos parámetros medianos: alerce_model(phase, mediana_A, mediana_f, ...)
+    # NOTA: Esto NO es lo mismo que calcular la mediana de las curvas completas.
+    # Si hay correlaciones entre parámetros, la combinación de medianas puede no estar
+    # en el centro de las curvas rojas (que son samples individuales de la distribución).
+    
+    if samples_best_200 is not None and len(samples_best_200) > 0:
+        # Usar las 200 mejores para calcular estadísticas
+        param_medians = np.median(samples_best_200, axis=0)
+        param_std = np.std(samples_best_200, axis=0)
+        param_percentiles = np.percentile(samples_best_200, [16, 50, 84], axis=0)
+    else:
+        # Fallback: usar todos los samples válidos si no hay 200 mejores
+        param_medians = np.median(samples_valid, axis=0)
+        param_std = np.std(samples_valid, axis=0)
+        param_percentiles = np.percentile(samples_valid, [16, 50, 84], axis=0)
+        samples_best_200 = samples_valid  # Usar todos como fallback
+    
+    # Calcular modelo con parámetros medianos
+    # Este es el modelo que se muestra como "MCMC Median" en los gráficos
+    # y los valores que aparecen en "MCMC Fit Results"
+    model_flux = alerce_model(phase, *param_medians)
     
     return {
-        'params': param_medians,
-        'params_err': param_std,
-        'params_percentiles': param_percentiles,
+        'params': param_medians,  # Median of Parameters de las 500 mejores
+        'params_err': param_std,  # Std de las 500 mejores
+        'params_percentiles': param_percentiles,  # Percentiles de las 500 mejores
         'params_median_of_curves': params_median_of_curves,  # Parámetros de la curva central
         'central_curve_idx': central_curve_idx,  # Índice del sample de la curva central
-        'samples': samples,  # Todos los samples (para corner plot y visualización completa)
-        'samples_valid': samples_valid,  # Solo samples que respetan upper limits (para estadísticas)
+        'samples': samples,  # Todos los samples (para referencia)
+        'samples_valid': samples_valid,  # Solo samples que respetan upper limits
+        'samples_best_200': samples_best_200,  # Las 200 mejores curvas (para corner plot y features)
         'sampler': sampler,
         'model_flux': model_flux,
         'n_steps': n_steps,
-        'burn_in': burn_in
+        'burn_in': burn_in,
+        'dynamic_bounds': dynamic_bounds  # Bounds dinámicos usados en el ajuste
     }
 
 def validate_physical_fit(mcmc_results, phase, flux, is_upper_limit=None):

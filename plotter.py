@@ -112,7 +112,8 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
                               phase_ul=None, mag_ul=None, flux_ul=None,
                               is_upper_limit=None, flux_err=None, had_upper_limits=None,
                               xlim=None, param_medians_phase_relative=None,
-                              param_medians=None, params_median_of_curves=None):
+                              param_medians=None, params_median_of_curves=None,
+                              dynamic_bounds=None):
     """
     Generar gráfico de ajuste mostrando la mediana de parámetros con bandas de confianza
     
@@ -213,41 +214,89 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
     mag_curves_to_plot = None
     
     if samples is not None and len(samples) > 0:
-        # PASO 1: Evaluar curvas candidatas y calcular su log-likelihood
-        # Luego seleccionar las 500 con MAYOR likelihood (mejor ajuste)
+        # PASO 1: Evaluar curvas candidatas y calcular su log-likelihood usando la función oficial
+        # Luego seleccionar las 200 con MAYOR likelihood (mejor ajuste)
         n_candidates = min(2000, len(samples))  # Evaluar hasta 2000 candidatas
         step = max(1, len(samples) // n_candidates)
         candidate_indices = np.arange(0, len(samples), step)[:n_candidates]
         
-        # Calcular log-likelihood de cada curva (chi2 simplificado)
+        # Importar log_likelihood desde mcmc_fitter
+        from mcmc_fitter import log_likelihood
+        
+        # Detectar si phase está en MJD (valores grandes > 50000) o fase relativa
+        # Si está en MJD, necesitamos convertir samples de vuelta a fase relativa
+        is_phase_mjd = len(phase) > 0 and phase.min() > 50000
+        if is_phase_mjd:
+            # phase está en MJD, necesitamos fase relativa para log_likelihood
+            # Calcular reference_mjd desde param_medians (MJD) y param_medians_phase_relative (fase relativa)
+            if param_medians is not None and param_medians_phase_relative is not None:
+                # t0 en MJD - t0 en fase relativa = reference_mjd
+                reference_mjd = param_medians[2] - param_medians_phase_relative[2]
+            else:
+                # Fallback: usar el mínimo de phase como referencia aproximada
+                reference_mjd = phase.min()
+            # Convertir phase a fase relativa
+            phase_relative = phase - reference_mjd
+            # Convertir samples de MJD a fase relativa (solo t0)
+            samples_relative = samples.copy()
+            samples_relative[:, 2] = samples[:, 2] - reference_mjd
+        else:
+            # phase ya está en fase relativa
+            phase_relative = phase
+            samples_relative = samples
+        
         candidate_loglik = []
         valid_indices = []
         
-        # Usar flux_err si está disponible, sino asumir error constante
-        if flux_err is not None and len(flux_err) == len(flux):
-            sigma = flux_err
-            # Reemplazar errores <= 0 con un valor pequeño
-            sigma = np.where(sigma > 0, sigma, np.nanmedian(sigma[sigma > 0]) if np.any(sigma > 0) else 1e-10)
-        else:
-            sigma = np.ones_like(flux) * np.std(flux) * 0.1  # 10% del std como error
+        # Verificar que flux_err esté disponible (log_likelihood lo requiere)
+        if flux_err is None or len(flux_err) != len(flux):
+            # Calcular flux_err desde mag_err si está disponible
+            if mag_err is not None and len(mag_err) == len(flux):
+                # Convertir mag_err a flux_err usando derivada de la conversión
+                flux_err = flux * mag_err * np.log(10) / 2.5
+            else:
+                # Fallback: usar 10% del std como error
+                flux_err = np.ones_like(flux) * np.std(flux) * 0.1
+            # Asegurar que no haya ceros o negativos
+            flux_err = np.where(flux_err > 0, flux_err, np.nanmedian(flux_err[flux_err > 0]) if np.any(flux_err > 0) else 1e-10)
         
+        n_inf = 0
+        n_nan = 0
+        n_finite = 0
         for idx in candidate_indices:
             try:
-                # Evaluar en los puntos de datos
-                flux_model = alerce_model(phase, *samples[idx])
-                flux_model = np.clip(flux_model, 1e-10, None)
-                
-                if np.all(np.isfinite(flux_model)) and np.all(flux_model > 0):
-                    # Log-likelihood gaussiano: -0.5 * sum((obs - model)^2 / sigma^2)
-                    chi2 = np.sum(((flux - flux_model) / sigma)**2)
-                    log_lik = -0.5 * chi2
+                # Usar la función log_likelihood oficial (incluye upper limits con método CDF)
+                # Usar phase_relative y samples_relative (ambos en fase relativa)
+                log_lik = log_likelihood(
+                    samples_relative[idx], 
+                    phase_relative, 
+                    flux, 
+                    flux_err, 
+                    dynamic_bounds, 
+                    is_upper_limit
+                )
+                # Contar tipos de valores
+                if np.isinf(log_lik):
+                    n_inf += 1
+                elif np.isnan(log_lik):
+                    n_nan += 1
+                else:
+                    n_finite += 1
                     candidate_loglik.append(log_lik)
                     valid_indices.append(idx)
-            except:
+            except Exception as e:
+                # Debug: imprimir error solo para los primeros 3 samples para no saturar
+                if len(valid_indices) == 0 and n_inf + n_nan < 3:
+                    print(f"    [DEBUG] Error en log_likelihood (sample {idx}): {e}")
+                n_inf += 1
                 continue
         
-        # PASO 2: Seleccionar las 500 con MAYOR log-likelihood
-        n_samples_for_bands = min(500, len(valid_indices))
+        # Debug: mostrar estadísticas
+        if len(candidate_loglik) == 0:
+            print(f"    [DEBUG] Estadísticas log-likelihood: {n_finite} finitos, {n_inf} infinitos, {n_nan} NaN de {len(candidate_indices)} candidatas")
+        
+        # PASO 2: Seleccionar las 200 con MAYOR log-likelihood
+        n_samples_for_bands = min(200, len(valid_indices))
         if len(candidate_loglik) > 0:
             # Ordenar de mayor a menor log-likelihood
             sorted_idx = np.argsort(candidate_loglik)[::-1][:n_samples_for_bands]
@@ -257,6 +306,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             print(f"    [DEBUG] Seleccionadas {len(sample_indices)} curvas con mejor likelihood de {len(valid_indices)} candidatas")
             print(f"    [DEBUG] Log-likelihood: mejor={best_loglik:.1f}, peor seleccionada={worst_loglik:.1f}")
         else:
+            print(f"    [DEBUG] ADVERTENCIA: No se encontraron curvas válidas con log-likelihood finito (evaluadas {len(candidate_indices)} candidatas)")
             sample_indices = np.array([])
         
         # PASO 3: Evaluar las curvas seleccionadas en phase_smooth para plotear
@@ -302,7 +352,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
             print(f"    [DEBUG] Curva central: índice local {best_curve_idx_local}, sample global {best_sample_global_idx}")
             
             # Convertir todas las curvas a magnitud para plotear líneas individuales
-            # Plotear todas las 500 curvas
+            # Plotear todas las 200 curvas seleccionadas
             flux_curves_to_plot = all_flux_curves
             mag_curves_to_plot = np.array([flux_to_mag(fc) for fc in flux_curves_to_plot])
             
