@@ -1,6 +1,10 @@
 """
 Generación de gráficos para visualización de ajustes
 """
+import warnings
+warnings.filterwarnings('ignore')
+import numpy as np
+np.seterr(all='ignore')
 import matplotlib.pyplot as plt
 import matplotlib
 
@@ -409,18 +413,20 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         if mag_err_normal is not None and not np.all(np.isnan(mag_err_normal)):
             axes[0].errorbar(phase_normal_mag, mag_normal, yerr=mag_err_normal, fmt='o', alpha=0.7,
                              label='Observations', markersize=5, zorder=10, color='#2E86AB',
-                             capsize=2, capthick=1, elinewidth=1.5)
+                             capsize=2, capthick=1, elinewidth=1.5,
+                             markeredgecolor='black', markeredgewidth=0.4)
         else:
             axes[0].errorbar(phase_normal_mag, mag_normal, yerr=None, fmt='o', alpha=0.7,
-                             label='Observations', markersize=5, zorder=10, color='#2E86AB')
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB',
+                             markeredgecolor='black', markeredgewidth=0.4)
     
     # 5. Upper limits usados en el fit
     if len(phase_ul_fit_mag) > 0:
-        axes[0].scatter(phase_ul_fit_mag, mag_ul_fit, marker='^', color='green', alpha=0.8, 
-                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
+        axes[0].scatter(phase_ul_fit_mag, mag_ul_fit, marker='^', color='red', alpha=0.8, 
+                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='black', linewidths=0.8)
         for px, py in zip(phase_ul_fit_mag, mag_ul_fit):
             axes[0].annotate('', xy=(px, py), xytext=(px, py + 0.3),
-                            arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
+                            arrowprops=dict(arrowstyle='->', color='red', alpha=0.8, lw=1.5))
     
     # 6. Upper limits NO usados en el fit
     if phase_ul is not None and mag_ul is not None and len(phase_ul) > 0:
@@ -496,20 +502,22 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
         if flux_err_normal is not None and not np.all(np.isnan(flux_err_normal)):
             axes[1].errorbar(phase_normal_flux, flux_normal, yerr=flux_err_normal, fmt='o', alpha=0.7,
                              label='Observations', markersize=5, zorder=10, color='#2E86AB',
-                             capsize=2, capthick=1, elinewidth=1.5)
+                             capsize=2, capthick=1, elinewidth=1.5,
+                             markeredgecolor='black', markeredgewidth=0.4)
         else:
             axes[1].errorbar(phase_normal_flux, flux_normal, yerr=None, fmt='o', alpha=0.7,
-                             label='Observations', markersize=5, zorder=10, color='#2E86AB')
+                             label='Observations', markersize=5, zorder=10, color='#2E86AB',
+                             markeredgecolor='black', markeredgewidth=0.4)
     
     # 5. Upper limits usados en el fit
     if len(phase_ul_fit_flux) > 0:
-        axes[1].scatter(phase_ul_fit_flux, flux_ul_fit, marker='^', color='green', alpha=0.8, 
-                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='darkgreen', linewidths=1)
+        axes[1].scatter(phase_ul_fit_flux, flux_ul_fit, marker='^', color='red', alpha=0.8, 
+                       s=80, label='Upper limits (used in fit)', zorder=9, edgecolors='black', linewidths=0.8)
         for px, py in zip(phase_ul_fit_flux, flux_ul_fit):
             max_flux = flux.max() if len(flux) > 0 else flux_ul_fit.max()
             arrow_length = max_flux * 0.05
             axes[1].annotate('', xy=(px, py), xytext=(px, py - arrow_length),
-                            arrowprops=dict(arrowstyle='->', color='green', alpha=0.8, lw=1.5))
+                            arrowprops=dict(arrowstyle='->', color='red', alpha=0.8, lw=1.5))
     
     # 6. Upper limits NO usados en el fit
     if phase_ul is not None and flux_ul is not None and len(phase_ul) > 0:
@@ -567,7 +575,7 @@ def plot_fit_with_uncertainty(phase, mag, mag_err, mag_model, flux, flux_model,
 
 def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
                        flux_err=None, sn_name=None, filter_name=None, save_path=None,
-                       early_time_offset=-500, late_time_offset=500, samples=None,
+                       early_time_offset=-100, late_time_offset=100, samples=None,
                        precalculated_sample_indices=None, central_curve_sample_idx=None):
     """
     Generar gráfico del modelo extendido para validación física
@@ -587,9 +595,9 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
     save_path : str, optional
         Ruta para guardar figura
     early_time_offset : float
-        Días antes de la primera detección para evaluar (default: -500)
+        Días antes de la primera detección para evaluar (default: -100)
     late_time_offset : float
-        Días después de la última detección para evaluar (default: +500)
+        Días después de la última detección para evaluar (default: +100)
     samples : array, optional
         Samples del MCMC para calcular mediana de curvas (consistente con fit principal)
     central_curve_sample_idx : int, optional
@@ -612,7 +620,7 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
     first_phase = phase_normal.min()
     last_phase = phase_normal.max()
     
-    # Rango extendido: -500 días antes de primera detección, +500 días después de última
+    # Rango extendido: -100 días antes de primera detección, +100 días después de última
     phase_extended = np.linspace(first_phase + early_time_offset, 
                                  last_phase + late_time_offset, 500)
     
@@ -703,10 +711,28 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
                 if flux_err_normal is not None and not np.all(np.isnan(flux_err_normal)):
                     ax.errorbar(phase_normal, flux_normal, yerr=flux_err_normal, fmt='o', alpha=0.7,
                                label='Obs.', markersize=3, zorder=10, color='#2E86AB',
-                               capsize=1, capthick=0.5, elinewidth=0.8)
+                               capsize=1, capthick=0.5, elinewidth=0.8,
+                               markeredgecolor='black', markeredgewidth=0.3)
                 else:
                     ax.errorbar(phase_normal, flux_normal, yerr=None, fmt='o', alpha=0.7,
-                               label='Obs.', markersize=3, zorder=10, color='#2E86AB')
+                               label='Obs.', markersize=3, zorder=10, color='#2E86AB',
+                               markeredgecolor='black', markeredgewidth=0.3)
+            
+            # Plot upper limits (misma simbología que plot normal)
+            if is_upper_limit is not None and np.any(is_upper_limit):
+                mask_ul = is_upper_limit
+                phase_ul = phase[mask_ul]
+                flux_ul = flux[mask_ul]
+                
+                if len(phase_ul) > 0:
+                    ax.scatter(phase_ul, flux_ul, marker='^', color='red', alpha=0.8, 
+                             s=60, label='Upper limits', zorder=9, edgecolors='black', linewidths=0.6)
+                    # Agregar flechas hacia abajo para indicar que son límites superiores
+                    for px, py in zip(phase_ul, flux_ul):
+                        max_flux = flux.max() if len(flux) > 0 else flux_ul.max()
+                        arrow_length = max_flux * 0.05
+                        ax.annotate('', xy=(px, py), xytext=(px, py - arrow_length),
+                                arrowprops=dict(arrowstyle='->', color='red', alpha=0.8, lw=1.2))
         
         # Marcar rango observado con sombreado
         ax.axvspan(first_phase, last_phase, alpha=0.15, color='green', 
@@ -716,17 +742,33 @@ def plot_extended_model(phase, flux, param_medians, is_upper_limit=None,
         ax.axvline(first_phase, color='green', linestyle='--', linewidth=0.8, alpha=0.5, zorder=3)
         ax.axvline(last_phase, color='green', linestyle='--', linewidth=0.8, alpha=0.5, zorder=3)
         
-        # Marcar puntos de validación
-        flux_first = alerce_model(np.array([first_phase]), *param_medians)[0]
-        flux_early = alerce_model(np.array([first_phase + early_time_offset]), *param_medians)[0]
-        flux_last = alerce_model(np.array([last_phase]), *param_medians)[0]
-        flux_late = alerce_model(np.array([last_phase + late_time_offset]), *param_medians)[0]
+        # Marcar puntos de validación usando la mediana de curvas (no parámetros)
+        # Evaluar flux_model_curves en los puntos específicos usando interpolación
+        if flux_model_curves is not None:
+            # Interpolar flux_model_curves en los puntos de validación
+            from scipy.interpolate import interp1d
+            flux_interp = interp1d(phase_extended, flux_model_curves, kind='linear', 
+                                  bounds_error=False, fill_value='extrapolate')
+            flux_first = flux_interp(first_phase)
+            flux_early = flux_interp(first_phase + early_time_offset)
+            flux_last = flux_interp(last_phase)
+            flux_late = flux_interp(last_phase + late_time_offset)
+        else:
+            # Fallback a parámetros si no hay curva
+            flux_first = alerce_model(np.array([first_phase]), *param_medians)[0]
+            flux_early = alerce_model(np.array([first_phase + early_time_offset]), *param_medians)[0]
+            flux_last = alerce_model(np.array([last_phase]), *param_medians)[0]
+            flux_late = alerce_model(np.array([last_phase + late_time_offset]), *param_medians)[0]
         
-        # Puntos de validación (sin labels para reducir leyenda)
-        ax.plot([first_phase + early_time_offset], [flux_early], 'ro', markersize=6, zorder=10)
-        ax.plot([first_phase], [flux_first], 'go', markersize=6, zorder=10)
-        ax.plot([last_phase], [flux_last], 'go', markersize=6, zorder=10)
-        ax.plot([last_phase + late_time_offset], [flux_late], 'ro', markersize=6, zorder=10)
+        # Puntos de validación: usar cuadrados más pequeños y profesionales
+        ax.plot([first_phase + early_time_offset], [flux_early], 'rs', markersize=4, 
+               markeredgecolor='black', markeredgewidth=0.5, zorder=10)
+        ax.plot([first_phase], [flux_first], 'gs', markersize=4, 
+               markeredgecolor='black', markeredgewidth=0.5, zorder=10)
+        ax.plot([last_phase], [flux_last], 'gs', markersize=4, 
+               markeredgecolor='black', markeredgewidth=0.5, zorder=10)
+        ax.plot([last_phase + late_time_offset], [flux_late], 'rs', markersize=4, 
+               markeredgecolor='black', markeredgewidth=0.5, zorder=10)
         
         # Líneas de conexión para mostrar la validación
         ax.plot([first_phase + early_time_offset, first_phase], [flux_early, flux_first], 

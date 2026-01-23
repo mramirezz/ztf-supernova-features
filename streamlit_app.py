@@ -1,9 +1,13 @@
 """
 App Streamlit para explorar ajustes MCMC de supernovas
 """
+import warnings
+warnings.filterwarnings('ignore')
+import numpy as np
+np.seterr(all='ignore')
+
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import time
 from pathlib import Path

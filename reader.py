@@ -1,8 +1,11 @@
 """
 Lector de archivos .dat de fotometría ZTF
 """
+import warnings
+warnings.filterwarnings('ignore')
 import pandas as pd
 import numpy as np
+np.seterr(all='ignore')
 from pathlib import Path
 from typing import Dict, Optional, List
 
@@ -261,49 +264,233 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
     peak_idx = np.argmax(flux_normal)
     peak_phase = phase_normal[peak_idx]
     
-    # INCLUIR LOS 3 ÚLTIMOS UPPER LIMITS ANTES DEL PRIMER PUNTO DE OBSERVACIÓN
-    # Esto ayuda a dar contexto sobre el flujo antes de la explosión
-    # CONSTRAINT: Solo incluir upper limits que estén dentro del rango configurado antes de la primera observación
+    # NUEVO FILTRO DE UPPER LIMITS: Barrido inteligente antes de la primera detección
+    # 1. Buscar en ventana de 60 días antes de la primera detección
+    # 2. Si el último UL antes de la primera detección es más brillante (menor magnitud) que la primera detección, descartarlo
+    # 3. Continuar hacia atrás hasta encontrar el primer UL más débil (mayor magnitud) que la primera detección
+    # 4. Si no hay UL en esos 60 días, descartar la curva
     first_observation_mjd = df_normal['MJD'].min()
-    # max_days_before_first_obs viene como parámetro (por defecto desde config.py)
+    first_observation_idx = df_normal['MJD'].idxmin()
+    first_observation_mag = df_normal.loc[first_observation_idx, 'MAG']
+    first_observation_flux = 10**(-first_observation_mag / 2.5)
     
-    # Filtrar upper limits que estén antes de la primera observación
-    ul_before = df_ul[df_ul['MJD'] < first_observation_mjd].copy()
+    # Ventana de búsqueda: 60 días antes de la primera detección
+    window_days = 60.0
+    ul_search_start = first_observation_mjd - window_days
     
-    if len(ul_before) > 0:
-        # Filtrar por constraint: máximo 20 días antes de la primera observación
-        ul_before = ul_before[ul_before['MJD'] >= (first_observation_mjd - max_days_before_first_obs)].copy()
+    # Función auxiliar para validar subida inicial (rise) en los primeros puntos
+    def validate_slopes(df_normal):
+        """
+        Validar si hay una subida marcada (rise) en los primeros puntos.
+        Criterio: El primer punto debe ser más débil (mayor magnitud) que los siguientes 2-3 puntos,
+        o la pendiente entre el punto 1 y 3 debe ser negativa y significativa (< -0.05 mag/día).
         
-        if len(ul_before) > 0:
-            # Ordenar por MJD descendente (más recientes primero) y tomar los 3 últimos
-            ul_before = ul_before.sort_values('MJD', ascending=False).head(3)
-            # Convertir a fase usando la misma referencia que los datos normales
-            reference_mjd = df_normal['MJD'].min()
-            phase_ul_before = mjd_to_phase(ul_before['MJD'].values, reference_mjd=reference_mjd)
-            mag_ul_before = ul_before['MAG'].values
-            flux_ul_before = 10**(-mag_ul_before / 2.5)
+        Returns:
+        --------
+        tuple: (is_valid: bool, details: str)
+            is_valid: True si pasa la validación, False si no
+            details: String con detalles de por qué pasó o no pasó
+        """
+        if len(df_normal) < 3:
+            return False, f"No hay suficientes puntos para validar pendientes (solo {len(df_normal)} puntos, mínimo 3 requerido)"
+        
+        # Ordenar por MJD y tomar los primeros 3 puntos
+        df_sorted = df_normal.sort_values('MJD').head(3)
+        mjds = df_sorted['MJD'].values
+        mags = df_sorted['MAG'].values
+        
+        # Calcular todas las pendientes para información detallada
+        slope_12 = (mags[1] - mags[0]) / (mjds[1] - mjds[0]) if (mjds[1] - mjds[0]) > 0 else 0
+        slope_23 = (mags[2] - mags[1]) / (mjds[2] - mjds[1]) if (mjds[2] - mjds[1]) > 0 else 0
+        slope_13 = (mags[2] - mags[0]) / (mjds[2] - mjds[0]) if (mjds[2] - mjds[0]) > 0 else 0
+        
+        # Criterio 1: Verificar que el primer punto es más débil que los siguientes
+        # (mag[0] > mag[1] y mag[0] > mag[2] indica subida clara)
+        first_weaker_than_second = mags[0] > mags[1]
+        first_weaker_than_third = mags[0] > mags[2]
+        
+        # Criterio 2: Pendiente negativa significativa entre punto 1 y 3
+        # (pendiente negativa = magnitud disminuye = brillo aumenta = subida)
+        significant_negative_slope = slope_13 < -0.05
+        
+        # Construir detalles
+        details_parts = []
+        details_parts.append(f"Puntos: P1(mjd={mjds[0]:.1f}, mag={mags[0]:.2f}), P2(mjd={mjds[1]:.1f}, mag={mags[1]:.2f}), P3(mjd={mjds[2]:.1f}, mag={mags[2]:.2f})")
+        details_parts.append(f"Pendientes: slope_12={slope_12:.4f} mag/día, slope_23={slope_23:.4f} mag/día, slope_13={slope_13:.4f} mag/día")
+        
+        # Verificar criterios
+        criteria_details = []
+        if first_weaker_than_second and first_weaker_than_third:
+            criteria_details.append("✓ Criterio 1: Primer punto más débil que P2 y P3")
         else:
-            # No hay upper limits dentro del rango de 20 días
-            phase_ul_before = np.array([])
-            mag_ul_before = np.array([])
-            flux_ul_before = np.array([])
-    else:
-        phase_ul_before = np.array([])
-        mag_ul_before = np.array([])
-        flux_ul_before = np.array([])
+            if not first_weaker_than_second:
+                criteria_details.append(f"✗ Criterio 1: P1(mag={mags[0]:.2f}) NO es más débil que P2(mag={mags[1]:.2f})")
+            if not first_weaker_than_third:
+                criteria_details.append(f"✗ Criterio 1: P1(mag={mags[0]:.2f}) NO es más débil que P3(mag={mags[2]:.2f})")
+        
+        if significant_negative_slope:
+            criteria_details.append(f"✓ Criterio 2: Pendiente 1-3 negativa significativa (slope_13={slope_13:.4f} < -0.05 mag/día)")
+        else:
+            criteria_details.append(f"✗ Criterio 2: Pendiente 1-3 no es negativa significativa (slope_13={slope_13:.4f}, requiere < -0.05 mag/día)")
+        
+        details_parts.extend(criteria_details)
+        
+        # Si cumple al menos uno de los criterios principales, hay subida marcada
+        # (el primer punto más débil que el segundo Y el tercero, O pendiente negativa significativa)
+        has_clear_rise = (first_weaker_than_second and first_weaker_than_third) or significant_negative_slope
+        
+        details_str = " | ".join(details_parts)
+        
+        if has_clear_rise:
+            return True, f"Validación de pendientes PASÓ: {details_str}"
+        else:
+            return False, f"Validación de pendientes FALLÓ: {details_str}"
     
-    # Combinar datos normales con upper limits seleccionados
-    phase = np.concatenate([phase_normal, phase_ul_before]) if len(phase_ul_before) > 0 else phase_normal
-    mag = np.concatenate([mag_normal, mag_ul_before]) if len(mag_ul_before) > 0 else mag_normal
-    mag_err = np.concatenate([mag_err_normal, np.full(len(mag_ul_before), np.nan)]) if len(mag_ul_before) > 0 else mag_err_normal
-    flux = np.concatenate([flux_normal, flux_ul_before]) if len(flux_ul_before) > 0 else flux_normal
-    flux_err = np.concatenate([flux_err_normal, np.full(len(flux_ul_before), np.nan)]) if len(flux_ul_before) > 0 else flux_err_normal
+    # Primero verificar si hay upper limits en absoluto antes de la primera observación
+    ul_all_before = df_ul[df_ul['MJD'] < first_observation_mjd].copy()
+    
+    # Inicializar selected_ul_before como DataFrame vacío
+    selected_ul_before = pd.DataFrame()
+    ul_validation_failed = False
+    ul_failure_reason = None
+    
+    if len(ul_all_before) == 0:
+        # No hay ningún upper limit antes de la primera detección
+        ul_validation_failed = True
+        ul_failure_reason = "No hay upper limits antes de la primera detección"
+    else:
+        # Filtrar upper limits que estén antes de la primera observación y dentro de la ventana de 60 días
+        ul_before = ul_all_before[(ul_all_before['MJD'] >= ul_search_start)].copy()
+        
+        if len(ul_before) == 0:
+            # Hay upper limits pero ninguno dentro de la ventana de 60 días
+            ul_validation_failed = True
+            ul_failure_reason = "No hay upper limits en ventana de 60 días antes de la primera detección (hay UL más lejanos pero fuera de ventana)"
+        else:
+            # Ordenar por MJD descendente (más recientes primero, más cerca de la primera detección)
+            ul_before = ul_before.sort_values('MJD', ascending=False)
+            
+            # Convertir magnitudes a flujos para comparación
+            ul_before_flux = 10**(-ul_before['MAG'].values / 2.5)
+            
+            # Buscar el PRIMER upper limit que sea más débil que la primera detección
+            # (mayor magnitud = menor flujo), pero que NO sea prácticamente simultáneo
+            # a la primera detección. Este será el UL principal.
+            #
+            # Luego, una vez encontrado ese primer UL válido, también incluimos
+            # los SIGUIENTES 2 upper limits en la serie temporal (hasta un máximo de 3
+            # en total), sin exigirles que sean más débiles que la primera detección.
+            #
+            # De esta forma:
+            #   - El criterio "más débil que la primera detección" y el corte en tiempo
+            #     (>= 1 día antes) se aplican SOLO al primer UL.
+            #   - Los 2 siguientes nos dan información extra de no-detección en la
+            #     misma fase temprana, siguiendo la idea original de usar varios UL.
+            min_delta_days = 1.0
+            first_valid_idx = None
+            for i, (idx, row) in enumerate(ul_before.iterrows()):
+                ul_flux = ul_before_flux[i]
+                ul_mjd = row['MJD']
+
+                # Descartar ULs que estén demasiado cerca en tiempo de la primera detección
+                # (misma noche / mismo día), ya que en la práctica son casi simultáneos
+                # y pueden terminar pesando más que la detección.
+                if (first_observation_mjd - ul_mjd) < min_delta_days:
+                    continue
+
+                # Si el UL es más débil (menor flujo) que la primera detección, es candidato
+                if ul_flux < first_observation_flux:
+                    first_valid_idx = i
+                    break
+            
+            if first_valid_idx is None:
+                # No hay upper limits válidos (todos son más brillantes que la primera detección)
+                ul_validation_failed = True
+                ul_failure_reason = "Todos los upper limits en ventana de 60 días son más brillantes que la primera detección"
+            else:
+                # Seleccionar hasta 3 upper limits comenzando en el primero válido
+                # (el primero cumple todas las condiciones; los 2 siguientes solo deben
+                # estar dentro de la ventana temporal ya filtrada).
+                selected_ul_before = ul_before.iloc[first_valid_idx:first_valid_idx+3]
+    
+    # Si falló la validación de upper limits, validar con pendientes antes de rechazar
+    if ul_validation_failed:
+        slope_valid, slope_details = validate_slopes(df_normal)
+        if slope_valid:
+            # Pendientes válidas: continuar sin upper limits
+            print(f"    [INFO] {ul_failure_reason}, pero {slope_details}")
+            print(f"    [INFO] Continuando sin upper limits")
+            selected_ul_before = pd.DataFrame()
+        else:
+            # Construir mensaje de error detallado
+            detailed_reason = f"{ul_failure_reason}. {slope_details}"
+            raise ValueError(detailed_reason)
+    
+    # NUEVO FILTRO DE UPPER LIMITS: Barrido inteligente después de la última detección
+    # 1. Buscar en ventana de 60 días después de la última detección
+    # 2. Solo considerar ULs que sean más débiles (menor flujo) que la última detección
+    # 3. Tomar los primeros 3 que cumplan esta condición
+    last_observation_mjd = df_normal['MJD'].max()
+    last_observation_idx = df_normal['MJD'].idxmax()
+    last_observation_mag = df_normal.loc[last_observation_idx, 'MAG']
+    last_observation_flux = 10**(-last_observation_mag / 2.5)
+    
+    # Ventana de búsqueda: 60 días después de la última detección
+    window_days_after = 60.0
+    ul_search_end = last_observation_mjd + window_days_after
+    
+    # Filtrar upper limits que estén después de la última observación y dentro de la ventana de 60 días
+    ul_after = df_ul[(df_ul['MJD'] > last_observation_mjd) & (df_ul['MJD'] <= ul_search_end)].copy()
+    
+    # Si hay upper limits después, filtrar solo los que sean más débiles que la última detección
+    selected_ul_after = pd.DataFrame()  # Inicializar como DataFrame vacío
+    if len(ul_after) > 0:
+        # Ordenar por MJD ascendente (más antiguos primero, más cerca de la última detección)
+        ul_after = ul_after.sort_values('MJD', ascending=True)
+        
+        # Convertir magnitudes a flujos para comparación
+        ul_after_flux = 10**(-ul_after['MAG'].values / 2.5)
+        
+        # Filtrar solo los que sean más débiles (menor flujo) que la última detección
+        # y tomar los primeros 3
+        valid_ul_after = []
+        for i, (idx, row) in enumerate(ul_after.iterrows()):
+            ul_flux = ul_after_flux[i]
+            if ul_flux < last_observation_flux:
+                valid_ul_after.append(idx)
+                if len(valid_ul_after) >= 3:
+                    break
+        
+        if len(valid_ul_after) > 0:
+            selected_ul_after = ul_after.loc[valid_ul_after]
+    
+    # Convertir a fase usando la misma referencia que los datos normales
+    reference_mjd = df_normal['MJD'].min()
+    phase_ul_before = mjd_to_phase(selected_ul_before['MJD'].values, reference_mjd=reference_mjd) if len(selected_ul_before) > 0 else np.array([])
+    mag_ul_before = selected_ul_before['MAG'].values if len(selected_ul_before) > 0 else np.array([])
+    flux_ul_before = 10**(-mag_ul_before / 2.5) if len(mag_ul_before) > 0 else np.array([])
+    
+    phase_ul_after = mjd_to_phase(selected_ul_after['MJD'].values, reference_mjd=reference_mjd) if len(selected_ul_after) > 0 else np.array([])
+    mag_ul_after = selected_ul_after['MAG'].values if len(selected_ul_after) > 0 else np.array([])
+    flux_ul_after = 10**(-mag_ul_after / 2.5) if len(mag_ul_after) > 0 else np.array([])
+    
+    # Combinar datos normales con upper limits seleccionados (antes y después)
+    phase_ul_all = np.concatenate([phase_ul_before, phase_ul_after]) if len(phase_ul_before) > 0 or len(phase_ul_after) > 0 else np.array([])
+    mag_ul_all = np.concatenate([mag_ul_before, mag_ul_after]) if len(mag_ul_before) > 0 or len(mag_ul_after) > 0 else np.array([])
+    flux_ul_all = np.concatenate([flux_ul_before, flux_ul_after]) if len(flux_ul_before) > 0 or len(flux_ul_after) > 0 else np.array([])
+    
+    phase = np.concatenate([phase_normal, phase_ul_all]) if len(phase_ul_all) > 0 else phase_normal
+    mag = np.concatenate([mag_normal, mag_ul_all]) if len(mag_ul_all) > 0 else mag_normal
+    mag_err = np.concatenate([mag_err_normal, np.full(len(mag_ul_all), np.nan)]) if len(mag_ul_all) > 0 else mag_err_normal
+    flux = np.concatenate([flux_normal, flux_ul_all]) if len(flux_ul_all) > 0 else flux_normal
+    flux_err = np.concatenate([flux_err_normal, np.full(len(flux_ul_all), np.nan)]) if len(flux_ul_all) > 0 else flux_err_normal
     
     # Crear máscara para identificar upper limits
+    n_ul = len(phase_ul_all)
     is_upper_limit = np.concatenate([
         np.zeros(len(phase_normal), dtype=bool),
-        np.ones(len(phase_ul_before), dtype=bool)
-    ]) if len(phase_ul_before) > 0 else np.zeros(len(phase_normal), dtype=bool)
+        np.ones(n_ul, dtype=bool)
+    ]) if n_ul > 0 else np.zeros(len(phase_normal), dtype=bool)
     
     # Filtrar datos: solo hasta max_days_after_peak días después del pico
     # Si max_days_before_peak es None, no filtrar por días antes del peak (incluir todos desde la primera detección)
@@ -342,7 +529,7 @@ def prepare_lightcurve(df: pd.DataFrame, filter_name: str = None,
         is_upper_limit_filtered = is_upper_limit
     
     # Verificar si había upper limits ANTES de combinarlos (para el plot)
-    had_upper_limits_before_combining = len(phase_ul_before) > 0
+    had_upper_limits_before_combining = len(phase_ul_all) > 0
     
     # Guardar la referencia MJD usada para este filtro y los MJD originales
     reference_mjd = df_normal['MJD'].min()
@@ -380,8 +567,35 @@ def load_supernovas_from_csv(csv_path: str) -> List[str]:
     """
     csv_path = Path(csv_path)
     
+    # Si la ruta es relativa, intentar resolverla de varias formas
+    original_path = csv_path
+    if not csv_path.is_absolute():
+        # 1. Intentar como ruta relativa al directorio de trabajo actual
+        if not csv_path.exists():
+            # 2. Intentar como ruta relativa al directorio del script
+            script_dir = Path(__file__).parent
+            potential_path = script_dir / csv_path
+            if potential_path.exists():
+                csv_path = potential_path
+            # 3. Si aún no existe, mantener el path original para el mensaje de error
+    
     if not csv_path.exists():
-        raise FileNotFoundError(f"Archivo CSV no encontrado: {csv_path}")
+        # Intentar sugerir archivos similares en el mismo directorio
+        error_msg = f"Archivo CSV no encontrado: {original_path}"
+        if not original_path.is_absolute():
+            # Buscar archivos similares en el directorio del script
+            script_dir = Path(__file__).parent
+            csv_dir = script_dir / original_path.parent if original_path.parent != Path('.') else script_dir
+            if csv_dir.exists() and csv_dir.is_dir():
+                # Buscar archivos CSV en ese directorio
+                csv_files = list(csv_dir.glob("*.csv"))
+                if csv_files:
+                    error_msg += f"\n[INFO] Archivos CSV encontrados en {csv_dir}:"
+                    for f in csv_files[:5]:  # Mostrar máximo 5
+                        error_msg += f"\n  - {f.name}"
+                    if len(csv_files) > 5:
+                        error_msg += f"\n  ... y {len(csv_files) - 5} más"
+        raise FileNotFoundError(error_msg)
     
     try:
         df = pd.read_csv(csv_path)

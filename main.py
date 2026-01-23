@@ -11,10 +11,15 @@ import time
 import json
 import logging
 import gc
+import warnings
 from datetime import datetime
 import pandas as pd
 import numpy as np
 from pathlib import Path
+
+# Silenciar todas las warnings
+warnings.filterwarnings('ignore')
+np.seterr(all='ignore')
 from reader import parse_photometry_file, prepare_lightcurve, load_supernovas_from_csv
 from mcmc_fitter import fit_mcmc, validate_physical_fit
 from feature_extractor import extract_features
@@ -93,13 +98,21 @@ def process_single_filter(filters_data, sn_name, filter_name, sn_type, logger=No
         if logger:
             logger.info(f"  [{sn_name} | {filter_name}] Paso 1/5: Preparando datos de curva de luz")
         
-        lc_data = prepare_lightcurve(
-            filters_data[filter_name], 
-            filter_name,
-            max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
-            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
-            max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
-        )
+        try:
+            lc_data = prepare_lightcurve(
+                filters_data[filter_name], 
+                filter_name,
+                max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
+                max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
+                max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
+            )
+        except ValueError as e:
+            # Capturar errores de filtrado (pocos datos, upper limits inválidos, etc.)
+            error_msg = f"Filtro {filter_name}: {str(e)}"
+            print(f"    [ERROR] {error_msg}")
+            if logger:
+                logger.error(f"  [{sn_name} | {filter_name}] ERROR en Paso 1/5: {error_msg}")
+            return None
         
         if lc_data is None:
             error_msg = f"No hay suficientes datos para filtro {filter_name}"
@@ -656,6 +669,228 @@ def filter_by_year(dat_files, min_year=2022):
     return [f[1] for f in filtered]
 
 
+def _create_simple_failed_plot(sn_name, filters_data, skip_reasons, combined_reason, filters_to_process):
+    """
+    Crear un plot simple con datos crudos para supernovas que fallaron antes del MCMC
+    
+    Parameters:
+    -----------
+    sn_name : str
+        Nombre de la supernova
+    filters_data : dict
+        Datos de los filtros (puede estar parcialmente disponible)
+    skip_reasons : list
+        Lista de razones de descarte
+    combined_reason : str
+        Razón combinada del descarte
+    filters_to_process : list
+        Lista de filtros a procesar
+        
+    Returns:
+    --------
+    matplotlib.figure.Figure or None
+        Figura con el plot simple, o None si no se pudo generar
+    """
+    import matplotlib.pyplot as plt
+    
+    try:
+        if filters_data is None or len(filters_data) == 0:
+            # No hay datos, crear un plot simple con el mensaje
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.text(0.5, 0.5, f"Supernova: {sn_name}\n\nRazón: {combined_reason}\n\nNo hay datos disponibles para plotear",
+                   ha='center', va='center', fontsize=12, transform=ax.transAxes)
+            ax.set_title(f"Supernova Fallida: {sn_name}", fontsize=14, fontweight='bold')
+            ax.axis('off')
+            return fig
+        
+        # Plotear datos crudos disponibles
+        available_filters = [f for f in (filters_to_process if filters_to_process else list(filters_data.keys())) 
+                            if f in filters_data]
+        n_filters = min(len(available_filters), 2)  # Máximo 2 filtros
+        
+        if n_filters == 0:
+            # No hay filtros disponibles
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.text(0.5, 0.5, f"Supernova: {sn_name}\n\nRazón: {combined_reason}\n\nNo hay filtros disponibles",
+                   ha='center', va='center', fontsize=12, transform=ax.transAxes)
+            ax.set_title(f"Supernova Fallida: {sn_name}", fontsize=14, fontweight='bold')
+            ax.axis('off')
+            return fig
+        
+        fig, axes = plt.subplots(n_filters, 2, figsize=(14, 4 * n_filters))
+        if n_filters == 1:
+            axes = axes.reshape(1, -1)
+        
+        fig.suptitle(f"Supernova Fallida: {sn_name}\nRazón: {combined_reason}", 
+                    fontsize=14, fontweight='bold', y=0.995)
+        
+        for idx, filter_name in enumerate(available_filters[:n_filters]):
+            df = filters_data[filter_name]
+            
+            # Separar datos normales y upper limits
+            df_normal = df[~df['Upperlimit']].copy()
+            df_ul = df[df['Upperlimit']].copy()
+            
+            # Plot de magnitud
+            ax_mag = axes[idx, 0]
+            if len(df_normal) > 0:
+                ax_mag.errorbar(df_normal['MJD'], df_normal['MAG'], 
+                               yerr=df_normal['MAGERR'], fmt='o', 
+                               label='Detecciones', color='blue', alpha=0.7, markersize=4)
+            if len(df_ul) > 0:
+                ax_mag.scatter(df_ul['MJD'], df_ul['MAG'], 
+                              marker='v', s=50, color='green', alpha=0.5, 
+                              label='Upper limits')
+            ax_mag.set_xlabel('MJD')
+            ax_mag.set_ylabel('Magnitud')
+            ax_mag.set_title(f'Filtro {filter_name} - Magnitud')
+            ax_mag.invert_yaxis()
+            if len(df_normal) > 0 or len(df_ul) > 0:
+                ax_mag.legend()
+            ax_mag.grid(True, alpha=0.3)
+            
+            # Plot de flujo
+            ax_flux = axes[idx, 1]
+            if len(df_normal) > 0:
+                flux_normal = 10**(-df_normal['MAG'].values / 2.5)
+                flux_err_normal = (df_normal['MAGERR'].values * flux_normal) / 1.086
+                ax_flux.errorbar(df_normal['MJD'], flux_normal, 
+                                yerr=flux_err_normal, fmt='o', 
+                                label='Detecciones', color='blue', alpha=0.7, markersize=4)
+            if len(df_ul) > 0:
+                flux_ul = 10**(-df_ul['MAG'].values / 2.5)
+                ax_flux.scatter(df_ul['MJD'], flux_ul, 
+                               marker='v', s=50, color='green', alpha=0.5, 
+                               label='Upper limits')
+            ax_flux.set_xlabel('MJD')
+            ax_flux.set_ylabel('Flujo (erg s⁻¹ cm⁻²)')
+            ax_flux.set_title(f'Filtro {filter_name} - Flujo')
+            if len(df_normal) > 0 or len(df_ul) > 0:
+                ax_flux.legend()
+            ax_flux.grid(True, alpha=0.3)
+        
+        # Agregar texto con razones de skip
+        if skip_reasons:
+            skip_text = "Razones de descarte:\n" + "\n".join([f"  - {r}" for r in skip_reasons])
+            fig.text(0.02, 0.02, skip_text, fontsize=9, 
+                    verticalalignment='bottom', bbox=dict(boxstyle='round', 
+                    facecolor='wheat', alpha=0.5))
+        
+        plt.tight_layout(rect=[0, 0.05, 1, 0.98])
+        return fig
+        
+    except Exception as e:
+        print(f"    [WARNING] Error al crear plot simple de fallida: {e}")
+        return None
+
+def _create_single_filter_failed_plot(sn_name, filter_name, filter_data, reason):
+    """
+    Crear un plot simple con datos crudos para un filtro específico que falló antes del MCMC
+    
+    Parameters:
+    -----------
+    sn_name : str
+        Nombre de la supernova
+    filter_name : str
+        Nombre del filtro que falló
+    filter_data : pd.DataFrame or None
+        Datos del filtro (puede ser None si no hay datos)
+    reason : str
+        Razón del descarte
+        
+    Returns:
+    --------
+    matplotlib.figure.Figure or None
+        Figura con el plot simple, o None si no se pudo generar
+    """
+    import matplotlib.pyplot as plt
+    
+    try:
+        if filter_data is None or len(filter_data) == 0:
+            # No hay datos, crear un plot simple con el mensaje
+            fig, ax = plt.subplots(figsize=(10, 6))
+            ax.text(0.5, 0.5, f"Supernova: {sn_name}\nFiltro: {filter_name}\n\nRazón: {reason}\n\nNo hay datos disponibles para plotear",
+                   ha='center', va='center', fontsize=12, transform=ax.transAxes)
+            ax.set_title(f"Supernova Fallida: {sn_name} - Filtro {filter_name}", fontsize=14, fontweight='bold')
+            ax.axis('off')
+            return fig
+        
+        # Crear figura con 2 subplots (magnitud y flujo)
+        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+        fig.suptitle(f"Supernova Fallida: {sn_name} - Filtro {filter_name}", 
+                    fontsize=14, fontweight='bold', y=0.995)
+        
+        # Separar datos normales y upper limits
+        df_normal = filter_data[~filter_data['Upperlimit']].copy()
+        df_ul = filter_data[filter_data['Upperlimit']].copy()
+        
+        # Plot de magnitud
+        ax_mag = axes[0]
+        if len(df_normal) > 0:
+            ax_mag.errorbar(df_normal['MJD'], df_normal['MAG'], 
+                           yerr=df_normal['MAGERR'], fmt='o', 
+                           label='Detecciones', color='blue', alpha=0.7, markersize=4,
+                           markeredgecolor='black', markeredgewidth=0.4)
+        if len(df_ul) > 0:
+            ax_mag.scatter(df_ul['MJD'], df_ul['MAG'], 
+                          marker='v', s=50, color='red', alpha=0.5, 
+                          label='Upper limits', edgecolors='black', linewidths=0.6)
+        ax_mag.set_xlabel('MJD')
+        ax_mag.set_ylabel('Magnitud')
+        ax_mag.set_title(f'Filtro {filter_name} - Magnitud')
+        ax_mag.invert_yaxis()
+        if len(df_normal) > 0 or len(df_ul) > 0:
+            ax_mag.legend()
+        ax_mag.grid(True, alpha=0.3)
+        
+        # Plot de flujo
+        ax_flux = axes[1]
+        if len(df_normal) > 0:
+            flux_normal = 10**(-df_normal['MAG'].values / 2.5)
+            flux_err_normal = (df_normal['MAGERR'].values * flux_normal) / 1.086
+            ax_flux.errorbar(df_normal['MJD'], flux_normal, 
+                            yerr=flux_err_normal, fmt='o', 
+                            label='Detecciones', color='blue', alpha=0.7, markersize=4,
+                            markeredgecolor='black', markeredgewidth=0.4)
+        if len(df_ul) > 0:
+            flux_ul = 10**(-df_ul['MAG'].values / 2.5)
+            ax_flux.scatter(df_ul['MJD'], flux_ul, 
+                           marker='v', s=50, color='red', alpha=0.5, 
+                           label='Upper limits', edgecolors='black', linewidths=0.6)
+        ax_flux.set_xlabel('MJD')
+        ax_flux.set_ylabel('Flujo (erg s⁻¹ cm⁻²)')
+        ax_flux.set_title(f'Filtro {filter_name} - Flujo')
+        if len(df_normal) > 0 or len(df_ul) > 0:
+            ax_flux.legend()
+        ax_flux.grid(True, alpha=0.3)
+        
+        # Agregar texto con razón detallada en un cuadro
+        # Dividir el texto en líneas más cortas
+        reason_lines = []
+        words = reason.split()
+        current_line = ""
+        for word in words:
+            if len(current_line + " " + word) < 80:
+                current_line += " " + word if current_line else word
+            else:
+                if current_line:
+                    reason_lines.append(current_line)
+                current_line = word
+        if current_line:
+            reason_lines.append(current_line)
+        
+        reason_text = "\n".join(reason_lines)
+        fig.text(0.02, 0.02, f"Razón detallada:\n{reason_text}", 
+                fontsize=8, verticalalignment='bottom', 
+                bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7),
+                family='monospace')
+        
+        plt.tight_layout()
+        return fig
+    except Exception as e:
+        print(f"  [WARNING] Error al crear plot simple de filtro fallido: {e}")
+        return None
+
 def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
     """
     Guardar una página al PDF, abriendo y cerrando inmediatamente para evitar acumular en memoria.
@@ -694,6 +929,7 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
     if pdf_exists and pdf_path.exists() and HAS_PYPDF2:
         # Modo append: leer PDF original, añadir nueva página, guardar
         print(f"  [DEBUG] Modo append: añadiendo página al PDF existente")
+        temp_pdf = None
         try:
             # Guardar nueva página en PDF temporal
             temp_pdf = pdf_path.parent / f"{pdf_path.stem}_temp_page.pdf"
@@ -739,6 +975,14 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
             except Exception as e2:
                 print(f"  [ERROR] Error al crear PDF (fallback): {e2}")
                 traceback.print_exc()
+        finally:
+            # Siempre eliminar PDF temporal si existe
+            if temp_pdf is not None and temp_pdf.exists():
+                try:
+                    temp_pdf.unlink()
+                    print(f"  [DEBUG] PDF temporal eliminado (cleanup)")
+                except Exception as e_cleanup:
+                    print(f"  [WARNING] No se pudo eliminar PDF temporal {temp_pdf}: {e_cleanup}")
     else:
         # Modo normal: crear nuevo PDF (PdfPages sobrescribe si existe)
         print(f"  [DEBUG] Modo normal: creando nuevo PDF")
@@ -756,7 +1000,7 @@ def _save_page_to_pdf(fig, pdf_path, pdf_exists=False):
 
 def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=2022, 
                        resume_from_checkpoint=False, supernovas_from_csv=None, csv_file_path=None,
-                       overwrite_pdf=False):
+                       overwrite_pdf=False, save_failed_pdf=False):
     """
     Generar PDF de debug con fit + corner plot para múltiples supernovas
     Usa las mismas funciones de plotting que el procesamiento normal
@@ -775,6 +1019,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         Si True, reanuda desde checkpoint y añade al PDF existente
     supernovas_from_csv : list, optional
         Lista de nombres de supernovas del CSV a procesar. Si se especifica, se procesan solo estas.
+    save_failed_pdf : bool, default=False
+        Si True, guarda un PDF separado con los fits de las supernovas fallidas
     """
     import matplotlib.pyplot as plt
     from matplotlib.backends.backend_pdf import PdfPages
@@ -810,17 +1056,37 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         print(f"Filtros: {FILTERS_TO_PROCESS} (desde config.py)")
     
     # Buscar archivos
-    type_path = BASE_DATA_PATH / sn_type
+    # Si sn_type contiene múltiples tipos (separados por coma), buscar en todas las carpetas
+    # Si no hay comas, tratar todo como un solo tipo (incluso si tiene espacios como "SN II")
+    if ',' in sn_type:
+        # Múltiples tipos separados por coma
+        sn_types_list = [t.strip() for t in sn_type.split(',') if t.strip()]
+    else:
+        # Un solo tipo (puede tener espacios como "SN II")
+        sn_types_list = [sn_type.strip()]
     
-    if not type_path.exists():
-        print(f"\n[ERROR] La carpeta '{sn_type}' no existe")
+    if len(sn_types_list) == 0:
+        print(f"\n[ERROR] No se especificó ningún tipo de supernova válido")
         return
     
-    dat_files = list(type_path.glob("*_photometry.dat"))
+    # Buscar archivos en todas las carpetas de tipos especificados
+    dat_files = []
+    type_paths = []
+    for sn_t in sn_types_list:
+        type_path = BASE_DATA_PATH / sn_t
+        if type_path.exists():
+            type_files = list(type_path.glob("*_photometry.dat"))
+            dat_files.extend(type_files)
+            type_paths.append(sn_t)
+            print(f"[INFO] Encontrados {len(type_files)} archivos en '{sn_t}'")
+        else:
+            print(f"[WARNING] La carpeta '{sn_t}' no existe, se omitirá")
     
     if not dat_files:
-        print(f"\n[ERROR] No se encontraron archivos .dat en '{sn_type}'")
+        print(f"\n[ERROR] No se encontraron archivos .dat en ninguna de las carpetas: {sn_types_list}")
         return
+    
+    print(f"[INFO] Total de archivos encontrados: {len(dat_files)} en {len(type_paths)} tipo(s)")
     
     # Si se especificó CSV, filtrar archivos para procesar solo esas supernovas
     if supernovas_from_csv:
@@ -863,15 +1129,36 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         filtered_files = None  # Se asignará más abajo
     
     # Crear nombre del archivo PDF
+    # Si hay múltiples tipos, usar un nombre combinado
+    sn_type_for_filename = '_'.join(sn_types_list).replace(' ', '_').replace('-', '_')
     if supernovas_from_csv and csv_file_path:
         # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
-        pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug_from_csv.pdf'
+        pdf_filename = sn_type_for_filename + '_debug_from_csv.pdf'
         print(f"[INFO] Modo from-csv: usando PDF: {pdf_filename}")
     else:
-        pdf_filename = sn_type.replace(' ', '_').replace('-', '_') + '_debug.pdf'
+        pdf_filename = sn_type_for_filename + '_debug.pdf'
         print(f"[INFO] Modo normal: usando PDF: {pdf_filename}")
     pdf_path = DEBUG_PDF_DIR / pdf_filename
     print(f"[INFO] Ruta completa del PDF: {pdf_path}")
+    
+    # Crear nombre del archivo PDF para fallidas (si está habilitado)
+    failed_pdf_path = None
+    if save_failed_pdf:
+        if supernovas_from_csv and csv_file_path:
+            failed_pdf_filename = sn_type_for_filename + '_failed_from_csv.pdf'
+        else:
+            failed_pdf_filename = sn_type_for_filename + '_failed.pdf'
+        failed_pdf_path = DEBUG_PDF_DIR / failed_pdf_filename
+        print(f"[INFO] PDF de fallidas habilitado: {failed_pdf_path}")
+        print(f"[DEBUG] save_failed_pdf={save_failed_pdf}, failed_pdf_path={failed_pdf_path}")
+        
+        # Si se usa --overwrite, borrar el PDF de fallidas existente
+        if overwrite_pdf and failed_pdf_path.exists():
+            try:
+                failed_pdf_path.unlink()
+                print(f"[INFO] PDF de fallidas existente eliminado (modo overwrite)")
+            except Exception as e:
+                print(f"[WARNING] No se pudo eliminar el PDF de fallidas existente: {e}")
     
     # Si se usa --overwrite, borrar los archivos existentes UNA VEZ al inicio
     if overwrite_pdf:
@@ -1004,8 +1291,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     processed_count = len(processed_supernovas)  # Empezar desde las ya procesadas
     failed_count = 0
     attempted_count = 0
-    successful_supernovas = list(processed_supernovas)  # Empezar con las ya procesadas
-    failed_supernovas = []  # Lista de tuplas: (sn_name, reason)
+    successful_supernovas = []  # Lista de tuplas: (sn_name, filter_name)
+    failed_supernovas = []  # Lista de tuplas: (sn_name, filter_name, reason)
     
     # NO usar PdfPages con contexto - abriremos y cerraremos después de cada supernova
     # para evitar acumular páginas en memoria
@@ -1040,11 +1327,18 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 
                 if not filters_data:
                     print(f"  [SKIP] No se pudieron extraer datos")
-                    failed_count += 1
-                    failed_supernovas.append((sn_name_test, "No se pudieron extraer datos del archivo"))
+                    # Agregar para todos los filtros solicitados
+                    for filter_name in filters_to_process:
+                        failed_supernovas.append((sn_name_test, filter_name, "No se pudieron extraer datos del archivo"))
+                        failed_count += 1  # Contar cada filtro por separado
                     del filters_data
                     gc.collect()  # Liberar memoria inmediatamente en caso de error
                     continue
+                
+                # Mostrar información de filtros disponibles
+                available_filters = list(filters_data.keys())
+                print(f"  [DEBUG] Supernova {sn_name}: Filtros disponibles: {', '.join(available_filters)}")
+                print(f"  [DEBUG] Supernova {sn_name}: Filtros a procesar: {', '.join(filters_to_process)}")
                 
                 # Procesar cada filtro y generar figuras
                 filter_figs = {}  # {filter_name: (fit_fig, corner_fig)}
@@ -1052,25 +1346,84 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 filter_data_dict = {}  # Guardar datos de cada filtro para calcular rango común
                 
                 for filter_name in filters_to_process:
+                    print(f"  [DEBUG] Procesando filtro: {filter_name}")
+                    
                     if filter_name not in filters_data:
-                        skip_reasons.append(f"Filtro {filter_name} no disponible en datos")
+                        reason_msg = f"Filtro {filter_name} no disponible en datos"
+                        skip_reasons.append(reason_msg)
+                        print(f"  [DEBUG] {reason_msg}")
                         continue
                     
                     try:
                         # Preparar datos (igual que en process_single_filter)
-                        lc_data = prepare_lightcurve(
-                            filters_data[filter_name],
-                            filter_name,
-                            max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
-                            max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
-                            max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
-                        )
+                        print(f"  [DEBUG] Filtro {filter_name}: Preparando curva de luz...")
+                        try:
+                            lc_data = prepare_lightcurve(
+                                filters_data[filter_name], 
+                                filter_name,
+                                max_days_after_peak=DATA_FILTER_CONFIG["max_days_after_peak"],
+                                max_days_before_peak=DATA_FILTER_CONFIG["max_days_before_peak"],
+                                max_days_before_first_obs=DATA_FILTER_CONFIG["max_days_before_first_obs"]
+                            )
+                            print(f"  [DEBUG] Filtro {filter_name}: prepare_lightcurve completado exitosamente")
+                        except ValueError as e:
+                            # Capturar errores de filtrado (pocos datos, upper limits inválidos, etc.)
+                            reason_msg = f"Filtro {filter_name}: {str(e)}"
+                            skip_reasons.append(reason_msg)
+                            print(f"  [DEBUG] Filtro {filter_name}: ERROR en prepare_lightcurve - {str(e)}")
+                            
+                            # Guardar en CSV de fallidas
+                            failed_supernovas.append((sn_name, filter_name, reason_msg))
+                            failed_count += 1
+                            
+                            # Generar y guardar plot simple para este filtro fallido
+                            if save_failed_pdf and failed_pdf_path is not None:
+                                try:
+                                    failed_fig = _create_single_filter_failed_plot(
+                                        sn_name,
+                                        filter_name,
+                                        filters_data[filter_name] if filter_name in filters_data else None,
+                                        reason_msg
+                                    )
+                                    if failed_fig is not None:
+                                        failed_pdf_exists = failed_pdf_path.exists()
+                                        _save_page_to_pdf(failed_fig, failed_pdf_path, pdf_exists=failed_pdf_exists)
+                                        plt.close(failed_fig)
+                                        print(f"  [INFO] Plot simple de filtro fallido {filter_name} guardado en PDF de fallidas")
+                                except Exception as plot_error:
+                                    print(f"  [WARNING] No se pudo generar plot simple para filtro {filter_name}: {plot_error}")
+                            
+                            continue
                         
                         if lc_data is None:
                             # Contar detecciones antes de prepare_lightcurve para saber por qué falló
                             df_normal = filters_data[filter_name][~filters_data[filter_name]['Upperlimit']]
                             n_detections = len(df_normal)
-                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones (mínimo 7 requerido)")
+                            reason_msg = f"Filtro {filter_name}: {n_detections} detecciones (mínimo 7 requerido)"
+                            skip_reasons.append(reason_msg)
+                            print(f"  [DEBUG] {reason_msg}")
+                            
+                            # Guardar en CSV de fallidas
+                            failed_supernovas.append((sn_name, filter_name, reason_msg))
+                            failed_count += 1
+                            
+                            # Generar y guardar plot simple para este filtro fallido
+                            if save_failed_pdf and failed_pdf_path is not None:
+                                try:
+                                    failed_fig = _create_single_filter_failed_plot(
+                                        sn_name,
+                                        filter_name,
+                                        filters_data[filter_name] if filter_name in filters_data else None,
+                                        reason_msg
+                                    )
+                                    if failed_fig is not None:
+                                        failed_pdf_exists = failed_pdf_path.exists()
+                                        _save_page_to_pdf(failed_fig, failed_pdf_path, pdf_exists=failed_pdf_exists)
+                                        plt.close(failed_fig)
+                                        print(f"  [INFO] Plot simple de filtro fallido {filter_name} guardado en PDF de fallidas")
+                                except Exception as plot_error:
+                                    print(f"  [WARNING] No se pudo generar plot simple para filtro {filter_name}: {plot_error}")
+                            
                             continue
                         
                         phase = lc_data['phase']
@@ -1086,25 +1439,41 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         # Verificar que haya al menos 7 detecciones (excluyendo upper limits)
                         # El modelo tiene 6 parámetros, necesitamos al menos 7 puntos para un ajuste determinado (n > p)
                         n_detections = len(phase) if is_upper_limit is None else np.sum(~is_upper_limit)
+                        print(f"  [DEBUG] Filtro {filter_name}: {n_detections} detecciones después de filtrado")
                         if n_detections < 7:
-                            skip_reasons.append(f"Filtro {filter_name}: {n_detections} detecciones después de filtrado (mínimo 7)")
+                            reason_msg = f"Filtro {filter_name}: {n_detections} detecciones después de filtrado (mínimo 7)"
+                            skip_reasons.append(reason_msg)
+                            print(f"  [DEBUG] {reason_msg}")
                             continue
                         
                         # Ajuste MCMC (usa fase relativa por filtro, que está bien)
-                        mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=False, is_upper_limit=is_upper_limit)
+                        # En modo debug queremos ver los prints de desglose de likelihood,
+                        # así que forzamos verbose=True aquí.
+                        print(f"  [DEBUG] Filtro {filter_name}: Ejecutando MCMC (verbose=True para debug)...")
+                        mcmc_results = fit_mcmc(phase, flux, flux_err, verbose=True, is_upper_limit=is_upper_limit)
+                        print(f"  [DEBUG] Filtro {filter_name}: MCMC completado")
                         
                         # Validar comportamiento físico del fit
+                        print(f"  [DEBUG] Filtro {filter_name}: Validando fit físico...")
                         is_valid, reason = validate_physical_fit(mcmc_results, phase, flux, is_upper_limit)
+                        filter_is_valid = is_valid  # Guardar estado de validación para este filtro
                         if not is_valid:
-                            skip_reasons.append(f"Filtro {filter_name}: Fit no físico - {reason}")
-                            continue
+                            reason_msg = f"Filtro {filter_name}: Fit no físico - {reason}"
+                            skip_reasons.append(reason_msg)
+                            print(f"  [DEBUG] {reason_msg}")
+                            # Aunque falle la validación, guardar los datos para poder generar plots
+                            # Los plots se generarán después y se guardarán en PDF de fallidas si corresponde
+                            # NO hacer continue aquí, continuar para generar plots
+                        else:
+                            print(f"  [DEBUG] Filtro {filter_name}: Fit físico válido")
                         
-                        # Extraer features (igual que en modo normal)
-                        features = extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name)
-                        features['sn_type'] = sn_type
-                        
-                        # Guardar features incrementalmente en archivo separado para debug
-                        save_features_incremental([features], sn_type, debug_mode=True, from_csv=(supernovas_from_csv is not None), overwrite_pdf=overwrite_pdf)
+                        # Extraer features (igual que en modo normal) - solo si es válido
+                        if filter_is_valid:
+                            features = extract_features(mcmc_results, phase, flux, flux_err, sn_name, filter_name)
+                            features['sn_type'] = sn_type
+                            
+                            # Guardar features incrementalmente en archivo separado para debug
+                            save_features_incremental([features], sn_type, debug_mode=True, from_csv=(supernovas_from_csv is not None), overwrite_pdf=overwrite_pdf)
                         
                         # Convertir flujo del modelo a magnitud
                         from model import flux_to_mag
@@ -1159,6 +1528,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         # Para corner plot, usar samples originales en fase relativa (no convertidos a MJD)
                         # Los parámetros deben estar en fase relativa para consistencia entre supernovas
                         filter_data_dict[filter_name] = {
+                            'is_valid': filter_is_valid,  # Guardar si el filtro pasó la validación
+                            'validation_reason': reason if not filter_is_valid else None,  # Guardar razón de validación si falló
                             'phase_for_plot': phase_for_plot,
                             'mag': mag,
                             'mag_err': mag_err,
@@ -1175,6 +1546,7 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                             'params_moc_mjd': params_moc_mjd,  # Params Median of Curves en MJD para curva verde
                             'filter_reference_mjd': filter_reference_mjd  # MJD de referencia para conversión
                         }
+                        print(f"  [DEBUG] Filtro {filter_name}: Datos guardados para generación de plots (válido: {filter_is_valid})")
                         
                         # NO liberar mcmc_results todavía - se necesita para plot_extended_model
                         # Se liberará después de generar todos los gráficos
@@ -1185,7 +1557,11 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         del mag_model, filter_reference_mjd
                         
                     except Exception as e:
-                        skip_reasons.append(f"Filtro {filter_name}: Error - {type(e).__name__}: {str(e)}")
+                        reason_msg = f"Filtro {filter_name}: Error - {type(e).__name__}: {str(e)}"
+                        skip_reasons.append(reason_msg)
+                        print(f"  [DEBUG] {reason_msg}")
+                        import traceback
+                        traceback.print_exc()
                         import traceback
                         continue
                 
@@ -1267,11 +1643,38 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     print(f"  [SKIP] No se pudieron procesar filtros:")
                     for reason in skip_reasons:
                         print(f"    - {reason}")
-                    failed_count += 1
-                    # Combinar todas las razones de skip en una sola cadena
+                    # Combinar todas las razones de skip en una sola cadena (para el plot)
                     combined_reason = "; ".join(skip_reasons) if skip_reasons else "Ningún filtro pudo ser procesado"
-                    failed_supernovas.append((sn_name, combined_reason))
-                    # Liberar memoria antes de continuar
+                    # Agregar cada filtro fallido individualmente a failed_supernovas
+                    for reason in skip_reasons:
+                        # Extraer nombre de filtro de la razón (formato: "Filtro g: ...")
+                        filter_name = "unknown"
+                        for fn in filters_to_process:
+                            if reason.startswith(f"Filtro {fn}:"):
+                                filter_name = fn
+                                break
+                        failed_supernovas.append((sn_name, filter_name, reason))
+                        failed_count += 1
+                    
+                    # Intentar generar plot simple con datos crudos si está habilitado
+                    if save_failed_pdf and failed_pdf_path is not None:
+                        try:
+                            failed_fig = _create_simple_failed_plot(
+                                sn_name,
+                                filters_data if 'filters_data' in locals() else None,
+                                skip_reasons,
+                                combined_reason,
+                                filters_to_process
+                            )
+                            if failed_fig is not None:
+                                failed_pdf_exists = failed_pdf_path.exists()
+                                _save_page_to_pdf(failed_fig, failed_pdf_path, pdf_exists=failed_pdf_exists)
+                                plt.close(failed_fig)
+                                print(f"  [INFO] Plot simple de fallida guardado en PDF de fallidas")
+                        except Exception as plot_error:
+                            print(f"  [WARNING] No se pudo generar plot simple de fallida: {plot_error}")
+                    
+                    # Liberar memoria
                     try:
                         del filter_figs, filter_data_dict
                         for filter_name in filters_to_process:
@@ -1284,12 +1687,64 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     # No aumentar processed_count, seguir buscando
                     continue
                 
-                # Organizar figuras en una página del PDF
-                n_filters = len(filter_figs)
+                # Resumen de filtros procesados
+                valid_filters = [fn for fn, data in filter_data_dict.items() if data.get('is_valid', True)]
+                invalid_filters = [fn for fn, data in filter_data_dict.items() if not data.get('is_valid', True)]
+                skipped_filters = [fn for fn in filters_to_process if fn not in filter_data_dict]
                 
-                if n_filters == 1:
-                    # Una sola página con: fit arriba, modelo extendido en medio, corner abajo
-                    filter_name = list(filter_figs.keys())[0]
+                print(f"  [DEBUG] Resumen de filtros para {sn_name}:")
+                if valid_filters:
+                    print(f"    - Válidos: {', '.join(valid_filters)}")
+                if invalid_filters:
+                    print(f"    - Inválidos: {', '.join(invalid_filters)}")
+                if skipped_filters:
+                    print(f"    - Saltados: {', '.join(skipped_filters)}")
+                    for fn in skipped_filters:
+                        # Buscar razón en skip_reasons
+                        filter_reasons = [r for r in skip_reasons if r.startswith(f"Filtro {fn}:")]
+                        if filter_reasons:
+                            print(f"      - {fn}: {filter_reasons[0]}")
+                
+                # Procesar cada filtro de forma independiente
+                # Cada filtro va a su PDF correspondiente (exitoso o fallido) en su propia página
+                for filter_name in filter_figs.keys():
+                    filter_data = filter_data_dict[filter_name]
+                    filter_is_valid = filter_data.get('is_valid', True)
+                    
+                    # Determinar a qué PDF guardar este filtro específico
+                    if filter_is_valid:
+                        target_pdf_path = pdf_path
+                        target_pdf_exists = pdf_exists
+                        # Agregar a successful_supernovas
+                        successful_supernovas.append((sn_name, filter_name))
+                        processed_count += 1
+                        print(f"  [EXITOSO] Filtro {filter_name} de {sn_name} marcado como exitoso")
+                    else:
+                        # Buscar razón específica de este filtro
+                        filter_reason = None
+                        # Buscar en skip_reasons
+                        for reason in skip_reasons:
+                            if reason.startswith(f"Filtro {filter_name}:"):
+                                filter_reason = reason
+                                break
+                        # Si no está en skip_reasons, buscar en validation_reason
+                        if filter_reason is None:
+                            validation_reason = filter_data.get('validation_reason', None)
+                            if validation_reason:
+                                filter_reason = f"Filtro {filter_name}: Fit no físico - {validation_reason}"
+                            else:
+                                filter_reason = f"Filtro {filter_name}: Fit no físico"
+                        
+                        target_pdf_path = failed_pdf_path if save_failed_pdf and failed_pdf_path is not None else None
+                        target_pdf_exists = failed_pdf_path.exists() if save_failed_pdf and failed_pdf_path is not None else False
+                        # Agregar a failed_supernovas
+                        failed_supernovas.append((sn_name, filter_name, filter_reason))
+                        failed_count += 1
+                        print(f"  [FALLIDO] Filtro {filter_name} de {sn_name} marcado como fallido: {filter_reason}")
+                        if target_pdf_path is None:
+                            print(f"  [WARNING] PDF de fallidas no habilitado, no se guardará plot para {filter_name}")
+                    
+                    # Generar plot individual para este filtro
                     fit_fig, corner_fig, extended_fig = filter_figs[filter_name]
                     
                     # Crear figura combinada con 3 subplots verticales
@@ -1333,13 +1788,18 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                     img3 = mpimg.imread(buf3)
                     ax3.imshow(img3, aspect='auto', interpolation='bilinear')
                     
-                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
+                    combined_fig.suptitle(f'{sn_name} - {filter_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.98)
                     
-                    # Guardar página al PDF
-                    print(f"  [DEBUG] Guardando página al PDF para {sn_name} (1 filtro)")
-                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
-                    pdf_exists = True
-                    print(f"  [DEBUG] PDF existe después de guardar: {pdf_path.exists()}")
+                    # Guardar página al PDF correspondiente (exitoso o fallido)
+                    if target_pdf_path is not None:
+                        status = 'EXITOSO' if filter_is_valid else 'FALLIDO'
+                        print(f"  [DEBUG] Guardando página al PDF para {sn_name} - {filter_name} ({status})")
+                        _save_page_to_pdf(combined_fig, target_pdf_path, pdf_exists=target_pdf_exists)
+                        if filter_is_valid:
+                            pdf_exists = True
+                        else:
+                            failed_pdf_path_exists = True if save_failed_pdf and failed_pdf_path is not None else False
+                        print(f"  [DEBUG] PDF existe después de guardar: {target_pdf_path.exists()}")
                     
                     # Liberar memoria
                     plt.close(combined_fig)
@@ -1356,126 +1816,30 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                         buf2.close()
                         del buf2
                     plt.close('all')
-                    
-                elif n_filters == 2:
-                    # Una sola página con: fit1, fit2, extended1, extended2, corner1, corner2
-                    filter_names = sorted(filter_figs.keys())
-                    fit_fig1, corner_fig1, extended_fig1 = filter_figs[filter_names[0]]
-                    fit_fig2, corner_fig2, extended_fig2 = filter_figs[filter_names[1]]
-                    
-                    # Determinar número de subplots según si hay modelos extendidos
-                    n_subplots = 4  # fit1, fit2, corner1, corner2
-                    if extended_fig1 is not None:
-                        n_subplots += 1
-                    if extended_fig2 is not None:
-                        n_subplots += 1
-                    
-                    # Crear figura combinada
-                    combined_fig = plt.figure(figsize=(10, 6 * n_subplots))
-                    
-                    # Definir height_ratios
-                    height_ratios = [1.3, 1.3]  # fit1, fit2
-                    if extended_fig1 is not None:
-                        height_ratios.append(0.8)  # extended1
-                    if extended_fig2 is not None:
-                        height_ratios.append(0.8)  # extended2
-                    height_ratios.extend([1, 1])  # corner1, corner2
-                    
-                    gs = combined_fig.add_gridspec(n_subplots, 1, height_ratios=height_ratios, hspace=0.05,
-                                                   left=0.08, right=0.95, top=0.98, bottom=0.04)
-                    
-                    idx = 0
-                    
-                    # Fit 1
-                    ax = combined_fig.add_subplot(gs[idx])
-                    ax.axis('off')
-                    buf = io.BytesIO()
-                    fit_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                    buf.seek(0)
-                    img = mpimg.imread(buf)
-                    ax.imshow(img, aspect='auto', interpolation='bilinear')
-                    buf.close()
-                    plt.close(fit_fig1)  # Liberar inmediatamente
-                    idx += 1
-                    
-                    # Fit 2
-                    ax = combined_fig.add_subplot(gs[idx])
-                    ax.axis('off')
-                    buf = io.BytesIO()
-                    fit_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                    buf.seek(0)
-                    img = mpimg.imread(buf)
-                    ax.imshow(img, aspect='auto', interpolation='bilinear')
-                    buf.close()
-                    plt.close(fit_fig2)  # Liberar inmediatamente
-                    idx += 1
-                    
-                    # Extended 1 (si existe)
-                    if extended_fig1 is not None:
-                        ax = combined_fig.add_subplot(gs[idx])
-                        ax.axis('off')
-                        buf = io.BytesIO()
-                        extended_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                        buf.seek(0)
-                        img = mpimg.imread(buf)
-                        ax.imshow(img, aspect='auto', interpolation='bilinear')
-                        buf.close()
-                        plt.close(extended_fig1)  # Liberar inmediatamente
-                        idx += 1
-                    
-                    # Extended 2 (si existe)
-                    if extended_fig2 is not None:
-                        ax = combined_fig.add_subplot(gs[idx])
-                        ax.axis('off')
-                        buf = io.BytesIO()
-                        extended_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                        buf.seek(0)
-                        img = mpimg.imread(buf)
-                        ax.imshow(img, aspect='auto', interpolation='bilinear')
-                        buf.close()
-                        plt.close(extended_fig2)  # Liberar inmediatamente
-                        idx += 1
-                    
-                    # Corner 1 (DPI bajo para ahorrar memoria)
-                    ax = combined_fig.add_subplot(gs[idx])
-                    ax.axis('off')
-                    buf = io.BytesIO()
-                    corner_fig1.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                    buf.seek(0)
-                    img = mpimg.imread(buf)
-                    ax.imshow(img, aspect='auto', interpolation='bilinear')
-                    buf.close()
-                    plt.close(corner_fig1)  # Liberar inmediatamente
-                    del corner_fig1  # Liberar referencia
-                    idx += 1
-                    
-                    # Corner 2 (DPI bajo para ahorrar memoria)
-                    ax = combined_fig.add_subplot(gs[idx])
-                    ax.axis('off')
-                    buf = io.BytesIO()
-                    corner_fig2.savefig(buf, format='png', dpi=200, bbox_inches='tight')
-                    buf.seek(0)
-                    img = mpimg.imread(buf)
-                    ax.imshow(img, aspect='auto', interpolation='bilinear')
-                    buf.close()
-                    plt.close(corner_fig2)  # Liberar inmediatamente
-                    del corner_fig2  # Liberar referencia
-                    
-                    # Forzar liberación de memoria antes de guardar
-                    gc.collect()
-                    
-                    combined_fig.suptitle(f'{sn_name} ({sn_type})', fontsize=14, fontweight='bold', y=0.99)
-                    
-                    # Guardar página al PDF
-                    print(f"  [DEBUG] Guardando página al PDF para {sn_name} (2 filtros)")
-                    _save_page_to_pdf(combined_fig, pdf_path, pdf_exists=pdf_exists)
-                    pdf_exists = True
-                    print(f"  [DEBUG] PDF existe después de guardar: {pdf_path.exists()}")
-                    
-                    # Liberar memoria
-                    plt.close(combined_fig)
-                    plt.close('all')
-                    gc.collect()
+                
+                # También agregar filtros saltados a failed_supernovas
+                # PERO solo si no fueron agregados antes (evitar doble conteo)
+                # Crear un set de filtros que ya están en failed_supernovas para esta supernova
+                already_failed_filters = {fn for sn, fn, _ in failed_supernovas if sn == sn_name}
+                
+                for filter_name in skipped_filters:
+                    # Solo agregar si no fue agregado antes
+                    if filter_name not in already_failed_filters:
+                        # Buscar razón en skip_reasons
+                        filter_reason = None
+                        for reason in skip_reasons:
+                            if reason.startswith(f"Filtro {filter_name}:"):
+                                filter_reason = reason
+                                break
+                        if filter_reason is None:
+                            filter_reason = f"Filtro {filter_name}: No procesado"
+                        failed_supernovas.append((sn_name, filter_name, filter_reason))
+                        failed_count += 1
+                
+                # Actualizar processed_supernovas con las supernovas que tienen al menos un filtro exitoso
+                if valid_filters:
+                    processed_supernovas.add(sn_name)
+                    save_debug_checkpoint(sn_type, processed_supernovas)
                 
                 # Liberar memoria: eliminar datos grandes inmediatamente
                 # Primero liberar datos individuales de filter_data_dict
@@ -1508,17 +1872,10 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 # Forzar recolección de basura después de cada supernova
                 gc.collect()
                 
-                processed_count += 1
-                successful_supernovas.append(sn_name)  # Guardar nombre de supernova exitosa
-                processed_supernovas.add(sn_name)  # Añadir al set de procesadas
-                
-                # Guardar checkpoint después de cada supernova exitosa
-                save_debug_checkpoint(sn_type, processed_supernovas)
-                
                 if n_supernovas is None:
-                    print(f"  [OK] Página agregada al PDF y checkpoint guardado ({processed_count} exitosas)")
+                    print(f"  [OK] Procesamiento completado ({processed_count} filtros exitosos, {failed_count} fallidos)")
                 else:
-                    print(f"  [OK] Página agregada al PDF y checkpoint guardado ({processed_count}/{n_supernovas} exitosas)")
+                    print(f"  [OK] Procesamiento completado ({processed_count}/{n_supernovas} filtros exitosos, {failed_count} fallidos)")
                 
                 # Liberar memoria periódicamente cada 5 supernovas exitosas (más frecuente)
                 if processed_count % 5 == 0:
@@ -1529,13 +1886,53 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
                 print(f"  [ERROR] Error procesando supernova: {e}")
                 import traceback
                 traceback.print_exc()
-                failed_count += 1
                 # Capturar la razón del error
                 error_reason = f"Error: {type(e).__name__}: {str(e)}"
-                failed_supernovas.append((sn_name if 'sn_name' in locals() else sn_name_test, error_reason))
+                # Si hay filtros en skip_reasons, agregar cada uno por separado
+                if 'skip_reasons' in locals() and skip_reasons:
+                    for reason in skip_reasons:
+                        # Extraer nombre de filtro de la razón
+                        filter_name = "unknown"
+                        for fn in filters_to_process:
+                            if reason.startswith(f"Filtro {fn}:"):
+                                filter_name = fn
+                                break
+                        failed_supernovas.append((sn_name if 'sn_name' in locals() else sn_name_test, filter_name, reason))
+                        failed_count += 1  # Contar cada filtro por separado
+                else:
+                    # Si no hay razones específicas, agregar para todos los filtros solicitados
+                    for filter_name in filters_to_process:
+                        failed_supernovas.append((sn_name if 'sn_name' in locals() else sn_name_test, filter_name, error_reason))
+                        failed_count += 1  # Contar cada filtro por separado
+                
+                # Intentar generar plot simple con datos disponibles si está habilitado
+                if save_failed_pdf and failed_pdf_path is not None:
+                    try:
+                        # Intentar obtener datos disponibles
+                        available_filters_data = filters_data if 'filters_data' in locals() else None
+                        available_skip_reasons = skip_reasons if 'skip_reasons' in locals() else []
+                        
+                        failed_fig = _create_simple_failed_plot(
+                            sn_name if 'sn_name' in locals() else sn_name_test,
+                            available_filters_data,
+                            available_skip_reasons,
+                            error_reason,
+                            filters_to_process
+                        )
+                        if failed_fig is not None:
+                            failed_pdf_exists = failed_pdf_path.exists()
+                            _save_page_to_pdf(failed_fig, failed_pdf_path, pdf_exists=failed_pdf_exists)
+                            plt.close(failed_fig)
+                            print(f"  [INFO] Plot simple de fallida guardado en PDF de fallidas")
+                    except Exception as plot_error:
+                        print(f"  [WARNING] No se pudo generar plot simple de fallida: {plot_error}")
+                
                 # Liberar memoria en caso de error
                 try:
-                    del filter_figs, filter_data_dict
+                    if 'filter_figs' in locals():
+                        del filter_figs
+                    if 'filter_data_dict' in locals():
+                        del filter_data_dict
                     if 'filters_data' in locals():
                         for filter_name in filters_to_process:
                             if filter_name in filters_data:
@@ -1549,11 +1946,16 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     
     # No necesitamos combinar PDFs al final - ya se guardaron incrementalmente
     # Guardar CSV con supernovas exitosas
+    # Asegurar que el directorio existe antes de guardar CSVs
+    DEBUG_PDF_DIR.mkdir(parents=True, exist_ok=True)
+    
+    # Usar nombre combinado de tipos para los CSVs
+    sn_type_for_filename = '_'.join(sn_types_list).replace(' ', '_').replace('-', '_')
     if supernovas_from_csv and csv_file_path:
         # Si se usa CSV, siempre usar sufijo _from_csv (independiente de --overwrite)
-        csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful_from_csv.csv'
+        csv_filename = sn_type_for_filename + '_successful_from_csv.csv'
     else:
-        csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_successful.csv'
+        csv_filename = sn_type_for_filename + '_successful.csv'
     csv_path = DEBUG_PDF_DIR / csv_filename
     
     # Si se usa --overwrite, borrar el CSV existente antes de escribir
@@ -1564,30 +1966,36 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
         except Exception as e:
             print(f"[WARNING] No se pudo eliminar el CSV existente: {e}")
     
-    df_successful = pd.DataFrame({'supernova_name': successful_supernovas})
+    df_successful = pd.DataFrame(successful_supernovas, columns=['supernova_name', 'filter_name'])
     df_successful.to_csv(csv_path, index=False)
     
     # Guardar CSV con supernovas fallidas y sus razones
     if supernovas_from_csv and csv_file_path:
-        failed_csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_failed_from_csv.csv'
+        failed_csv_filename = sn_type_for_filename + '_failed_from_csv.csv'
     else:
-        failed_csv_filename = sn_type.replace(' ', '_').replace('-', '_') + '_failed.csv'
+        failed_csv_filename = sn_type_for_filename + '_failed.csv'
     failed_csv_path = DEBUG_PDF_DIR / failed_csv_filename
     
-    # Si se usa --overwrite, borrar el CSV de fallidas existente
+    # Si se usa --overwrite, borrar el CSV de fallidas existente (siempre, no solo si hay fallidas)
     if overwrite_pdf and failed_csv_path.exists():
         try:
             failed_csv_path.unlink()
+            print(f"[INFO] CSV de fallidas existente eliminado (modo overwrite)")
         except Exception as e:
             print(f"[WARNING] No se pudo eliminar el CSV de fallidas existente: {e}")
     
+    # Guardar CSV de fallidas (siempre, incluso si está vacío, para sobrescribir el anterior)
     if failed_supernovas:
-        df_failed = pd.DataFrame(failed_supernovas, columns=['supernova_name', 'reason'])
+        df_failed = pd.DataFrame(failed_supernovas, columns=['supernova_name', 'filter_name', 'reason'])
+        df_failed.to_csv(failed_csv_path, index=False)
+    else:
+        # Si no hay fallidas, crear CSV vacío con solo los headers para sobrescribir el anterior
+        df_failed = pd.DataFrame(columns=['supernova_name', 'filter_name', 'reason'])
         df_failed.to_csv(failed_csv_path, index=False)
     
     # Calcular estadísticas por tipo de fallo
     fail_stats = {}
-    for sn_name, reason in failed_supernovas:
+    for sn_name, filter_name, reason in failed_supernovas:
         # Categorizar la razón
         if "detecciones" in reason.lower() or "mínimo" in reason.lower():
             category = "Pocos datos (<7 detecciones)"
@@ -1611,9 +2019,9 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     success_rate = (processed_count / total_attempted * 100) if total_attempted > 0 else 0
     fail_rate = (failed_count / total_attempted * 100) if total_attempted > 0 else 0
     
-    print(f"Total intentadas: {total_attempted}")
-    print(f"Exitosas: {processed_count} ({success_rate:.1f}%)")
-    print(f"Fallidas: {failed_count} ({fail_rate:.1f}%)")
+    print(f"Total filtros intentados: {total_attempted}")
+    print(f"Filtros exitosos: {processed_count} ({success_rate:.1f}%)")
+    print(f"Filtros fallidos: {failed_count} ({fail_rate:.1f}%)")
     
     if fail_stats:
         print(f"\nRazones de fallo:")
@@ -1626,6 +2034,8 @@ def generate_debug_pdf(sn_type, n_supernovas, filters_to_process=None, min_year=
     print(f"  - Exitosas: {csv_path}")
     if failed_supernovas:
         print(f"  - Fallidas: {failed_csv_path}")
+    if save_failed_pdf and failed_pdf_path and failed_pdf_path.exists():
+        print(f"  - PDF de fallidas: {failed_pdf_path}")
     
     if n_supernovas is not None and processed_count < n_supernovas:
         print(f"\n[WARNING] Solo se procesaron {processed_count} de {n_supernovas} supernovas solicitadas")
@@ -1692,10 +2102,20 @@ def main():
                     return
                 break
         
-        # Parsear --overwrite (opcional, solo tiene efecto con --from-csv)
+        # Parsear --overwrite (opcional)
+        # Si se usa --from-csv, sobrescribir por defecto (más intuitivo)
         if any('--overwrite' in arg for arg in sys.argv):
             overwrite_pdf = True
             print(f"[INFO] Modo overwrite activado: se sobrescribirá el PDF si existe")
+        elif csv_file_path is not None:
+            # Si se usa --from-csv sin --overwrite explícito, sobrescribir por defecto
+            overwrite_pdf = True
+            print(f"[INFO] Modo from-csv detectado: sobrescribiendo PDF por defecto (usa --resume para añadir páginas)")
+        
+        # Parsear --save-failed-pdf o --failed-pdf (opcional)
+        save_failed_pdf = any('--save-failed-pdf' in arg or '--failed-pdf' in arg for arg in sys.argv)
+        if save_failed_pdf:
+            print(f"[INFO] Modo save-failed-pdf activado: se guardará PDF con supernovas fallidas")
         
         # Parsear filtros (opcional)
         filters_to_process = None
@@ -1706,6 +2126,7 @@ def main():
                 arg.startswith('--seed') or arg.startswith('--random-seed') or
                 arg == '--from-csv' or arg == '--csv-file' or
                 arg == '--overwrite' or '--overwrite' in arg or
+                '--save-failed-pdf' in arg or '--failed-pdf' in arg or
                 (csv_file_path and arg == csv_file_path)):
                 continue
             filters_input = arg
@@ -1739,7 +2160,8 @@ def main():
                          resume_from_checkpoint=resume_from_checkpoint, 
                          supernovas_from_csv=supernovas_from_csv,
                          csv_file_path=csv_file_path,
-                         overwrite_pdf=overwrite_pdf)
+                         overwrite_pdf=overwrite_pdf,
+                         save_failed_pdf=save_failed_pdf)
         return
     
     # Parsear número de supernovas

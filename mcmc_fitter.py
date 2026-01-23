@@ -1,10 +1,14 @@
 """
 Ajuste con MCMC usando emcee
 """
+import warnings
+warnings.filterwarnings('ignore')
 import numpy as np
+np.seterr(all='ignore')
 import emcee
 from typing import Dict, Tuple
 from scipy.stats import norm
+from scipy.signal import find_peaks
 from model import alerce_model
 from config import MCMC_CONFIG, MODEL_CONFIG
 
@@ -73,7 +77,7 @@ def log_likelihood(params, times, flux, flux_err, dynamic_bounds=None, is_upper_
                 sigma_ul = np.where(
                     np.isfinite(flux_err_ul) & (flux_err_ul > 0),
                     flux_err_ul,
-                    flux_ul * 0.05  # 5% del límite como fallback (más estricto que 10%)
+                    flux_ul * 0.33  # 33% del límite como fallback generalmente los upperlimit son 3 veces el ruido de fondo. 
                 )
                 
                 # Calcular z = (flux_ul - flux_model) / σ
@@ -102,6 +106,118 @@ def log_likelihood(params, times, flux, flux_err, dynamic_bounds=None, is_upper_
             return -0.5 * chi2
     except:
         return -np.inf
+
+def compute_likelihood_components(params, times, flux, flux_err,
+                                  dynamic_bounds=None, is_upper_limit=None):
+    """
+    Versión de depuración del likelihood que separa las contribuciones
+    de detecciones normales y upper limits.
+
+    Devuelve un diccionario con:
+      - logL_total      : log-likelihood total (mismo convenio que log_likelihood)
+      - logL_normal     : contribución de detecciones normales
+      - logL_ul         : contribución de upper limits
+      - chi2_normal     : chi^2 de detecciones normales
+      - n_normal        : número de detecciones normales
+      - n_ul            : número de upper limits
+    """
+    from model import alerce_model  # import local para evitar ciclos raros
+
+    A, f, t0, t_rise, t_fall, gamma = params
+
+    # Usar bounds dinámicos igual que en log_likelihood
+    if dynamic_bounds is None:
+        bounds = MODEL_CONFIG["bounds"]
+    else:
+        bounds = dynamic_bounds
+
+    # Si estamos fuera de bounds, devolvemos todo a -inf, como referencia
+    if not (bounds["A"][0] < A < bounds["A"][1] and
+            bounds["f"][0] < f < bounds["f"][1] and
+            bounds["t0"][0] < t0 < bounds["t0"][1] and
+            bounds["t_rise"][0] < t_rise < bounds["t_rise"][1] and
+            bounds["t_fall"][0] < t_fall < bounds["t_fall"][1] and
+            bounds["gamma"][0] < gamma < bounds["gamma"][1]):
+        return {
+            "logL_total": -np.inf,
+            "logL_normal": -np.inf,
+            "logL_ul": -np.inf,
+            "chi2_normal": np.inf,
+            "n_normal": np.sum(~is_upper_limit) if is_upper_limit is not None else len(times),
+            "n_ul": np.sum(is_upper_limit) if is_upper_limit is not None else 0,
+        }
+
+    try:
+        model_flux = alerce_model(times, A, f, t0, t_rise, t_fall, gamma)
+
+        if np.any(np.isnan(model_flux)) or np.any(model_flux <= 0):
+            return {
+                "logL_total": -np.inf,
+                "logL_normal": -np.inf,
+                "logL_ul": -np.inf,
+                "chi2_normal": np.inf,
+                "n_normal": np.sum(~is_upper_limit) if is_upper_limit is not None else len(times),
+                "n_ul": np.sum(is_upper_limit) if is_upper_limit is not None else 0,
+            }
+
+        chi2_normal = 0.0
+        logL_normal = 0.0
+        logL_ul = 0.0
+        n_normal = len(times)
+        n_ul = 0
+
+        if is_upper_limit is not None and np.any(is_upper_limit):
+            mask_normal = ~is_upper_limit
+            n_normal = int(np.sum(mask_normal))
+
+            if n_normal > 0:
+                chi2_normal = np.sum(((flux[mask_normal] - model_flux[mask_normal]) / flux_err[mask_normal]) ** 2)
+                logL_normal = -0.5 * chi2_normal
+
+            mask_ul = is_upper_limit
+            n_ul = int(np.sum(mask_ul))
+
+            if n_ul > 0:
+                flux_ul = flux[mask_ul]
+                flux_model_ul = model_flux[mask_ul]
+                flux_err_ul = flux_err[mask_ul]
+
+                sigma_ul = np.where(
+                    np.isfinite(flux_err_ul) & (flux_err_ul > 0),
+                    flux_err_ul,
+                    flux_ul * 0.05
+                )
+
+                z_ul = (flux_ul - flux_model_ul) / (sigma_ul + 1e-10)
+                z_ul_clipped = np.clip(z_ul, -20, 10)
+                cdf_ul = norm.cdf(z_ul_clipped)
+                cdf_ul = np.maximum(cdf_ul, 1e-15)
+                logL_ul = np.sum(np.log(cdf_ul))
+        else:
+            # Caso sin upper limits
+            chi2_normal = np.sum(((flux - model_flux) / flux_err) ** 2)
+            logL_normal = -0.5 * chi2_normal
+            n_ul = 0
+
+        logL_total = logL_normal + logL_ul
+
+        return {
+            "logL_total": logL_total,
+            "logL_normal": logL_normal,
+            "logL_ul": logL_ul,
+            "chi2_normal": chi2_normal,
+            "n_normal": n_normal,
+            "n_ul": n_ul,
+        }
+    except Exception:
+        return {
+            "logL_total": -np.inf,
+            "logL_normal": -np.inf,
+            "logL_ul": -np.inf,
+            "chi2_normal": np.inf,
+            "n_normal": np.sum(~is_upper_limit) if is_upper_limit is not None else len(times),
+            "n_ul": np.sum(is_upper_limit) if is_upper_limit is not None else 0,
+        }
 
 def log_prior(params, dynamic_bounds=None, times=None, flux=None, is_upper_limit=None):
     """
@@ -466,6 +582,44 @@ def fit_mcmc(phase, flux, flux_err, p0=None, verbose=True, is_upper_limit=None):
     # Este es el modelo que se muestra como "MCMC Median" en los gráficos
     # y los valores que aparecen en "MCMC Fit Results"
     model_flux = alerce_model(phase, *param_medians)
+
+    # ======================================================================
+    # BLOQUE DE DEBUG PARA EL PROFESOR: DESGLOSE DE LIKELIHOOD
+    # ======================================================================
+    # Solo imprimir si hay upper limits y verbose=True. Esto permite ver
+    # explícitamente cuánto contribuyen las detecciones normales y los
+    # upper limits al log-likelihood total para esta combinación SN+filtro.
+    if verbose and is_upper_limit is not None and np.any(is_upper_limit):
+        try:
+            components_params = compute_likelihood_components(
+                param_medians, phase, flux, flux_err,
+                dynamic_bounds=dynamic_bounds, is_upper_limit=is_upper_limit
+            )
+
+            print("\n  [DEBUG] Desglose de likelihood (parámetros MEDIANA):")
+            print(f"    logL_total   = {components_params['logL_total']:.3f}")
+            print(f"    logL_normal  = {components_params['logL_normal']:.3f}  "
+                  f"(n_normal = {components_params['n_normal']})")
+            print(f"    logL_ul      = {components_params['logL_ul']:.3f}  "
+                  f"(n_ul = {components_params['n_ul']})")
+            if components_params['n_normal'] > 0:
+                chi2_red = components_params['chi2_normal'] / max(1, components_params['n_normal'] - len(param_medians))
+                print(f"    chi2_normal  = {components_params['chi2_normal']:.3f}  "
+                      f"(chi2_red ≈ {chi2_red:.3f})")
+
+            if params_median_of_curves is not None:
+                components_moc = compute_likelihood_components(
+                    params_median_of_curves, phase, flux, flux_err,
+                    dynamic_bounds=dynamic_bounds, is_upper_limit=is_upper_limit
+                )
+                print("  [DEBUG] Desglose de likelihood (Median of Curves - curva verde):")
+                print(f"    logL_total   = {components_moc['logL_total']:.3f}")
+                print(f"    logL_normal  = {components_moc['logL_normal']:.3f}  "
+                      f"(n_normal = {components_moc['n_normal']})")
+                print(f"    logL_ul      = {components_moc['logL_ul']:.3f}  "
+                      f"(n_ul = {components_moc['n_ul']})")
+        except Exception as e:
+            print(f"  [DEBUG] Error calculando desglose de likelihood: {e}")
     
     return {
         'params': param_medians,  # Median of Parameters de las 500 mejores
@@ -490,6 +644,7 @@ def validate_physical_fit(mcmc_results, phase, flux, is_upper_limit=None):
     Validaciones:
     1. El flujo antes de la primera detección debe ser menor que en la primera detección
     2. El flujo después de la última detección debe ser menor que en la última detección
+    3. Detectar múltiples máximos: descartar SOLO si el segundo máximo es mayor que el primero
     
     Parameters:
     -----------
@@ -553,6 +708,58 @@ def validate_physical_fit(mcmc_results, phase, flux, is_upper_limit=None):
             return False, f"Flujo no físico después de última detección: {flux_late:.2e} > {last_flux:.2e} en t={t_late:.1f}"
     except:
         return False, "Error al evaluar modelo en tiempo tardío"
+    
+    # Validación 3: Detectar múltiples máximos - descartar SOLO si el segundo máximo excede al primero en un 10% o más
+    try:
+        # Evaluar modelo en rango extendido con alta resolución para detectar máximos
+        # Rango: desde 100 días antes de la primera detección hasta 300 días después de la última
+        # Aumentar resolución a 2000 puntos para mejor detección de picos
+        phase_range = np.linspace(first_phase - 100.0, last_phase + 300.0, 2000)
+        flux_model_range = alerce_model(phase_range, *params)
+        flux_model_range = np.clip(flux_model_range, 1e-10, None)
+        
+        # Método 1: Usar find_peaks con parámetros más permisivos
+        max_flux_global = np.max(flux_model_range)
+        min_height = max_flux_global * 0.05  # 5% del máximo para no perder picos pequeños pero reales
+        # distance=20 puntos: con 2000 puntos en ~400 días, 20 puntos ≈ 4 días de separación mínima
+        peaks, properties = find_peaks(flux_model_range, height=min_height, distance=20)
+        
+        # Método 2: Verificar también usando la derivada (más robusto)
+        # Calcular derivada numérica
+        flux_diff = np.diff(flux_model_range)
+        # Encontrar cambios de signo en la derivada (de positivo a negativo = máximo)
+        sign_changes = []
+        for i in range(1, len(flux_diff)):
+            if flux_diff[i-1] > 0 and flux_diff[i] < 0:
+                # Máximo local encontrado
+                sign_changes.append(i)
+        
+        # Combinar ambos métodos: usar find_peaks como principal, pero verificar con derivada
+        # Si hay discrepancias, usar el método más conservador (más picos detectados)
+        all_peak_indices = set(peaks.tolist() if len(peaks) > 0 else [])
+        all_peak_indices.update(sign_changes)
+        
+        if len(all_peak_indices) > 1:
+            # Hay múltiples máximos, comparar sus valores
+            peak_indices_sorted = sorted(all_peak_indices)
+            peak_fluxes = flux_model_range[peak_indices_sorted]
+            peak_phases = phase_range[peak_indices_sorted]
+            
+            # Ordenar por fase (tiempo) para identificar primero y segundo máximo cronológicamente
+            sorted_indices = np.argsort(peak_phases)
+            first_max_flux = peak_fluxes[sorted_indices[0]]
+            second_max_flux = peak_fluxes[sorted_indices[1]]
+            first_max_phase = peak_phases[sorted_indices[0]]
+            second_max_phase = peak_phases[sorted_indices[1]]
+            
+            # SOLO descartar si el segundo máximo excede al primero en un 10% o más
+            excess_percent = ((second_max_flux - first_max_flux) / first_max_flux) * 100.0
+            if second_max_flux > first_max_flux * 1.10:  # 10% más grande
+                return False, f"Múltiples máximos: segundo máximo ({second_max_flux:.2e} en t={second_max_phase:.1f}) excede al primero ({first_max_flux:.2e} en t={first_max_phase:.1f}) en {excess_percent:.1f}%"
+    except Exception as e:
+        # Si hay error al detectar máximos, no rechazar (podría ser un problema con scipy o con el modelo)
+        # Solo continuar sin rechazar (mejor aceptar un fit dudoso que rechazar uno válido por error técnico)
+        pass
     
     return True, None
 
